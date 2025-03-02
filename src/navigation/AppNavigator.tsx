@@ -1,0 +1,96 @@
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
+
+// Screens
+import LoginScreen from '../screens/LoginScreen';
+import HomeScreen from '../screens/HomeScreen';
+import CategoriesScreen from '../screens/CategoriesScreen';
+import SearchScreen from '../screens/SearchScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import RecipeDetailScreen from '../screens/RecipeDetailScreen';
+import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
+
+// Types
+import { RootStackParamList, TabParamList } from './types';
+import { COLORS } from '../constants/theme';
+
+const Stack = createStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
+
+const TabNavigator = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: any;
+
+          if (route.name === 'Home') {
+            iconName = focused ? 'ios-home' : 'ios-home-outline';
+          } else if (route.name === 'Categories') {
+            iconName = focused ? 'ios-list' : 'ios-list-outline';
+          } else if (route.name === 'Search') {
+            iconName = focused ? 'ios-search' : 'ios-search-outline';
+          } else if (route.name === 'Settings') {
+            iconName = focused ? 'ios-settings' : 'ios-settings-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: 'gray',
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Categories" component={CategoriesScreen} />
+      <Tab.Screen name="Search" component={SearchScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
+    </Tab.Navigator>
+  );
+};
+
+const AppNavigator = () => {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: COLORS.primary,
+          },
+          headerTintColor: COLORS.white,
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          cardStyle: { backgroundColor: COLORS.background },
+        }}
+      >
+        <Stack.Screen 
+          name="Login" 
+          component={LoginScreen} 
+          options={{ headerShown: false }} 
+        />
+        <Stack.Screen
+          name="Main"
+          component={TabNavigator}
+          options={{ headerShown: false, title: 'Recipe Manager' }}
+        />
+        <Stack.Screen
+          name="RecipeDetails"
+          component={RecipeDetailScreen}
+          options={({ route }) => ({ title: route.params.recipe.name })}
+        />
+        <Stack.Screen
+          name="CategoryRecipes"
+          component={CategoryRecipesScreen}
+          options={({ route }) => ({ title: route.params.categoryName })}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+export default AppNavigator;
