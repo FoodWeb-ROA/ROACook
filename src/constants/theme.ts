@@ -22,20 +22,20 @@ export const COLORS = {
 // Font configuration
 const fontConfig = {
   regular: {
-    fontFamily: 'sans-serif',
+    fontFamily: 'Poppins',
     fontWeight: 'normal' as const,
   },
   medium: {
-    fontFamily: 'sans-serif-medium',
-    fontWeight: 'normal' as const,
+    fontFamily: 'Poppins',
+    fontWeight: '500' as const,
   },
   light: {
-    fontFamily: 'sans-serif-light',
-    fontWeight: 'normal' as const,
+    fontFamily: 'Poppins',
+    fontWeight: '300' as const,
   },
   thin: {
-    fontFamily: 'sans-serif-thin',
-    fontWeight: 'normal' as const,
+    fontFamily: 'Poppins',
+    fontWeight: '100' as const,
   },
 };
 
@@ -77,14 +77,14 @@ export const SIZES = {
 
 // Custom font styles
 export const FONTS = {
-  largeTitle: { fontSize: SIZES.xxxl, fontFamily: 'sans-serif-medium' },
-  h1: { fontSize: SIZES.xxl, fontFamily: 'sans-serif-medium' },
-  h2: { fontSize: SIZES.xl, fontFamily: 'sans-serif-medium' },
-  h3: { fontSize: SIZES.large, fontFamily: 'sans-serif-medium' },
-  h4: { fontSize: SIZES.medium, fontFamily: 'sans-serif-medium' },
-  body1: { fontSize: SIZES.medium, fontFamily: 'sans-serif' },
-  body2: { fontSize: SIZES.font, fontFamily: 'sans-serif' },
-  body3: { fontSize: SIZES.small, fontFamily: 'sans-serif' },
+  largeTitle: { fontSize: SIZES.xxxl, fontFamily: 'Poppins' },
+  h1: { fontSize: SIZES.xxl, fontFamily: 'Poppins' },
+  h2: { fontSize: SIZES.xl, fontFamily: 'Poppins' },
+  h3: { fontSize: SIZES.large, fontFamily: 'Poppins' },
+  h4: { fontSize: SIZES.medium, fontFamily: 'Poppins' },
+  body1: { fontSize: SIZES.medium, fontFamily: 'Poppins' },
+  body2: { fontSize: SIZES.font, fontFamily: 'Poppins' },
+  body3: { fontSize: SIZES.small, fontFamily: 'Poppins' },
 };
 
 // Shadow styles
