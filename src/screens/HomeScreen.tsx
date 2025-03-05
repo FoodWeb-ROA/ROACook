@@ -122,6 +122,27 @@ const HomeScreen = () => {
           ))}
         </View>
       </ScrollView>
+      
+      {/* Floating Action Buttons */}
+      <View style={styles.floatingButtonsContainer}>
+        <TouchableOpacity 
+          style={[styles.floatingButton, styles.createButton]}
+          onPress={() => console.log('Create Recipe pressed')}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
+          <Text style={styles.floatingButtonText}>Create Recipe</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.floatingButton, styles.uploadButton]}
+          onPress={() => console.log('Upload Recipe pressed')}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="upload" size={20} color={COLORS.white} />
+          <Text style={styles.floatingButtonText}>Upload Recipe</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -188,6 +209,39 @@ const styles = StyleSheet.create({
   viewAllText: {
     ...FONTS.body3,
     color: COLORS.primary,
+  },
+  floatingButtonsContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  floatingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SIZES.padding * 0.75,
+    paddingHorizontal: SIZES.padding * 1.5,
+    borderRadius: 25, // Pill shape
+    margin: 8,
+    elevation: 5,
+    ...SHADOWS.medium,
+  },
+  createButton: {
+    backgroundColor: COLORS.tertiary,
+  },
+  uploadButton: {
+    backgroundColor: COLORS.primary,
+  },
+  floatingButtonText: {
+    ...FONTS.body3,
+    color: COLORS.white,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
 
