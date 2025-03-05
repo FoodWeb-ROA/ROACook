@@ -14,7 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SIZES, FONTS } from '../constants/theme';
+import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { CATEGORIES, RECIPES } from '../constants/dummyData';
 import { RootStackParamList } from '../navigation/types';
 import { Category, Recipe } from '../types';
@@ -71,13 +71,10 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Chef's Recipes</Text>
-          <Text style={styles.headerSubtitle}>Main Restaurant</Text>
-        </View>
         <TouchableOpacity style={styles.profileButton}>
-          <MaterialCommunityIcons name="account-circle" size={40} color={COLORS.primary} />
+          <MaterialCommunityIcons name="account-circle" size={40} color={COLORS.white} />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>ROA</Text>
       </View>
 
       <ScrollView 
@@ -140,24 +137,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: SIZES.padding * 2,
     paddingVertical: SIZES.padding,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.primary,
+    backgroundColor: 'transparent',
   },
   headerTitle: {
     ...FONTS.h2,
     color: COLORS.white,
+    fontWeight: 'bold',
   },
   headerSubtitle: {
     ...FONTS.body2,
     color: COLORS.textLight,
   },
   profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.small,
   },
   scrollView: {
     flex: 1,
