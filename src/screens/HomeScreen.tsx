@@ -18,9 +18,9 @@ import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { CATEGORIES, RECIPES } from '../constants/dummyData';
 import { RootStackParamList } from '../navigation/types';
 import { Category, Recipe } from '../types';
-import RecipeCard from '../components/RecipeCard';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
+import RecipeGridItem from '../components/RecipeGridItem';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -62,10 +62,10 @@ const HomeScreen = () => {
     setCategories([...categories, newSection]);
   };
 
-  // Get the 5 most recent recipes
+  // Get the 8 most recent recipes for the grid
   const recentRecipes = [...RECIPES]
     .sort((a, b) => parseInt(b.id) - parseInt(a.id))
-    .slice(0, 5);
+    .slice(0, 8);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -113,13 +113,15 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
           
-          {recentRecipes.map((recipe) => (
-            <RecipeCard
-              key={recipe.id}
-              recipe={recipe}
-              onPress={handleRecipePress}
-            />
-          ))}
+          <View style={styles.recipesGrid}>
+            {recentRecipes.map((recipe) => (
+              <RecipeGridItem
+                key={recipe.id}
+                recipe={recipe}
+                onPress={handleRecipePress}
+              />
+            ))}
+          </View>
         </View>
       </ScrollView>
       
@@ -198,6 +200,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  recipesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
