@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -18,11 +20,13 @@ import { RootStackParamList } from '../navigation/types';
 import { Category, Recipe } from '../types';
 import RecipeCard from '../components/RecipeCard';
 import CategoryCard from '../components/CategoryCard';
+import AddCategoryCard from '../components/AddCategoryCard';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
 
   const handleCategoryPress = (category: Category) => {
     navigation.navigate('CategoryRecipes', {
@@ -35,10 +39,27 @@ const HomeScreen = () => {
     navigation.navigate('RecipeDetails', { recipe });
   };
 
-  const handleAddCategory = () => {
-    // This would open a modal or navigate to an add category screen
-    // For demo purposes, we will just log a message
-    console.log('Add category pressed');
+  const handleAddSection = (sectionName: string) => {
+    // For now, just display an alert without backend logic
+    if (Platform.OS === 'web') {
+      window.alert(`Section "${sectionName}" has been added.`);
+    } else {
+      // React Native's Alert for iOS/Android
+      Alert.alert(
+        "New Section Added",
+        `Section "${sectionName}" has been added.`,
+        [{ text: "OK" }]
+      );
+    }
+    
+    // Add the new section to the local state
+    const newSection: Category = {
+      id: `${Date.now()}`, // Simple temporary ID
+      name: sectionName,
+      icon: 'folder', // Default icon
+    };
+    
+    setCategories([...categories, newSection]);
   };
 
   // Get the 5 most recent recipes
@@ -66,25 +87,25 @@ const HomeScreen = () => {
         <View style={styles.categoriesSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Categories</Text>
-            <TouchableOpacity onPress={handleAddCategory}>
-              <MaterialCommunityIcons name="plus-circle" size={24} color={COLORS.primary} />
+            <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+              <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
           
-          <FlatList
-            data={CATEGORIES}
-            renderItem={({ item }) => (
+          {/* Using a grid layout instead of FlatList for better cross-platform support */}
+          <View style={styles.categoriesGrid}>
+            {/* Map through categories */}
+            {categories.slice(0, 3).map(category => (
               <CategoryCard
-                category={item}
+                key={category.id}
+                category={category}
                 onPress={handleCategoryPress}
               />
-            )}
-            keyExtractor={(item) => item.id}
-            horizontal={false}
-            numColumns={2}
-            columnWrapperStyle={styles.categoriesRow}
-            scrollEnabled={false}
-          />
+            ))}
+            
+            {/* Add Category Card */}
+            <AddCategoryCard onAdd={handleAddSection} />
+          </View>
         </View>
 
         <View style={styles.recentRecipesSection}>
@@ -155,6 +176,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   categoriesRow: {
+    justifyContent: 'space-between',
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
   recentRecipesSection: {
