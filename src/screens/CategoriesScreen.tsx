@@ -17,6 +17,7 @@ import { RootStackParamList } from '../navigation/types';
 import { Category } from '../types';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
+import AppHeader from '../components/AppHeader';
 
 type CategoriesScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -91,9 +92,10 @@ const CategoriesScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Recipe Categories</Text>
-      </View>
+      <AppHeader 
+        title="Recipe Categories"
+        showBackButton={false}
+      />
       
       {/* For web compatibility, let's use a ScrollView with flexbox grid */}
       <ScrollView contentContainerStyle={styles.listContent}>
@@ -118,17 +120,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  header: {
-    paddingHorizontal: SIZES.padding * 2,
-    paddingVertical: SIZES.padding,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.primary,
-  },
-  headerTitle: {
-    ...FONTS.h2,
-    color: COLORS.white,
   },
   listContent: {
     padding: SIZES.padding * 2,

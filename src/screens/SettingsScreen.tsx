@@ -15,6 +15,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
+import AppHeader from '../components/AppHeader';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -85,9 +86,10 @@ const SettingsScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
-      </View>
+      <AppHeader
+        title="Settings"
+        showBackButton={false}
+      />
       
       <ScrollView style={styles.scrollView}>
         <View style={styles.section}>
@@ -132,17 +134,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  header: {
-    paddingHorizontal: SIZES.padding * 2,
-    paddingVertical: SIZES.padding,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.primary,
-  },
-  headerTitle: {
-    ...FONTS.h2,
-    color: COLORS.white,
   },
   scrollView: {
     flex: 1,

@@ -9,15 +9,17 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { MeasurementUnit } from '../types';
+import AppHeader from '../components/AppHeader';
 
 type RecipeDetailRouteProp = RouteProp<RootStackParamList, 'RecipeDetails'>;
 
 const RecipeDetailScreen = () => {
+  const navigation = useNavigation();
   const route = useRoute<RecipeDetailRouteProp>();
   const { recipe } = route.params;
   
@@ -87,6 +89,10 @@ const RecipeDetailScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
+      <AppHeader
+        title={recipe.name}
+        showBackButton={true}
+      />
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}

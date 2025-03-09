@@ -14,6 +14,7 @@ import { RECIPES } from '../constants/dummyData';
 import { RootStackParamList } from '../navigation/types';
 import { Recipe } from '../types';
 import RecipeCard from '../components/RecipeCard';
+import AppHeader from '../components/AppHeader';
 
 type CategoryRecipesRouteProp = RouteProp<RootStackParamList, 'CategoryRecipes'>;
 type CategoryRecipesNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -33,6 +34,10 @@ const CategoryRecipesScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
+      <AppHeader
+        title={route.params.categoryName}
+        showBackButton={true}
+      />
       <FlatList
         data={categoryRecipes}
         renderItem={({ item }) => (

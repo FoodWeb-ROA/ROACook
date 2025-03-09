@@ -81,12 +81,12 @@ const AppNavigator = () => {
         <Stack.Screen
           name="RecipeDetails"
           component={RecipeDetailScreen}
-          options={({ route }) => ({ title: route.params.recipe.name })}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="CategoryRecipes"
           component={CategoryRecipesScreen}
-          options={({ route }) => ({ title: route.params.categoryName })}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

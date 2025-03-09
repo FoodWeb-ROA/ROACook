@@ -21,6 +21,7 @@ import { Category, Recipe } from '../types';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
 import RecipeGridItem from '../components/RecipeGridItem';
+import AppHeader from '../components/AppHeader';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -70,12 +71,11 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.profileButton}>
-          <MaterialCommunityIcons name="account-circle" size={40} color={COLORS.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>ROA</Text>
-      </View>
+      <AppHeader 
+        title="Home"
+        showProfileButton={true}
+        onProfilePress={() => console.log('Profile button pressed')}
+      />
 
       <ScrollView 
         style={styles.scrollView} 
@@ -153,32 +153,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.padding * 2,
-    paddingVertical: SIZES.padding,
-    backgroundColor: 'transparent',
-  },
-  headerTitle: {
-    ...FONTS.h2,
-    color: COLORS.white,
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    ...FONTS.body2,
-    color: COLORS.textLight,
-  },
-  profileButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.small,
   },
   scrollView: {
     flex: 1,

@@ -17,6 +17,7 @@ import { RECIPES, CATEGORIES } from '../constants/dummyData';
 import { RootStackParamList } from '../navigation/types';
 import { Recipe } from '../types';
 import RecipeCard from '../components/RecipeCard';
+import AppHeader from '../components/AppHeader';
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -48,9 +49,10 @@ const SearchScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Search Recipes</Text>
-      </View>
+      <AppHeader
+        title="Search Recipes"
+        showBackButton={false}
+      />
       
       <View style={styles.searchContainer}>
         <View style={styles.searchBarWrapper}>
@@ -131,17 +133,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  header: {
-    paddingHorizontal: SIZES.padding * 2,
-    paddingVertical: SIZES.padding,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.primary,
-  },
-  headerTitle: {
-    ...FONTS.h2,
-    color: COLORS.white,
   },
   searchContainer: {
     paddingHorizontal: SIZES.padding * 2,
