@@ -8,7 +8,19 @@ export type Recipe = {
   prepTime: number;
   cookTime: number;
   servings: number;
+  preparations?: Preparation[];
   isDeleted?: boolean;
+};
+
+export type Preparation = {
+  id: string;
+  name: string;
+  ingredients: Ingredient[];
+  instructions: string[];
+  prepTime: number;
+  cookTime: number;
+  servings: number;
+  imageUrl?: string;
 };
 
 export type Ingredient = {

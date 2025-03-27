@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -12,18 +12,54 @@ import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { MeasurementUnit } from '../types';
+import { MeasurementUnit, Ingredient } from '../types';
 import AppHeader from '../components/AppHeader';
 
 type RecipeDetailRouteProp = RouteProp<RootStackParamList, 'RecipeDetails'>;
 
 const RecipeDetailScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<RecipeDetailRouteProp>();
   const { recipe } = route.params;
   
+  // Debug log to see if the recipe has preparations
+  console.log('Recipe:', recipe.name);
+  console.log('Has preparations:', !!recipe.preparations);
+  console.log('Preparation count:', recipe.preparations?.length || 0);
+  if (recipe.preparations) {
+    recipe.preparations.forEach((prep, index) => {
+      console.log(`Preparation ${index + 1}:`, prep.name);
+    });
+  }
+
   const [servingScale, setServingScale] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
+
+  // Combine all ingredients from main recipe and preparations
+  const allIngredients = useMemo(() => {
+    const ingredients: Ingredient[] = [...recipe.ingredients];
+    
+    // Add ingredients from all preparations
+    if (recipe.preparations) {
+      recipe.preparations.forEach(prep => {
+        prep.ingredients.forEach(ingredient => {
+          // Check if ingredient already exists (by name) and update quantity if it does
+          const existingIngredient = ingredients.find(i => i.name === ingredient.name && i.unit === ingredient.unit);
+          if (existingIngredient) {
+            existingIngredient.quantity += ingredient.quantity;
+          } else {
+            // Add a new ingredient
+            ingredients.push({
+              ...ingredient,
+              id: `${prep.id}-${ingredient.id}` // Create a unique ID
+            });
+          }
+        });
+      });
+    }
+    
+    return ingredients;
+  }, [recipe]);
 
   // Units for conversion
   const unitOptions = {
@@ -83,6 +119,16 @@ const RecipeDetailScreen = () => {
       ...selectedUnit,
       [ingredientId]: options[nextIndex] as MeasurementUnit,
     });
+  };
+
+  // Function to navigate to preparation details
+  const navigateToPreparation = (preparationIndex: number) => {
+    if (recipe.preparations && recipe.preparations[preparationIndex]) {
+      navigation.navigate('PreparationDetails', {
+        preparation: recipe.preparations[preparationIndex],
+        recipeServingScale: servingScale
+      });
+    }
   };
 
   return (
@@ -150,7 +196,7 @@ const RecipeDetailScreen = () => {
           
           <View style={styles.ingredientsContainer}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
-            {recipe.ingredients.map((ingredient) => (
+            {allIngredients.map((ingredient) => (
               <View key={ingredient.id} style={styles.ingredientItem}>
                 <Text style={styles.ingredientName}>{ingredient.name}</Text>
                 <TouchableOpacity 
@@ -172,14 +218,58 @@ const RecipeDetailScreen = () => {
           
           <View style={styles.instructionsContainer}>
             <Text style={styles.sectionTitle}>Instructions</Text>
-            {recipe.instructions.map((instruction, index) => (
-              <View key={index} style={styles.instructionItem}>
-                <View style={styles.instructionNumber}>
-                  <Text style={styles.instructionNumberText}>{index + 1}</Text>
-                </View>
-                <Text style={styles.instructionText}>{instruction}</Text>
+            
+            {/* First, render all preparation blocks */}
+            {recipe.preparations && recipe.preparations.length > 0 && (
+              <View style={styles.preparationsContainer}>
+                <Text style={styles.preparationsTitle}>Preparations</Text>
+                
+                {/* Map through all preparations */}
+                {recipe.preparations.map((preparation, prepIndex) => (
+                  <TouchableOpacity
+                    key={`prep-${preparation.id}`}
+                    style={styles.preparationBlock}
+                    onPress={() => navigateToPreparation(prepIndex)}
+                  >
+                    <View style={styles.preparationHeader}>
+                      <Text style={styles.preparationTitle}>
+                        {preparation.name}
+                      </Text>
+                      <MaterialCommunityIcons 
+                        name="chevron-right" 
+                        size={24} 
+                        color={COLORS.white} 
+                      />
+                    </View>
+                    
+                    {/* Display preparation instructions */}
+                    {preparation.instructions.map((prepInstruction, instructionIndex) => (
+                      <View 
+                        key={`prep-${preparation.id}-inst-${instructionIndex}`} 
+                        style={styles.preparationInstructionItem}
+                      >
+                        <Text style={styles.preparationInstructionNumber}>{instructionIndex + 1}.</Text>
+                        <Text style={styles.preparationInstructionText}>{prepInstruction}</Text>
+                      </View>
+                    ))}
+                  </TouchableOpacity>
+                ))}
               </View>
-            ))}
+            )}
+            
+            {/* Then, render the main recipe directions */}
+            <View style={styles.mainInstructionsContainer}>
+              <Text style={styles.mainInstructionsTitle}>Main Directions</Text>
+              
+              {recipe.instructions.map((instruction, index) => (
+                <View key={`main-inst-${index}`} style={styles.instructionItem}>
+                  <View style={styles.instructionNumber}>
+                    <Text style={styles.instructionNumberText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.instructionText}>{instruction}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -316,6 +406,62 @@ const styles = StyleSheet.create({
     ...FONTS.body2,
     color: COLORS.white,
     flex: 1,
+  },
+  preparationBlock: {
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    marginLeft: 30,
+    marginRight: 0,
+    marginBottom: SIZES.padding * 2,
+    ...SHADOWS.medium,
+  },
+  preparationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.padding,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.secondary,
+    paddingBottom: 8,
+  },
+  preparationTitle: {
+    ...FONTS.h3,
+    color: COLORS.white,
+    fontWeight: 'bold',
+  },
+  preparationInstructionItem: {
+    flexDirection: 'row',
+    marginBottom: SIZES.padding,
+  },
+  preparationInstructionNumber: {
+    ...FONTS.body3,
+    color: COLORS.white,
+    width: 25,
+    fontWeight: 'bold',
+  },
+  preparationInstructionText: {
+    ...FONTS.body3,
+    color: COLORS.white,
+    flex: 1,
+  },
+  preparationsContainer: {
+    marginBottom: SIZES.padding * 2,
+  },
+  preparationsTitle: {
+    ...FONTS.h3,
+    color: COLORS.primary,
+    marginBottom: SIZES.padding,
+    fontWeight: 'bold',
+  },
+  mainInstructionsContainer: {
+    marginBottom: SIZES.padding * 2,
+  },
+  mainInstructionsTitle: {
+    ...FONTS.h3,
+    color: COLORS.primary,
+    marginBottom: SIZES.padding,
+    fontWeight: 'bold',
   },
 });
 

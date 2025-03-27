@@ -145,8 +145,6 @@ export const RECIPES: Recipe[] = [
     category: '1',
     ingredients: [
       { id: '1', name: 'Beef tenderloin', quantity: 900, unit: 'g' },
-      { id: '2', name: 'Puff pastry', quantity: 500, unit: 'g' },
-      { id: '3', name: 'Mushrooms', quantity: 400, unit: 'g' },
       { id: '4', name: 'Prosciutto', quantity: 100, unit: 'g' },
       { id: '5', name: 'Dijon mustard', quantity: 2, unit: 'tbsp' },
       { id: '6', name: 'Egg', quantity: 1, unit: 'count' },
@@ -154,10 +152,11 @@ export const RECIPES: Recipe[] = [
     instructions: [
       'Season beef with salt and pepper, then sear on all sides in a hot pan.',
       'Let the beef cool, then brush with Dijon mustard.',
-      'Finely chop mushrooms and cook until all moisture evaporates.',
-      'Lay out prosciutto slices, spread mushroom mixture on top, place beef in center.',
+      'Prepare the Mushroom Duxelles preparation.',
+      'Lay out prosciutto slices, spread mushroom duxelles on top, place beef in center.',
       'Wrap the beef tightly in the prosciutto and mushroom mixture.',
-      'Roll out puff pastry, place beef in center, and wrap completely.',
+      'Prepare the Puff Pastry Wrap preparation.',
+      'Wrap the beef completely in the puff pastry.',
       'Brush with beaten egg and chill for 30 minutes.',
       'Bake at 200°C/400°F for 25-30 minutes for medium-rare.',
       'Rest for 10 minutes before slicing and serving.'
@@ -166,6 +165,47 @@ export const RECIPES: Recipe[] = [
     cookTime: 30,
     servings: 6,
     imageUrl: 'https://example.com/beef-wellington.jpg',
+    preparations: [
+      {
+        id: 'prep1',
+        name: 'Mushroom Duxelles',
+        ingredients: [
+          { id: '1', name: 'Mushrooms', quantity: 400, unit: 'g' },
+          { id: '2', name: 'Shallots', quantity: 2, unit: 'count' },
+          { id: '3', name: 'Garlic', quantity: 2, unit: 'count' },
+          { id: '4', name: 'Thyme', quantity: 1, unit: 'tbsp' },
+          { id: '5', name: 'Butter', quantity: 2, unit: 'tbsp' },
+        ],
+        instructions: [
+          'Finely chop mushrooms, shallots, and garlic.',
+          'Melt butter in a pan over medium heat.',
+          'Add shallots and garlic, cook until softened.',
+          'Add mushrooms and thyme, cook until all moisture evaporates.',
+          'Season with salt and pepper, let cool completely.'
+        ],
+        prepTime: 10,
+        cookTime: 15,
+        servings: 6,
+        imageUrl: 'https://example.com/mushroom-duxelles.jpg',
+      },
+      {
+        id: 'prep2',
+        name: 'Puff Pastry Wrap',
+        ingredients: [
+          { id: '1', name: 'Puff pastry', quantity: 500, unit: 'g' },
+          { id: '2', name: 'Flour for dusting', quantity: 2, unit: 'tbsp' },
+        ],
+        instructions: [
+          'Roll out puff pastry on a floured surface to about 3mm thickness.',
+          'Trim to a rectangle large enough to fully wrap the beef.',
+          'Chill until ready to use.'
+        ],
+        prepTime: 10,
+        cookTime: 0,
+        servings: 6,
+        imageUrl: 'https://example.com/puff-pastry.jpg',
+      }
+    ]
   },
   {
     id: '6',
@@ -173,7 +213,6 @@ export const RECIPES: Recipe[] = [
     category: '1',
     ingredients: [
       { id: '1', name: 'Chicken thighs', quantity: 500, unit: 'g' },
-      { id: '2', name: 'Green curry paste', quantity: 2, unit: 'tbsp' },
       { id: '3', name: 'Coconut milk', quantity: 400, unit: 'ml' },
       { id: '4', name: 'Bell peppers', quantity: 2, unit: 'count' },
       { id: '5', name: 'Bamboo shoots', quantity: 100, unit: 'g' },
@@ -181,6 +220,7 @@ export const RECIPES: Recipe[] = [
     ],
     instructions: [
       'Cut chicken into bite-sized pieces.',
+      'Prepare the Green Curry Paste preparation.',
       'In a wok, fry curry paste until fragrant.',
       'Add chicken and stir until sealed.',
       'Pour in coconut milk, bring to simmer.',
@@ -192,6 +232,32 @@ export const RECIPES: Recipe[] = [
     cookTime: 20,
     servings: 4,
     imageUrl: 'https://example.com/thai-green-curry.jpg',
+    preparations: [
+      {
+        id: 'prep3',
+        name: 'Green Curry Paste',
+        ingredients: [
+          { id: '1', name: 'Green chilies', quantity: 10, unit: 'count' },
+          { id: '2', name: 'Lemongrass', quantity: 2, unit: 'count' },
+          { id: '3', name: 'Galangal', quantity: 30, unit: 'g' },
+          { id: '4', name: 'Kaffir lime leaves', quantity: 4, unit: 'count' },
+          { id: '5', name: 'Coriander roots', quantity: 5, unit: 'count' },
+          { id: '6', name: 'Shallots', quantity: 4, unit: 'count' },
+          { id: '7', name: 'Garlic', quantity: 5, unit: 'count' },
+          { id: '8', name: 'Shrimp paste', quantity: 1, unit: 'tsp' },
+        ],
+        instructions: [
+          'Remove seeds from chilies if less heat is preferred.',
+          'Finely chop lemongrass, galangal, lime leaves, and coriander roots.',
+          'Blend all ingredients in a food processor until smooth.',
+          'If too thick, add a tablespoon of oil to help blend.'
+        ],
+        prepTime: 15,
+        cookTime: 0,
+        servings: 4,
+        imageUrl: 'https://example.com/green-curry-paste.jpg',
+      }
+    ]
   },
   {
     id: '7',

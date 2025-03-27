@@ -12,6 +12,7 @@ import SearchScreen from '../screens/SearchScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
+import PreparationDetailScreen from '../screens/PreparationDetailScreen';
 
 // Types
 import { RootStackParamList, TabParamList } from './types';
@@ -81,6 +82,11 @@ const AppNavigator = () => {
         <Stack.Screen
           name="RecipeDetails"
           component={RecipeDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PreparationDetails"
+          component={PreparationDetailScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
