@@ -6,7 +6,6 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
@@ -87,14 +86,14 @@ const RecipeDetailScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="light" />
       <AppHeader
         title={recipe.name}
         showBackButton={true}
       />
       <ScrollView 
-        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}
       >
         <Image 
@@ -103,9 +102,7 @@ const RecipeDetailScreen = () => {
         />
         
         <View style={styles.contentContainer}>
-          <View style={styles.headerContainer}>
-            <Text style={styles.recipeName}>{recipe.name}</Text>
-            
+          <View style={styles.headerContainer}>            
             <View style={styles.infoContainer}>
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color={COLORS.textLight} />
@@ -186,7 +183,7 @@ const RecipeDetailScreen = () => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -195,8 +192,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContainer: {
-    flexGrow: 1,
+    paddingBottom: 120, // Extra padding for tab bar
   },
   recipeImage: {
     width: '100%',

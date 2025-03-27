@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 
 interface AppHeaderProps {
+  title?: string;
   showBackButton?: boolean;
   onProfilePress?: () => void;
   rightComponent?: React.ReactNode;
