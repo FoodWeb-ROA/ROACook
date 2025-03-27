@@ -3,70 +3,72 @@ import {
   StyleSheet,
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
-import { CATEGORIES, RECIPES } from '../constants/dummyData';
 import { RootStackParamList } from '../navigation/types';
 import { Category, Recipe } from '../types';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
 import RecipeGridItem from '../components/RecipeGridItem';
 import AppHeader from '../components/AppHeader';
+import { useAuth } from '../context/AuthContext';
+import { useMenuSections, useRecipes } from '../hooks/useSupabase';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const { user } = useAuth();
+  
+  // Use dynamic data loading hooks
+  const { menuSections, loading: loadingCategories, error: categoriesError } = useMenuSections();
+  const { recipes, loading: loadingRecipes, error: recipesError } = useRecipes();
 
-  const handleCategoryPress = (category: Category) => {
+  const handleCategoryPress = (category: any) => {
     navigation.navigate('CategoryRecipes', {
-      categoryId: category.id,
+      categoryId: category.menu_section_id,
       categoryName: category.name,
     });
   };
 
-  const handleRecipePress = (recipe: Recipe) => {
-    navigation.navigate('RecipeDetails', { recipe });
+  const handleRecipePress = (recipe: any) => {
+    navigation.navigate('RecipeDetails', { recipeId: recipe.recipe_id });
   };
 
-  const handleAddSection = (sectionName: string) => {
-    // For now, just display an alert without backend logic
-    if (Platform.OS === 'web') {
-      window.alert(`Section "${sectionName}" has been added.`);
-    } else {
-      // React Native's Alert for iOS/Android
-      Alert.alert(
-        "New Section Added",
-        `Section "${sectionName}" has been added.`,
-        [{ text: "OK" }]
-      );
-    }
+  const handleAddSection = async (sectionName: string) => {
+    // We would add logic here to save to Supabase
+    Alert.alert(
+      "New Section Added",
+      `Section "${sectionName}" has been added.`,
+      [{ text: "OK" }]
+    );
     
-    // Add the new section to the local state
-    const newSection: Category = {
-      id: `${Date.now()}`, // Simple temporary ID
-      name: sectionName,
-      icon: 'folder', // Default icon
-    };
-    
-    setCategories([...categories, newSection]);
+    // In a real app, we would call a function to save to Supabase
+    // and then refresh our categories list
   };
 
   // Get the 8 most recent recipes for the grid
-  const recentRecipes = [...RECIPES]
-    .sort((a, b) => parseInt(b.id) - parseInt(a.id))
-    .slice(0, 8);
+  const recentRecipes = recipes
+    ? [...recipes]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 8)
+    : [];
+
+  // Map menu sections to the format expected by CategoryCard
+  const formattedCategories = menuSections?.map(section => ({
+    ...section,
+    icon: 'silverware-fork-knife' // Default icon
+  })) || [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -74,7 +76,7 @@ const HomeScreen = () => {
       <AppHeader 
         title="Home"
         showProfileButton={true}
-        onProfilePress={() => console.log('Profile button pressed')}
+        onProfilePress={() => navigation.navigate('Settings')}
       />
 
       <ScrollView 
@@ -89,20 +91,27 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
           
-          {/* Using a grid layout instead of FlatList for better cross-platform support */}
-          <View style={styles.categoriesGrid}>
-            {/* Map through categories */}
-            {categories.slice(0, 3).map(category => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                onPress={handleCategoryPress}
-              />
-            ))}
-            
-            {/* Add Category Card */}
-            <AddCategoryCard onAdd={handleAddSection} />
-          </View>
+          {loadingCategories ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+          ) : categoriesError ? (
+            <Text style={styles.errorText}>Error loading categories</Text>
+          ) : (
+            <View style={styles.categoriesGrid}>
+              {/* Map through categories */}
+              {formattedCategories.slice(0, 3).map(category => (
+                <CategoryCard
+                  key={category.menu_section_id}
+                  category={category}
+                  onPress={handleCategoryPress}
+                />
+              ))}
+              
+              {/* Add Category Card */}
+              <AddCategoryCard onAdd={handleAddSection} />
+            </View>
+          )}
         </View>
 
         <View style={styles.recentRecipesSection}>
@@ -113,15 +122,34 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
           
-          <View style={styles.recipesGrid}>
-            {recentRecipes.map((recipe) => (
-              <RecipeGridItem
-                key={recipe.id}
-                recipe={recipe}
-                onPress={handleRecipePress}
-              />
-            ))}
-          </View>
+          {loadingRecipes ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+          ) : recipesError ? (
+            <Text style={styles.errorText}>Error loading recipes</Text>
+          ) : (
+            <View style={styles.recipesGrid}>
+              {recentRecipes.map((recipe) => (
+                <RecipeGridItem
+                  key={recipe.recipe_id}
+                  recipe={{
+                    id: recipe.recipe_id.toString(),
+                    name: recipe.recipe_name,
+                    category: recipe.menu_section_id.toString(),
+                    imageUrl: '', // Add default image or handle missing image
+                    prepTime: recipe.prep_time,
+                    cookTime: recipe.cook_time,
+                  }}
+                  onPress={() => handleRecipePress(recipe)}
+                />
+              ))}
+              
+              {recentRecipes.length === 0 && (
+                <Text style={styles.noDataText}>No recipes found</Text>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
       
@@ -169,9 +197,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...FONTS.h3,
     color: COLORS.text,
-  },
-  categoriesRow: {
-    justifyContent: 'space-between',
   },
   categoriesGrid: {
     flexDirection: 'row',
@@ -223,6 +248,24 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    ...FONTS.body3,
+    color: COLORS.error,
+    textAlign: 'center',
+    padding: 10,
+  },
+  noDataText: {
+    ...FONTS.body3,
+    color: COLORS.text,
+    textAlign: 'center',
+    padding: 20,
+    width: '100%',
   },
 });
 

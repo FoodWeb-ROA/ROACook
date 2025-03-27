@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -19,24 +20,40 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { KITCHENS } from '../constants/dummyData';
+import { useAuth } from '../context/AuthContext';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    // In a real app, validate credentials here
+  const handleLogin = async () => {
+    // Validate input
     if (email.trim() === '' || password.trim() === '') {
       Alert.alert('Error', 'Please enter both email and password');
       return;
     }
     
-    navigation.navigate('Main');
+    try {
+      setIsLoading(true);
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
+      }
+      // No need to navigate - AppNavigator will handle this automatically when user state changes
+    } catch (error) {
+      Alert.alert('Login Error', 'An unexpected error occurred');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredKitchens = KITCHENS.filter(kitchen => 
@@ -127,15 +144,21 @@ const LoginScreen = () => {
                     onChangeText={setPassword}
                   />
                   <TouchableOpacity 
-                    style={styles.loginButton}
+                    style={[styles.loginButton, isLoading && styles.disabledButton]}
                     onPress={handleLogin}
+                    disabled={isLoading}
                   >
-                    <Text style={styles.loginButtonText}>Login</Text>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <Text style={styles.loginButtonText}>Login</Text>
+                    )}
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
                     style={styles.searchKitchenButton}
                     onPress={() => setShowSearch(true)}
+                    disabled={isLoading}
                   >
                     <Text style={styles.searchKitchenText}>Search for kitchen</Text>
                   </TouchableOpacity>
@@ -267,6 +290,9 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     fontSize: 14,
     fontWeight: '500',
+  },
+  disabledButton: {
+    backgroundColor: COLORS.disabled,
   },
 });
 

@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
@@ -14,52 +15,40 @@ import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { MeasurementUnit, Ingredient } from '../types';
 import AppHeader from '../components/AppHeader';
+import { useRecipeDetail } from '../hooks/useSupabase';
 
 type RecipeDetailRouteProp = RouteProp<RootStackParamList, 'RecipeDetails'>;
 
 const RecipeDetailScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<RecipeDetailRouteProp>();
-  const { recipe } = route.params;
+  const { recipeId } = route.params;
   
-  // Debug log to see if the recipe has preparations
-  console.log('Recipe:', recipe.name);
-  console.log('Has preparations:', !!recipe.preparations);
-  console.log('Preparation count:', recipe.preparations?.length || 0);
-  if (recipe.preparations) {
-    recipe.preparations.forEach((prep, index) => {
-      console.log(`Preparation ${index + 1}:`, prep.name);
-    });
-  }
+  // Use dynamic data loading hook
+  const { 
+    recipe, 
+    ingredients, 
+    preparations, 
+    menuSection, 
+    loading, 
+    error 
+  } = useRecipeDetail(recipeId);
 
   const [servingScale, setServingScale] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
 
   // Combine all ingredients from main recipe and preparations
   const allIngredients = useMemo(() => {
-    const ingredients: Ingredient[] = [...recipe.ingredients];
+    if (!ingredients) return [];
     
-    // Add ingredients from all preparations
-    if (recipe.preparations) {
-      recipe.preparations.forEach(prep => {
-        prep.ingredients.forEach(ingredient => {
-          // Check if ingredient already exists (by name) and update quantity if it does
-          const existingIngredient = ingredients.find(i => i.name === ingredient.name && i.unit === ingredient.unit);
-          if (existingIngredient) {
-            existingIngredient.quantity += ingredient.quantity;
-          } else {
-            // Add a new ingredient
-            ingredients.push({
-              ...ingredient,
-              id: `${prep.id}-${ingredient.id}` // Create a unique ID
-            });
-          }
-        });
-      });
-    }
-    
-    return ingredients;
-  }, [recipe]);
+    // Map API ingredients to the format expected by the component
+    return ingredients.map((ingredient) => ({
+      id: ingredient.ingredient_id.toString(),
+      name: ingredient.name,
+      quantity: ingredient.amount,
+      unit: 'g' // Default unit - adjust based on your data model
+    }));
+  }, [ingredients]);
 
   // Units for conversion
   const unitOptions = {
@@ -123,19 +112,42 @@ const RecipeDetailScreen = () => {
 
   // Function to navigate to preparation details
   const navigateToPreparation = (preparationIndex: number) => {
-    if (recipe.preparations && recipe.preparations[preparationIndex]) {
+    if (preparations && preparations[preparationIndex]) {
+      const prep = preparations[preparationIndex];
       navigation.navigate('PreparationDetails', {
-        preparation: recipe.preparations[preparationIndex],
+        preparationId: prep.preparations.preparation_id,
         recipeServingScale: servingScale
       });
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title="Loading..." showBackButton={true} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (error || !recipe) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title="Error" showBackButton={true} />
+        <Text style={styles.errorText}>
+          {error ? error.message : "Recipe not found"}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <AppHeader
-        title={recipe.name}
+        title={recipe.recipe_name}
         showBackButton={true}
       />
       <ScrollView 
@@ -143,7 +155,7 @@ const RecipeDetailScreen = () => {
         contentContainerStyle={styles.scrollContainer}
       >
         <Image 
-          source={{ uri: recipe.imageUrl || 'https://via.placeholder.com/600x400' }} 
+          source={{ uri: 'https://via.placeholder.com/600x400' }} 
           style={styles.recipeImage} 
         />
         
@@ -153,7 +165,7 @@ const RecipeDetailScreen = () => {
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
-                  {recipe.prepTime + recipe.cookTime} min
+                  {recipe.prep_time + recipe.cook_time} min
                 </Text>
               </View>
               
@@ -198,71 +210,56 @@ const RecipeDetailScreen = () => {
             <Text style={styles.sectionTitle}>Ingredients</Text>
             {allIngredients.map((ingredient) => (
               <View key={ingredient.id} style={styles.ingredientItem}>
-                <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                <TouchableOpacity 
-                  style={styles.ingredientQuantity}
-                  onPress={() => toggleUnit(ingredient.id, ingredient.unit)}
-                >
-                  <Text style={styles.ingredientQuantityText}>
-                    {getDisplayValue(ingredient.quantity, ingredient.unit, ingredient.id)} {selectedUnit[ingredient.id] || ingredient.unit}
+                <View style={styles.ingredientMain}>
+                  <Text style={styles.ingredientAmount}>
+                    {getDisplayValue(ingredient.quantity, ingredient.unit, ingredient.id)}
                   </Text>
-                  <MaterialCommunityIcons 
-                    name="swap-horizontal" 
-                    size={16} 
-                    color={COLORS.primary} 
-                  />
-                </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    onPress={() => toggleUnit(ingredient.id, ingredient.unit)}
+                    style={styles.unitToggle}
+                  >
+                    <Text style={styles.unitText}>
+                      {selectedUnit[ingredient.id] || ingredient.unit}
+                    </Text>
+                    <MaterialCommunityIcons name="chevron-down" size={14} color={COLORS.primary} />
+                  </TouchableOpacity>
+                  
+                  <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                </View>
               </View>
             ))}
           </View>
+
+          {/* Preparations Section */}
+          {preparations && preparations.length > 0 && (
+            <View style={styles.preparationsContainer}>
+              <Text style={styles.sectionTitle}>Preparations</Text>
+              {preparations.map((prep, index) => (
+                <TouchableOpacity 
+                  key={prep.preparations.preparation_id} 
+                  style={styles.preparationItem}
+                  onPress={() => navigateToPreparation(index)}
+                >
+                  <View style={styles.preparationHeader}>
+                    <View style={styles.preparationTitleContainer}>
+                      <Text style={styles.preparationTitle}>
+                        Preparation {index + 1}
+                      </Text>
+                    </View>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.primary} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           
+          {/* Instructions Section */}
           <View style={styles.instructionsContainer}>
             <Text style={styles.sectionTitle}>Instructions</Text>
-            
-            {/* First, render all preparation blocks */}
-            {recipe.preparations && recipe.preparations.length > 0 && (
-              <View style={styles.preparationsContainer}>
-                <Text style={styles.preparationsTitle}>Preparations</Text>
-                
-                {/* Map through all preparations */}
-                {recipe.preparations.map((preparation, prepIndex) => (
-                  <TouchableOpacity
-                    key={`prep-${preparation.id}`}
-                    style={styles.preparationBlock}
-                    onPress={() => navigateToPreparation(prepIndex)}
-                  >
-                    <View style={styles.preparationHeader}>
-                      <Text style={styles.preparationTitle}>
-                        {preparation.name}
-                      </Text>
-                      <MaterialCommunityIcons 
-                        name="chevron-right" 
-                        size={24} 
-                        color={COLORS.white} 
-                      />
-                    </View>
-                    
-                    {/* Display preparation instructions */}
-                    {preparation.instructions.map((prepInstruction, instructionIndex) => (
-                      <View 
-                        key={`prep-${preparation.id}-inst-${instructionIndex}`} 
-                        style={styles.preparationInstructionItem}
-                      >
-                        <Text style={styles.preparationInstructionNumber}>{instructionIndex + 1}.</Text>
-                        <Text style={styles.preparationInstructionText}>{prepInstruction}</Text>
-                      </View>
-                    ))}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-            
-            {/* Then, render the main recipe directions */}
-            <View style={styles.mainInstructionsContainer}>
-              <Text style={styles.mainInstructionsTitle}>Main Directions</Text>
-              
-              {recipe.instructions.map((instruction, index) => (
-                <View key={`main-inst-${index}`} style={styles.instructionItem}>
+            <View style={styles.instructionsContent}>
+              {recipe.cooking_notes.split('\n').map((instruction, index) => (
+                <View key={index} style={styles.instructionItem}>
                   <View style={styles.instructionNumber}>
                     <Text style={styles.instructionNumberText}>{index + 1}</Text>
                   </View>
@@ -270,6 +267,14 @@ const RecipeDetailScreen = () => {
                 </View>
               ))}
             </View>
+          </View>
+          
+          {/* Notes Section */}
+          <View style={styles.notesContainer}>
+            <Text style={styles.sectionTitle}>Notes</Text>
+            <Text style={styles.notesText}>
+              {recipe.cooking_notes || "No additional notes for this recipe."}
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -282,11 +287,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.padding * 2,
+  },
+  errorText: {
+    ...FONTS.body2,
+    color: COLORS.error,
+    textAlign: 'center',
+    marginTop: 20,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContainer: {
-    paddingBottom: 120, // Extra padding for tab bar
+    paddingBottom: SIZES.padding * 3,
   },
   recipeImage: {
     width: '100%',
@@ -294,17 +314,19 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   contentContainer: {
-    flex: 1,
-    padding: SIZES.padding * 2,
-    backgroundColor: COLORS.background,
+    paddingHorizontal: SIZES.padding * 2,
+    paddingTop: SIZES.padding * 2,
   },
   headerContainer: {
-    marginBottom: SIZES.padding * 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.padding,
   },
   recipeName: {
     ...FONTS.h1,
-    color: COLORS.white,
-    marginBottom: SIZES.padding,
+    color: COLORS.text,
+    marginBottom: SIZES.padding / 2,
   },
   infoContainer: {
     flexDirection: 'row',
@@ -316,86 +338,115 @@ const styles = StyleSheet.create({
     marginRight: SIZES.padding * 2,
   },
   infoText: {
-    ...FONTS.body2,
+    ...FONTS.body3,
     color: COLORS.textLight,
     marginLeft: 4,
   },
   servingsAdjustContainer: {
-    backgroundColor: COLORS.secondary,
+    marginVertical: SIZES.padding,
+    backgroundColor: COLORS.cardBackground,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
-    marginBottom: SIZES.padding * 2,
     ...SHADOWS.small,
   },
   servingsAdjustControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: SIZES.padding,
+    marginTop: SIZES.padding / 2,
   },
   servingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.small,
+    padding: 8,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.inputBackground,
   },
   servingsValue: {
-    ...FONTS.h4,
-    color: COLORS.white,
+    ...FONTS.body2,
+    color: COLORS.text,
   },
   sectionTitle: {
-    ...FONTS.h3,
-    color: COLORS.white,
+    ...FONTS.h2,
+    color: COLORS.text,
     marginBottom: SIZES.padding,
   },
   ingredientsContainer: {
-    marginBottom: SIZES.padding * 2,
+    marginVertical: SIZES.padding,
   },
   ingredientItem: {
+    marginBottom: SIZES.padding,
+  },
+  ingredientMain: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SIZES.padding,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+  },
+  ingredientAmount: {
+    ...FONTS.body2,
+    color: COLORS.text,
+    minWidth: 30,
+  },
+  unitToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBackground,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: SIZES.radius / 2,
+    marginHorizontal: 8,
+  },
+  unitText: {
+    ...FONTS.body3,
+    color: COLORS.primary,
+    marginRight: 4,
   },
   ingredientName: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     flex: 1,
   },
-  ingredientQuantity: {
+  preparationsContainer: {
+    marginVertical: SIZES.padding,
+  },
+  preparationItem: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    marginBottom: SIZES.padding,
+    ...SHADOWS.small,
+  },
+  preparationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.secondary,
-    paddingHorizontal: SIZES.padding,
-    paddingVertical: SIZES.base,
-    borderRadius: SIZES.radius,
+    justifyContent: 'space-between',
   },
-  ingredientQuantityText: {
-    ...FONTS.body3,
-    color: COLORS.white,
-    marginRight: 4,
+  preparationTitleContainer: {
+    flex: 1,
+  },
+  preparationTitle: {
+    ...FONTS.h3,
+    color: COLORS.text,
   },
   instructionsContainer: {
-    marginBottom: SIZES.padding * 2,
+    marginVertical: SIZES.padding,
+  },
+  instructionsContent: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    ...SHADOWS.small,
   },
   instructionItem: {
     flexDirection: 'row',
     marginBottom: SIZES.padding,
   },
   instructionNumber: {
+    backgroundColor: COLORS.primary,
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SIZES.padding,
-    marginTop: 2,
+    alignSelf: 'flex-start',
   },
   instructionNumberText: {
     ...FONTS.body2,
@@ -404,64 +455,19 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     flex: 1,
   },
-  preparationBlock: {
-    backgroundColor: COLORS.primary,
+  notesContainer: {
+    marginVertical: SIZES.padding,
+  },
+  notesText: {
+    ...FONTS.body2,
+    color: COLORS.text,
+    backgroundColor: COLORS.cardBackground,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
-    marginLeft: 30,
-    marginRight: 0,
-    marginBottom: SIZES.padding * 2,
-    ...SHADOWS.medium,
-  },
-  preparationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.padding,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.secondary,
-    paddingBottom: 8,
-  },
-  preparationTitle: {
-    ...FONTS.h3,
-    color: COLORS.white,
-    fontWeight: 'bold',
-  },
-  preparationInstructionItem: {
-    flexDirection: 'row',
-    marginBottom: SIZES.padding,
-  },
-  preparationInstructionNumber: {
-    ...FONTS.body3,
-    color: COLORS.white,
-    width: 25,
-    fontWeight: 'bold',
-  },
-  preparationInstructionText: {
-    ...FONTS.body3,
-    color: COLORS.white,
-    flex: 1,
-  },
-  preparationsContainer: {
-    marginBottom: SIZES.padding * 2,
-  },
-  preparationsTitle: {
-    ...FONTS.h3,
-    color: COLORS.primary,
-    marginBottom: SIZES.padding,
-    fontWeight: 'bold',
-  },
-  mainInstructionsContainer: {
-    marginBottom: SIZES.padding * 2,
-  },
-  mainInstructionsTitle: {
-    ...FONTS.h3,
-    color: COLORS.primary,
-    marginBottom: SIZES.padding,
-    fontWeight: 'bold',
+    ...SHADOWS.small,
   },
 });
 

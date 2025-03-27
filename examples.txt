@@ -1,0 +1,29 @@
+# Example commands for using the Supabase data management scripts
+
+# Replace these with your actual Supabase credentials
+SUPABASE_URL="https://your-project-id.supabase.co"
+SUPABASE_KEY="your-supabase-anon-key-here"
+
+# Export commands (Linux/Mac)
+./scripts/run-export.sh "$SUPABASE_URL" "$SUPABASE_KEY"
+
+# Export commands (Windows)
+node scripts/run-export.js "$SUPABASE_URL" "$SUPABASE_KEY"
+
+# Import commands (Linux/Mac)
+./scripts/run-import.sh "$SUPABASE_URL" "$SUPABASE_KEY"
+
+# Import commands (Windows)
+node scripts/run-import.js "$SUPABASE_URL" "$SUPABASE_KEY"
+
+# Using npm scripts (Linux/Mac)
+npm run export-unix "$SUPABASE_URL" "$SUPABASE_KEY"
+npm run import-unix "$SUPABASE_URL" "$SUPABASE_KEY"
+
+# Using npm scripts (Windows)
+npm run export-win "$SUPABASE_URL" "$SUPABASE_KEY"
+npm run import-win "$SUPABASE_URL" "$SUPABASE_KEY"
+
+# If you have the .env file correctly set up, you can also use:
+npm run export-data
+npm run import-data 

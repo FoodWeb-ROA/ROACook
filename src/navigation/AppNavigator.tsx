@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, View } from 'react-native';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -17,6 +18,7 @@ import PreparationDetailScreen from '../screens/PreparationDetailScreen';
 // Types
 import { RootStackParamList, TabParamList } from './types';
 import { COLORS } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -54,10 +56,21 @@ const TabNavigator = () => {
 };
 
 const AppNavigator = () => {
+  const { user, loading } = useAuth();
+
+  // Show loading indicator while checking authentication
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName={user ? "Main" : "Login"}
         screenOptions={{
           headerStyle: {
             backgroundColor: COLORS.primary,
@@ -69,31 +82,38 @@ const AppNavigator = () => {
           cardStyle: { backgroundColor: COLORS.background },
         }}
       >
-        <Stack.Screen 
-          name="Login" 
-          component={LoginScreen} 
-          options={{ headerShown: false }} 
-        />
-        <Stack.Screen
-          name="Main"
-          component={TabNavigator}
-          options={{ headerShown: false, title: 'Recipe Manager' }}
-        />
-        <Stack.Screen
-          name="RecipeDetails"
-          component={RecipeDetailScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="PreparationDetails"
-          component={PreparationDetailScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="CategoryRecipes"
-          component={CategoryRecipesScreen}
-          options={{ headerShown: false }}
-        />
+        {user ? (
+          // Authenticated screens
+          <>
+            <Stack.Screen
+              name="Main"
+              component={TabNavigator}
+              options={{ headerShown: false, title: 'Recipe Manager' }}
+            />
+            <Stack.Screen
+              name="RecipeDetails"
+              component={RecipeDetailScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="PreparationDetails"
+              component={PreparationDetailScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CategoryRecipes"
+              component={CategoryRecipesScreen}
+              options={{ headerShown: false }}
+            />
+          </>
+        ) : (
+          // Authentication screens
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen} 
+            options={{ headerShown: false }} 
+          />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -6,6 +6,7 @@ import { theme } from './src/constants/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
+import { AuthProvider } from './src/context/AuthContext';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -49,7 +50,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
-          <AppNavigator />
+          <AuthProvider>
+            <AppNavigator />
+          </AuthProvider>
         </PaperProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

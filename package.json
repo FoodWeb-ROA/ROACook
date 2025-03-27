@@ -8,12 +8,20 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "clear": "expo start --clear",
-    "tunnel": "expo start --tunnel"
+    "tunnel": "expo start --tunnel",
+    "export-data": "npx ts-node scripts/exportData.ts",
+    "export-unix": "./scripts/run-export.sh",
+    "export-win": "node scripts/run-export.js",
+    "import-data": "npx ts-node scripts/importData.ts",
+    "import-unix": "./scripts/run-import.sh",
+    "import-win": "node scripts/run-import.js",
+    "recipes-detailed": "./scripts/run-fetch-recipes.sh"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/stack": "^7.1.1",
+    "@supabase/supabase-js": "^2.49.3",
     "expo": "~52.0.37",
     "expo-font": "~13.0.4",
     "expo-splash-screen": "~0.29.22",
@@ -33,8 +41,10 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@expo/metro-runtime": "^4.0.1",
+    "@types/node": "^22.13.14",
     "@types/react": "~18.3.18",
-    "typescript": "^5.3.3"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   },
   "private": true
 }

@@ -3,9 +3,12 @@ import { Recipe, Preparation } from '../types';
 export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
-  RecipeDetails: { recipe: Recipe };
-  PreparationDetails: { preparation: Preparation; recipeServingScale: number };
-  CategoryRecipes: { categoryId: string; categoryName: string };
+  RecipeDetails: { recipeId: number };
+  PreparationDetails: { preparationId: number; recipeServingScale: number };
+  CategoryRecipes: { categoryId: number; categoryName: string };
+  Settings: undefined;
+  Categories: undefined;
+  Search: undefined;
 };
 
 export type TabParamList = {

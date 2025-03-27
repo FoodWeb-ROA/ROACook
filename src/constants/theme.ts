@@ -7,6 +7,8 @@ export const COLORS = {
   tertiary: '#4A8F4A',     // Accent color
   background: '#091A05',   // Main background
   surface: '#243B24',      // Surface elements
+  cardBackground: '#182D12', // Card background color
+  inputBackground: '#2E4526', // Input field background
   error: '#FF5252',
   text: '#FFFFFF',         // Text color
   textLight: '#E0E0E0',    // Light text
@@ -54,6 +56,8 @@ export const theme = {
     placeholder: COLORS.placeholder,
     backdrop: COLORS.backdrop,
     notification: COLORS.notification,
+    cardBackground: COLORS.cardBackground,
+    inputBackground: COLORS.inputBackground,
   },
   fonts: configureFonts({config: fontConfig}),
   roundness: 10,
