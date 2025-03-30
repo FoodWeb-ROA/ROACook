@@ -26,12 +26,14 @@ type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { signIn } = useAuth();
+  const { signIn, signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleLogin = async () => {
     // Validate input
@@ -50,6 +52,44 @@ const LoginScreen = () => {
       // No need to navigate - AppNavigator will handle this automatically when user state changes
     } catch (error) {
       Alert.alert('Login Error', 'An unexpected error occurred');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async () => {
+    // Validate input for sign up
+    if (email.trim() === '' || password.trim() === '' || username.trim() === '') {
+      Alert.alert('Error', 'Please enter email, password, and username');
+      return;
+    }
+    
+    // Validate password length
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      const { error, user } = await signUp(email, password, username);
+      
+      if (error) {
+        Alert.alert('Sign Up Failed', error.message || 'Unable to create account');
+      } else {
+        Alert.alert(
+          'Account Created', 
+          'Your account has been created successfully! Check your email for verification.',
+          [{ text: 'OK', onPress: () => setIsSignUp(false) }]
+        );
+        // Clear form
+        setUsername('');
+        setEmail('');
+        setPassword('');
+      }
+    } catch (error) {
+      Alert.alert('Sign Up Error', 'An unexpected error occurred');
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -125,7 +165,21 @@ const LoginScreen = () => {
                 </View>
               ) : (
                 <>
-                  <Text style={styles.formLabel}>Login to your kitchen</Text>
+                  <Text style={styles.formLabel}>
+                    {isSignUp ? 'Create Account' : 'Login to your kitchen'}
+                  </Text>
+                  
+                  {isSignUp && (
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Username"
+                      placeholderTextColor={COLORS.placeholder}
+                      autoCapitalize="none"
+                      value={username}
+                      onChangeText={setUsername}
+                    />
+                  )}
+                  
                   <TextInput
                     style={styles.input}
                     placeholder="Email"
@@ -135,6 +189,7 @@ const LoginScreen = () => {
                     value={email}
                     onChangeText={setEmail}
                   />
+                  
                   <TextInput
                     style={styles.input}
                     placeholder="Password"
@@ -143,25 +198,45 @@ const LoginScreen = () => {
                     value={password}
                     onChangeText={setPassword}
                   />
+                  
                   <TouchableOpacity 
                     style={[styles.loginButton, isLoading && styles.disabledButton]}
-                    onPress={handleLogin}
+                    onPress={isSignUp ? handleSignUp : handleLogin}
                     disabled={isLoading}
                   >
                     {isLoading ? (
                       <ActivityIndicator size="small" color={COLORS.white} />
                     ) : (
-                      <Text style={styles.loginButtonText}>Login</Text>
+                      <Text style={styles.loginButtonText}>
+                        {isSignUp ? 'Sign Up' : 'Login'}
+                      </Text>
                     )}
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
-                    style={styles.searchKitchenButton}
-                    onPress={() => setShowSearch(true)}
+                    style={styles.toggleAuthButton}
+                    onPress={() => {
+                      setIsSignUp(!isSignUp);
+                      setEmail('');
+                      setPassword('');
+                      setUsername('');
+                    }}
                     disabled={isLoading}
                   >
-                    <Text style={styles.searchKitchenText}>Search for kitchen</Text>
+                    <Text style={styles.toggleAuthText}>
+                      {isSignUp ? 'Already have an account? Login' : 'Don\'t have an account? Sign Up'}
+                    </Text>
                   </TouchableOpacity>
+                  
+                  {!isSignUp && (
+                    <TouchableOpacity 
+                      style={styles.searchKitchenButton}
+                      onPress={() => setShowSearch(true)}
+                      disabled={isLoading}
+                    >
+                      <Text style={styles.searchKitchenText}>Search for kitchen</Text>
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
             </View>
@@ -240,10 +315,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  toggleAuthButton: {
+    padding: SIZES.padding,
+    alignItems: 'center',
+    marginTop: SIZES.padding / 2,
+  },
+  toggleAuthText: {
+    color: COLORS.textLight,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   searchKitchenButton: {
     padding: SIZES.padding,
     alignItems: 'center',
-    marginTop: SIZES.padding,
+    marginTop: SIZES.padding / 2,
   },
   searchKitchenText: {
     color: COLORS.textLight,
