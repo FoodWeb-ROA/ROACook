@@ -12,6 +12,7 @@ export type Recipe = {
   preparations?: RecipePreparation[];
   isDeleted?: boolean;
   imageUrl?: string;
+  menu_section?: MenuSection;
 };
 
 export type RecipeIngredient = {

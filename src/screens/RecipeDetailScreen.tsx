@@ -129,7 +129,7 @@ const RecipeDetailScreen = () => {
   }
 
   // Parse directions into steps if they exist
-  const directions = recipe.directions ? recipe.directions.split(/\r?\n/).filter(line => line.trim()) : [];
+  const directions = recipe.directions ? recipe.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
 
   return (
     <View style={styles.container}>
@@ -182,7 +182,7 @@ const RecipeDetailScreen = () => {
               </TouchableOpacity>
               
               <Text style={styles.servingsValue}>
-                {`${servingScale}x (${Math.round(parseInt(recipe.servings) * servingScale)} servings)`}
+                {`${servingScale}x (${Math.round(parseInt(recipe.servings.toString()) * servingScale)} servings)`}
               </Text>
               
               <TouchableOpacity 
@@ -242,10 +242,16 @@ const RecipeDetailScreen = () => {
                       />
                     </View>
                     
-                    {/* Just show a preview of the preparation */}
-                    <Text style={styles.preparationInstructionText}>
-                      Click to view preparation instructions
-                    </Text>
+                    {/* Display preparation instructions */}
+                    {preparation.preparations.directions && preparation.preparations.directions.split(/\r?\n/).filter((line: string) => line.trim()).map((step: string, idx: number) => (
+                      <View 
+                        key={`prep-${preparation.preparation_id}-step-${idx}`} 
+                        style={styles.preparationInstructionItem}
+                      >
+                        <Text style={styles.preparationInstructionNumber}>{idx + 1}.</Text>
+                        <Text style={styles.preparationInstructionText}>{step}</Text>
+                      </View>
+                    ))}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -255,7 +261,7 @@ const RecipeDetailScreen = () => {
             <View style={styles.mainInstructionsContainer}>
               <Text style={styles.mainInstructionsTitle}>Main Directions</Text>
               
-              {directions.map((instruction, index) => (
+              {directions.map((instruction: string, index: number) => (
                 <View key={`main-inst-${index}`} style={styles.instructionItem}>
                   <View style={styles.instructionNumber}>
                     <Text style={styles.instructionNumberText}>{index + 1}</Text>
