@@ -3,18 +3,17 @@ import {
   StyleSheet,
   View,
   Text,
-  FlatList,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { COLORS, SIZES } from '../constants/theme';
-import { RECIPES } from '../constants/dummyData';
+import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { Recipe } from '../types';
-import RecipeCard from '../components/RecipeCard';
+import RecipeGridItem from '../components/RecipeGridItem';
 import AppHeader from '../components/AppHeader';
+import { useRecipes } from '../hooks/useSupabase';
 
 type CategoryRecipesRouteProp = RouteProp<RootStackParamList, 'CategoryRecipes'>;
 type CategoryRecipesNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -22,17 +21,14 @@ type CategoryRecipesNavigationProp = StackNavigationProp<RootStackParamList>;
 const CategoryRecipesScreen = () => {
   const navigation = useNavigation<CategoryRecipesNavigationProp>();
   const route = useRoute<CategoryRecipesRouteProp>();
-  const { categoryId } = route.params;
+  const { categoryId, categoryName } = route.params;
 
-  // Filter recipes by category
-  const categoryRecipes = RECIPES.filter(recipe => recipe.category === categoryId);
-
-  const handleRecipePress = (recipe: Recipe) => {
-    navigation.navigate('RecipeDetails', { recipe });
+  // Fetch recipes filtered by menu section id
+  const { recipes, loading, error } = useRecipes(categoryId);
+  
+  const handleRecipePress = (recipe: any) => {
+    navigation.navigate('RecipeDetails', { recipeId: recipe.recipe_id });
   };
-
-  // Extract category name from route params
-  const categoryName = route.params.categoryName;
   
   return (
     <View style={styles.container}>
@@ -42,22 +38,41 @@ const CategoryRecipesScreen = () => {
       />
       <Text style={styles.categoryTitle}>{categoryName}</Text>
       
-      {/* Use a simple map instead of FlatList as a test */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {categoryRecipes.length > 0 ? (
-          categoryRecipes.map(item => (
-            <RecipeCard
-              key={item.id}
-              recipe={item}
-              onPress={handleRecipePress}
-            />
-          ))
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No recipes found in this category</Text>
-          </View>
-        )}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : error ? (
+        <Text style={styles.errorText}>Error loading recipes</Text>
+      ) : (
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {recipes.length > 0 ? (
+            <View style={styles.recipesGrid}>
+              {recipes.map((recipe) => (
+                <RecipeGridItem
+                  key={recipe.recipe_id}
+                  recipe={{
+                    recipe_id: recipe.recipe_id,
+                    recipe_name: recipe.recipe_name,
+                    menu_section_id: recipe.menu_section_id,
+                    directions: recipe.directions || '',
+                    prep_time: recipe.prep_time,
+                    total_time: recipe.total_time,
+                    rest_time: recipe.rest_time,
+                    servings: recipe.servings,
+                    cooking_notes: recipe.cooking_notes || '',
+                  }}
+                  onPress={() => handleRecipePress(recipe)}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No recipes found in this category</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -81,6 +96,12 @@ const styles = StyleSheet.create({
     padding: SIZES.padding * 2,
     paddingBottom: 120, // Extra padding for tab bar
   },
+  recipesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: SIZES.padding,
+  },
   emptyContainer: {
     padding: SIZES.padding * 2,
     justifyContent: 'center',
@@ -91,6 +112,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textLight,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    ...FONTS.body3,
+    color: COLORS.error,
+    textAlign: 'center',
+    padding: SIZES.padding * 2,
   },
 });
 

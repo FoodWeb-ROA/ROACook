@@ -7,27 +7,35 @@ import {
   SafeAreaView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
-import { CATEGORIES } from '../constants/dummyData';
 import { RootStackParamList } from '../navigation/types';
 import { Category } from '../types';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
 import AppHeader from '../components/AppHeader';
+import { useMenuSections } from '../hooks/useSupabase';
 
 type CategoriesScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const CategoriesScreen = () => {
   const navigation = useNavigation<CategoriesScreenNavigationProp>();
-  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const { menuSections, loading, error } = useMenuSections();
+  
+  // Map menu sections to the format expected by CategoryCard
+  const categories = menuSections?.map(section => ({
+    menu_section_id: section.menu_section_id,
+    name: section.name,
+    icon: 'silverware-fork-knife' // Default icon
+  })) || [];
 
   const handleCategoryPress = (category: Category) => {
     navigation.navigate('CategoryRecipes', {
-      categoryId: category.id,
+      categoryId: category.menu_section_id,
       categoryName: category.name,
     });
   };
@@ -46,47 +54,7 @@ const CategoriesScreen = () => {
     }
     
     // In a real app, you would add the new section to the database
-    // and update the state with the new section
-    // For now, we'll just add it to the local state
-    const newSection: Category = {
-      id: `${Date.now()}`, // Simple temporary ID
-      name: sectionName,
-      icon: 'folder', // Default icon
-    };
-    
-    setCategories([...categories, newSection]);
-  };
-
-  // When working with FlatList and numColumns, we need to ensure
-  // the data array length is properly padded to ensure grid layout works correctly
-  
-  // Debug to see what's actually being rendered
-  console.log("Rendering categories:", categories.length, "items");
-  
-  // Create a dummy category for the add button that will be recognized by the renderItem function
-  const addButtonCategory: Category = { 
-    id: 'add-button', 
-    name: 'New Section', 
-    icon: 'plus-circle' 
-  };
-  
-  // Include the add button as the last item
-  const dataWithAddButton = [...categories, addButtonCategory];
-  
-  const renderItem = ({ item, index }: { item: Category; index: number }) => {
-    // Render the add button card for the special ID
-    if (item.id === 'add-button') {
-      console.log("Rendering add button at index", index);
-      return <AddCategoryCard onAdd={handleAddSection} />;
-    }
-    
-    // Render regular category card
-    return (
-      <CategoryCard
-        category={item}
-        onPress={handleCategoryPress}
-      />
-    );
+    // For now, we'll just show the alert
   };
 
   return (
@@ -94,24 +62,31 @@ const CategoriesScreen = () => {
       <StatusBar style="dark" />
       <AppHeader 
         title="Recipe Categories"
-        showBackButton={false}
+        showBackButton={true}
       />
       
-      {/* For web compatibility, let's use a ScrollView with flexbox grid */}
-      <ScrollView contentContainerStyle={styles.listContent}>
-        <View style={styles.categoriesGrid}>
-          {categories.map(category => (
-            <CategoryCard
-              key={category.id}
-              category={category}
-              onPress={handleCategoryPress}
-            />
-          ))}
-          
-          {/* Add Category Card - explicitly rendered */}
-          <AddCategoryCard onAdd={handleAddSection} />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
-      </ScrollView>
+      ) : error ? (
+        <Text style={styles.errorText}>Error loading categories</Text>
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          <View style={styles.categoriesGrid}>
+            {categories.map(category => (
+              <CategoryCard
+                key={category.menu_section_id}
+                category={category}
+                onPress={handleCategoryPress}
+              />
+            ))}
+            
+            {/* Add Category Card - explicitly rendered */}
+            <AddCategoryCard onAdd={handleAddSection} />
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -124,15 +99,22 @@ const styles = StyleSheet.create({
   listContent: {
     padding: SIZES.padding * 2,
   },
-  categoriesRow: {
-    justifyContent: 'space-between',
-    paddingHorizontal: SIZES.padding,
-  },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: SIZES.padding,
+    gap: SIZES.padding,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    ...FONTS.body3,
+    color: COLORS.error,
+    textAlign: 'center',
+    padding: SIZES.padding * 2,
   },
 });
 
