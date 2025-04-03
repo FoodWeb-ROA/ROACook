@@ -225,35 +225,50 @@ const RecipeDetailScreen = () => {
                 <Text style={styles.preparationsTitle}>Preparations</Text>
                 
                 {/* Map through all preparations */}
-                {preparations.map((preparation, prepIndex) => (
-                  <TouchableOpacity
-                    key={`prep-${preparation.preparation_id}`}
-                    style={styles.preparationBlock}
-                    onPress={() => navigateToPreparation(preparation.preparation_id)}
-                  >
-                    <View style={styles.preparationHeader}>
-                      <Text style={styles.preparationTitle}>
-                        {preparation.preparations.preparation_name}
-                      </Text>
-                      <MaterialCommunityIcons 
-                        name="chevron-right" 
-                        size={24} 
-                        color={COLORS.white} 
-                      />
-                    </View>
-                    
-                    {/* Display preparation instructions */}
-                    {preparation.preparations.directions && preparation.preparations.directions.split(/\r?\n/).filter((line: string) => line.trim()).map((step: string, idx: number) => (
-                      <View 
-                        key={`prep-${preparation.preparation_id}-step-${idx}`} 
-                        style={styles.preparationInstructionItem}
-                      >
-                        <Text style={styles.preparationInstructionNumber}>{idx + 1}.</Text>
-                        <Text style={styles.preparationInstructionText}>{step}</Text>
+                {preparations.map((preparation, prepIndex) => {
+                  // Get the amount and unit info
+                  const amount = preparation.amount;
+                  const unitName = preparation.units?.abbreviation || preparation.units?.unit_name || '';
+                  
+                  return (
+                    <TouchableOpacity
+                      key={`prep-${preparation.preparation_id}`}
+                      style={styles.preparationBlock}
+                      onPress={() => navigateToPreparation(preparation.preparation_id)}
+                    >
+                      <View style={styles.preparationHeader}>
+                        <View style={styles.preparationTitleWrapper}>
+                          <Text style={styles.preparationTitle}>
+                            {preparation.preparations.preparation_name}
+                          </Text>
+                          {amount > 0 && (
+                            <View style={styles.preparationAmountBadge}>
+                              <Text style={styles.preparationAmount}>
+                                {amount} {unitName}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <MaterialCommunityIcons 
+                          name="chevron-right" 
+                          size={24} 
+                          color={COLORS.white} 
+                        />
                       </View>
-                    ))}
-                  </TouchableOpacity>
-                ))}
+                      
+                      {/* Display preparation instructions */}
+                      {preparation.preparations.directions && preparation.preparations.directions.split(/\r?\n/).filter((line: string) => line.trim()).map((step: string, idx: number) => (
+                        <View 
+                          key={`prep-${preparation.preparation_id}-step-${idx}`} 
+                          style={styles.preparationInstructionItem}
+                        >
+                          <Text style={styles.preparationInstructionNumber}>{idx + 1}.</Text>
+                          <Text style={styles.preparationInstructionText}>{step}</Text>
+                        </View>
+                      ))}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
             
@@ -456,10 +471,28 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.secondary,
     paddingBottom: 8,
   },
+  preparationTitleWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
   preparationTitle: {
     ...FONTS.h3,
     color: COLORS.white,
     fontWeight: 'bold',
+    marginRight: 8,
+  },
+  preparationAmountBadge: {
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  preparationAmount: {
+    ...FONTS.body3,
+    color: COLORS.white,
   },
   preparationInstructionItem: {
     flexDirection: 'row',

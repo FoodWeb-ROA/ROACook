@@ -184,8 +184,16 @@ export function useRecipeDetail(recipeId: string | undefined) {
           .from('recipe_preparations')
           .select(`
             *,
-            preparations!inner (*),
-            units!inner (
+            preparations!inner (
+              *,
+              units (
+                unit_id, 
+                unit_name, 
+                system,
+                abbreviation
+              )
+            ),
+            units (
               unit_id,
               unit_name,
               system,
@@ -318,10 +326,18 @@ export function usePreparationDetail(preparationId: string | undefined) {
       try {
         setLoading(true);
         
-        // Fetch preparation
+        // Fetch preparation with unit info
         const { data: preparationData, error: preparationError } = await supabase
           .from('preparations')
-          .select('*')
+          .select(`
+            *,
+            units (
+              unit_id,
+              unit_name,
+              system,
+              abbreviation
+            )
+          `)
           .eq('preparation_id', preparationId)
           .single();
         
@@ -332,33 +348,58 @@ export function usePreparationDetail(preparationId: string | undefined) {
           .from('preparation_ingredients')
           .select(`
             *,
-            ingredients!inner (
+            ingredients (
               ingredient_id,
               name
             ),
-            units!inner (
+            units (
               unit_id,
               unit_name,
-              system
+              system,
+              abbreviation
             )
           `)
           .eq('preparation_id', preparationId);
         
         if (ingredientsError) throw ingredientsError;
 
-        // Process ingredients data
-        const formattedIngredients = preparationIngredients?.map(item => ({
-          ingredient_id: item.ingredients.ingredient_id,
-          name: item.ingredients.name,
-          amount: item.amount,
-          unit_id: item.unit_id,
-          unit_name: item.units.unit_name,
-          system: item.units.system
-        })) || [];
+        // Transform ingredients
+        const transformedIngredients = preparationIngredients.map(ingredient => {
+          // Get default unit based on ingredient type if needed
+          const defaultUnit = getDefaultUnit(ingredient.ingredients?.name);
+          
+          // Use database unit if available, otherwise use the default
+          const unitData = ingredient.units || {
+            unit_id: defaultUnit.unit_id,
+            unit_name: defaultUnit.unit_name,
+            system: defaultUnit.system,
+            abbreviation: defaultUnit.abbreviation
+          };
+          
+          return {
+            id: ingredient.ingredient_id,
+            name: ingredient.ingredients.name,
+            quantity: ingredient.amount,
+            unit: unitData.abbreviation || unitData.unit_name,
+            unit_id: unitData.unit_id,
+            unit_name: unitData.unit_name,
+            unit_data: unitData
+          };
+        });
+
+        // Process preparation unit
+        const preparationWithUnitInfo = {
+          ...preparationData,
+          unit: {
+            id: preparationData.units?.unit_id,
+            name: preparationData.units?.unit_name,
+            abbreviation: preparationData.units?.abbreviation || preparationData.units?.unit_name
+          }
+        };
         
         // Set states
-        setPreparation(preparationData);
-        setIngredients(formattedIngredients);
+        setPreparation(preparationWithUnitInfo);
+        setIngredients(transformedIngredients);
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
         console.error('Error fetching preparation details:', err);

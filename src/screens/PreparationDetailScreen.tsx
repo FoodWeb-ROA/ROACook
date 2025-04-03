@@ -6,23 +6,30 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { MeasurementUnit } from '../types';
 import AppHeader from '../components/AppHeader';
+import { usePreparationDetail } from '../hooks/useSupabase';
 
 type PreparationDetailRouteProp = RouteProp<RootStackParamList, 'PreparationDetails'>;
+type PreparationDetailNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const PreparationDetailScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<PreparationDetailNavigationProp>();
   const route = useRoute<PreparationDetailRouteProp>();
-  const { preparation, recipeServingScale } = route.params;
+  const { preparationId, recipeServingScale } = route.params;
   
-  const [servingScale, setServingScale] = useState(recipeServingScale || 1);
+  // Use dynamic data loading hook
+  const { preparation, ingredients, loading, error } = usePreparationDetail(preparationId);
+  
+  const [amountScale, setAmountScale] = useState(recipeServingScale || 1);
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
 
   // Units for conversion
@@ -59,7 +66,7 @@ const PreparationDetailScreen = () => {
 
   // Get display value for ingredient
   const getDisplayValue = (quantity: number, unit: string, ingredientId: string) => {
-    const scaledQuantity = quantity * servingScale;
+    const scaledQuantity = quantity * amountScale;
     const currentUnit = selectedUnit[ingredientId] || unit;
     
     if (currentUnit !== unit) {
@@ -85,75 +92,110 @@ const PreparationDetailScreen = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title="Loading..." showBackButton={true} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (error || !preparation) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title="Error" showBackButton={true} />
+        <Text style={styles.errorText}>
+          {error ? error.message : "Preparation not found"}
+        </Text>
+      </View>
+    );
+  }
+
+  // Parse directions into steps if they exist
+  const directions = preparation.directions ? preparation.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
+
+  // Calculate current amount with scaling
+  const currentAmount = preparation.amount ? preparation.amount * amountScale : 0;
+  const unitAbbreviation = preparation.unit?.abbreviation || preparation.unit?.name || '';
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <AppHeader
-        title={preparation.name}
+        title={preparation.preparation_name}
         showBackButton={true}
       />
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}
       >
-        {preparation.imageUrl && (
-          <Image 
-            source={{ uri: preparation.imageUrl }} 
-            style={styles.preparationImage} 
-          />
-        )}
+        <Image 
+          source={{ uri: 'https://via.placeholder.com/600x400' }} 
+          style={styles.preparationImage} 
+        />
         
         <View style={styles.contentContainer}>
           <View style={styles.headerContainer}>
-            <Text style={styles.preparationName}>{preparation.name}</Text>
             <View style={styles.infoContainer}>
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
-                  {preparation.prepTime + preparation.cookTime} min
+                  {preparation.total_time} min
                 </Text>
               </View>
               
-              <View style={styles.infoItem}>
-                <MaterialCommunityIcons name="silverware-fork-knife" size={18} color={COLORS.textLight} />
-                <Text style={styles.infoText}>
-                  {Math.round(preparation.servings * servingScale)} servings
-                </Text>
-              </View>
+              {preparation.amount > 0 && preparation.unit && (
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons name="scale" size={18} color={COLORS.textLight} />
+                  <Text style={styles.infoText}>
+                    {currentAmount.toFixed(currentAmount % 1 === 0 ? 0 : 1)} {unitAbbreviation}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
           
-          <View style={styles.servingsAdjustContainer}>
-            <Text style={styles.sectionTitle}>Adjust Servings</Text>
-            <View style={styles.servingsAdjustControls}>
-              <TouchableOpacity 
-                style={styles.servingsButton}
-                onPress={() => setServingScale(prev => Math.max(0.5, prev - 0.5))}
-                disabled={servingScale <= 0.5}
-              >
-                <MaterialCommunityIcons 
-                  name="minus" 
-                  size={20} 
-                  color={servingScale <= 0.5 ? COLORS.disabled : COLORS.primary} 
-                />
-              </TouchableOpacity>
-              
-              <Text style={styles.servingsValue}>
-                {`${servingScale}x (${Math.round(preparation.servings * servingScale)} servings)`}
-              </Text>
-              
-              <TouchableOpacity 
-                style={styles.servingsButton}
-                onPress={() => setServingScale(prev => prev + 0.5)}
-              >
-                <MaterialCommunityIcons name="plus" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
+          {preparation.amount > 0 && (
+            <View style={styles.amountAdjustContainer}>
+              <Text style={styles.sectionTitle}>Adjust Amount</Text>
+              <View style={styles.amountAdjustControls}>
+                <TouchableOpacity 
+                  style={styles.amountButton}
+                  onPress={() => setAmountScale(prev => Math.max(0.5, prev - 0.5))}
+                  disabled={amountScale <= 0.5}
+                >
+                  <MaterialCommunityIcons 
+                    name="minus" 
+                    size={20} 
+                    color={amountScale <= 0.5 ? COLORS.disabled : COLORS.primary} 
+                  />
+                </TouchableOpacity>
+                
+                <View style={styles.amountValueContainer}>
+                  <Text style={styles.amountValue}>
+                    {`${amountScale}x`}
+                  </Text>
+                  <Text style={styles.amountTotal}>
+                    {currentAmount.toFixed(currentAmount % 1 === 0 ? 0 : 1)} {unitAbbreviation}
+                  </Text>
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.amountButton}
+                  onPress={() => setAmountScale(prev => prev + 0.5)}
+                >
+                  <MaterialCommunityIcons name="plus" size={20} color={COLORS.primary} />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          )}
           
           <View style={styles.ingredientsContainer}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
-            {preparation.ingredients.map((ingredient) => (
+            {ingredients.map((ingredient) => (
               <View key={ingredient.id} style={styles.ingredientItem}>
                 <Text style={styles.ingredientName}>{ingredient.name}</Text>
                 <TouchableOpacity 
@@ -175,8 +217,8 @@ const PreparationDetailScreen = () => {
           
           <View style={styles.instructionsContainer}>
             <Text style={styles.sectionTitle}>Instructions</Text>
-            {preparation.instructions.map((instruction, index) => (
-              <View key={index} style={styles.instructionItem}>
+            {directions.map((instruction: string, index: number) => (
+              <View key={`instruction-${index}`} style={styles.instructionItem}>
                 <View style={styles.instructionNumber}>
                   <Text style={styles.instructionNumberText}>{index + 1}</Text>
                 </View>
@@ -184,6 +226,15 @@ const PreparationDetailScreen = () => {
               </View>
             ))}
           </View>
+          
+          {preparation.cooking_notes && (
+            <View style={styles.notesContainer}>
+              <Text style={styles.sectionTitle}>Cooking Notes</Text>
+              <Text style={styles.notesText}>
+                {preparation.cooking_notes}
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -195,29 +246,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.padding * 2,
+  },
+  errorText: {
+    ...FONTS.body2,
+    color: COLORS.error,
+    textAlign: 'center',
+    marginTop: 20,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContainer: {
-    paddingBottom: 120, // Extra padding for tab bar
+    paddingBottom: SIZES.padding * 3,
   },
   preparationImage: {
     width: '100%',
-    height: 200,
+    height: 250,
     resizeMode: 'cover',
   },
   contentContainer: {
-    flex: 1,
-    padding: SIZES.padding * 2,
-    backgroundColor: COLORS.background,
+    paddingHorizontal: SIZES.padding * 2,
+    paddingTop: SIZES.padding * 2,
   },
   headerContainer: {
-    marginBottom: SIZES.padding * 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.padding,
   },
   preparationName: {
     ...FONTS.h1,
     color: COLORS.white,
-    marginBottom: SIZES.padding,
+    marginBottom: SIZES.padding / 2,
   },
   infoContainer: {
     flexDirection: 'row',
@@ -229,43 +297,48 @@ const styles = StyleSheet.create({
     marginRight: SIZES.padding * 2,
   },
   infoText: {
-    ...FONTS.body2,
+    ...FONTS.body3,
     color: COLORS.textLight,
     marginLeft: 4,
   },
-  servingsAdjustContainer: {
+  amountAdjustContainer: {
+    marginVertical: SIZES.padding,
     backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
-    marginBottom: SIZES.padding * 2,
     ...SHADOWS.small,
   },
-  servingsAdjustControls: {
+  amountAdjustControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: SIZES.padding,
+    marginTop: SIZES.padding / 2,
   },
-  servingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
+  amountButton: {
+    padding: 8,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.background,
+  },
+  amountValueContainer: {
     alignItems: 'center',
-    ...SHADOWS.small,
   },
-  servingsValue: {
-    ...FONTS.h4,
+  amountValue: {
+    ...FONTS.body2,
     color: COLORS.white,
+    fontWeight: 'bold',
+  },
+  amountTotal: {
+    ...FONTS.body3,
+    color: COLORS.white,
+    marginTop: 4,
   },
   sectionTitle: {
-    ...FONTS.h3,
+    ...FONTS.h2,
     color: COLORS.white,
     marginBottom: SIZES.padding,
   },
   ingredientsContainer: {
-    marginBottom: SIZES.padding * 2,
+    marginVertical: SIZES.padding,
   },
   ingredientItem: {
     flexDirection: 'row',
@@ -273,7 +346,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SIZES.padding,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: COLORS.tertiary,
   },
   ingredientName: {
     ...FONTS.body2,
@@ -294,7 +367,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   instructionsContainer: {
-    marginBottom: SIZES.padding * 2,
+    marginVertical: SIZES.padding,
   },
   instructionItem: {
     flexDirection: 'row',
@@ -319,6 +392,17 @@ const styles = StyleSheet.create({
     ...FONTS.body2,
     color: COLORS.white,
     flex: 1,
+  },
+  notesContainer: {
+    marginVertical: SIZES.padding,
+  },
+  notesText: {
+    ...FONTS.body2,
+    color: COLORS.white,
+    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    ...SHADOWS.small,
   },
 });
 
