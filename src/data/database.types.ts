@@ -6,16 +6,19 @@ export type Database = {
           unit_id: string;
           unit_name: string;
           system: string;
+          abbreviation?: string;
         };
         Insert: {
           unit_id?: string;
           unit_name: string;
           system: string;
+          abbreviation?: string;
         };
         Update: {
           unit_id?: string;
           unit_name?: string;
           system?: string;
+          abbreviation?: string;
         };
       };
       ingredients: {

@@ -62,6 +62,7 @@ export type Unit = {
   unit_id: string;
   unit_name: string;
   system: string;
+  abbreviation?: string;
 };
 
 export type MenuSection = {

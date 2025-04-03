@@ -60,7 +60,8 @@ export function transformRecipeIngredient(dbIngredient: DbRecipeIngredientWithRe
       unit: {
         unit_id: '',
         unit_name: '',
-        system: ''
+        system: '',
+        abbreviation: ''
       }
     };
   }
@@ -77,7 +78,8 @@ export function transformRecipeIngredient(dbIngredient: DbRecipeIngredientWithRe
     unit: {
       unit_id: dbIngredient.units?.unit_id || '',
       unit_name: dbIngredient.units?.unit_name || '',
-      system: dbIngredient.units?.system || ''
+      system: dbIngredient.units?.system || '',
+      abbreviation: dbIngredient.units?.abbreviation || dbIngredient.units?.unit_name || ''
     }
   };
 }
@@ -104,7 +106,8 @@ export function transformRecipePreparation(dbPreparation: DbRecipePreparationWit
     unit: {
       unit_id: dbPreparation.units?.unit_id || '',
       unit_name: dbPreparation.units?.unit_name || '',
-      system: dbPreparation.units?.system || ''
+      system: dbPreparation.units?.system || '',
+      abbreviation: dbPreparation.units?.abbreviation || dbPreparation.units?.unit_name || ''
     }
   };
 }
@@ -154,7 +157,8 @@ export function transformPreparationIngredient(dbIngredient: DbPreparationIngred
     unit: {
       unit_id: dbIngredient.units?.unit_id || '',
       unit_name: dbIngredient.units?.unit_name || '',
-      system: dbIngredient.units?.system || ''
+      system: dbIngredient.units?.system || '',
+      abbreviation: dbIngredient.units?.abbreviation || dbIngredient.units?.unit_name || ''
     }
   };
 }
@@ -175,12 +179,13 @@ export function transformIngredient(dbIngredient: DbIngredient): Ingredient {
  * Transform a unit from database format to UI format
  */
 export function transformUnit(dbUnit: DbUnit): Unit {
-  if (!dbUnit) return { unit_id: '', unit_name: '', system: '' };
+  if (!dbUnit) return { unit_id: '', unit_name: '', system: '', abbreviation: '' };
   
   return {
     unit_id: dbUnit.unit_id,
     unit_name: dbUnit.unit_name,
-    system: dbUnit.system
+    system: dbUnit.system,
+    abbreviation: dbUnit.abbreviation || dbUnit.unit_name
   };
 }
 

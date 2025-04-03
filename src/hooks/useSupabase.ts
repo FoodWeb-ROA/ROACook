@@ -50,7 +50,8 @@ export function useRecipes(menuSectionId?: string) {
               units (
                 unit_id,
                 unit_name,
-                system
+                system,
+                abbreviation
               )
             `)
             .eq('recipe_id', recipe.recipe_id);
@@ -79,14 +80,18 @@ export function useRecipes(menuSectionId?: string) {
             // Get default unit based on ingredient type
             const defaultUnit = getDefaultUnit(ingredient.ingredients?.name);
             
+            // Use database unit if available, otherwise use the default
+            const unitData = ingredient.units || {
+              unit_id: defaultUnit.unit_id,
+              unit_name: defaultUnit.unit_name,
+              system: defaultUnit.system,
+              abbreviation: defaultUnit.abbreviation
+            };
+            
             return transformRecipeIngredient({
               ...ingredient,
               // Add default unit information if missing
-              units: ingredient.units || {
-                unit_id: defaultUnit.unit_id,
-                unit_name: defaultUnit.unit_name,
-                system: defaultUnit.system
-              }
+              units: unitData
             });
           });
           
@@ -390,7 +395,7 @@ export function useRecipeSearch(searchQuery: string) {
 }
 
 // Helper function to get default unit based on ingredient name
-function getDefaultUnit(ingredientName: string = ''): { unit_id: string, unit_name: string, system: string } {
+function getDefaultUnit(ingredientName: string = ''): { unit_id: string, unit_name: string, system: string, abbreviation: string } {
   const lowerName = ingredientName.toLowerCase();
   
   // Common liquids
@@ -398,7 +403,7 @@ function getDefaultUnit(ingredientName: string = ''): { unit_id: string, unit_na
       lowerName.includes('oil') || 
       lowerName.includes('broth') || 
       lowerName.includes('stock')) {
-    return { unit_id: 'ml', unit_name: 'ml', system: 'metric' };
+    return { unit_id: 'ml', unit_name: 'milliliter', system: 'metric', abbreviation: 'ml' };
   }
   
   // Common counted items
@@ -406,9 +411,9 @@ function getDefaultUnit(ingredientName: string = ''): { unit_id: string, unit_na
       lowerName.includes('onion') || 
       lowerName.includes('garlic') || 
       lowerName.includes('pepper')) {
-    return { unit_id: 'count', unit_name: '', system: 'count' };
+    return { unit_id: 'count', unit_name: 'count', system: 'count', abbreviation: '' };
   }
   
   // Default to grams for most ingredients
-  return { unit_id: 'g', unit_name: 'g', system: 'metric' };
+  return { unit_id: 'g', unit_name: 'gram', system: 'metric', abbreviation: 'g' };
 } 
