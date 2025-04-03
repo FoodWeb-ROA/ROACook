@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../data/supabaseClient';
+import { Recipe } from '../types';
+import { transformRecipe } from '../utils/transforms';
 
 /**
  * Hook to fetch all recipes with optional filter by menu section
  */
-export function useRecipes(menuSectionId?: number) {
+export function useRecipes(menuSectionId?: string) {
   const [recipes, setRecipes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -14,7 +16,15 @@ export function useRecipes(menuSectionId?: number) {
       try {
         setLoading(true);
         
-        let query = supabase.from('recipe').select('*');
+        let query = supabase
+          .from('recipe')
+          .select(`
+            *,
+            menu_section:menu_section_id (
+              menu_section_id,
+              name
+            )
+          `);
         
         // Apply menu section filter if provided
         if (menuSectionId) {
@@ -43,11 +53,8 @@ export function useRecipes(menuSectionId?: number) {
 /**
  * Hook to fetch a single recipe with all its related data
  */
-export function useRecipeDetail(recipeId: number | undefined) {
-  const [recipe, setRecipe] = useState<any | null>(null);
-  const [ingredients, setIngredients] = useState<any[]>([]);
-  const [preparations, setPreparations] = useState<any[]>([]);
-  const [menuSection, setMenuSection] = useState<any | null>(null);
+export function useRecipeDetail(recipeId: string | undefined) {
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -60,74 +67,87 @@ export function useRecipeDetail(recipeId: number | undefined) {
 
       try {
         setLoading(true);
-        
-        // Fetch recipe
+
+        // Fetch recipe with menu section
         const { data: recipeData, error: recipeError } = await supabase
           .from('recipe')
-          .select('*')
+          .select(`
+            *,
+            menu_section!inner (*)
+          `)
           .eq('recipe_id', recipeId)
           .single();
-        
+
         if (recipeError) throw recipeError;
-        
-        // Fetch recipe ingredients
-        const { data: ingredientsData, error: ingredientsError } = await supabase
+
+        // Fetch recipe ingredients with their details and units
+        const { data: recipeIngredients, error: ingredientsError } = await supabase
           .from('recipe_ingredients')
           .select(`
-            amount,
-            ingredients:ingredients!inner (
+            *,
+            ingredients!inner (
               ingredient_id,
-              name,
-              inventory_amount,
-              user_id
+              name
+            ),
+            units!inner (
+              unit_id,
+              unit_name,
+              system
             )
           `)
           .eq('recipe_id', recipeId);
-        
+
         if (ingredientsError) throw ingredientsError;
-        
-        // Fetch recipe preparations
-        const { data: preparationsData, error: preparationsError } = await supabase
+
+        // Fetch recipe preparations with their details
+        const { data: recipePreparations, error: preparationsError } = await supabase
           .from('recipe_preparations')
           .select(`
-            amount,
-            preparations:preparations!inner (
-              preparation_id,
-              amount,
-              amount_unit,
-              created_at,
-              updated_at
+            *,
+            preparations!inner (*),
+            units!inner (
+              unit_id,
+              unit_name,
+              system
             )
           `)
           .eq('recipe_id', recipeId);
-        
+
         if (preparationsError) throw preparationsError;
-        
-        // Fetch menu section
-        const { data: menuSectionData, error: menuSectionError } = await supabase
-          .from('menu_section')
-          .select('*')
-          .eq('menu_section_id', recipeData.menu_section_id)
-          .single();
-        
-        if (menuSectionError && menuSectionError.code !== 'PGRST116') { // Ignore "not found" errors
-          throw menuSectionError;
+
+        // For each preparation, fetch its ingredients
+        for (const prep of recipePreparations) {
+          const { data: prepIngredients, error: prepIngredientsError } = await supabase
+            .from('preparation_ingredients')
+            .select(`
+              *,
+              ingredients!inner (
+                ingredient_id,
+                name
+              ),
+              units!inner (
+                unit_id,
+                unit_name,
+                system
+              )
+            `)
+            .eq('preparation_id', prep.preparation_id);
+          
+          if (prepIngredientsError) throw prepIngredientsError;
+          
+          // Attach ingredients to the preparation
+          prep.preparation_ingredients = prepIngredients;
         }
 
-        // Process ingredients data
-        const formattedIngredients = ingredientsData?.map(item => ({
-          ...item.ingredients,
-          amount: item.amount
-        })) || [];
+        // Transform the data to our UI type
+        const transformedRecipe = transformRecipe(
+          recipeData,
+          recipeData.menu_section,
+          recipeIngredients,
+          recipePreparations
+        );
 
-        // Process preparations data
-        const formattedPreparations = preparationsData || [];
-        
-        // Set states
-        setRecipe(recipeData);
-        setIngredients(formattedIngredients);
-        setPreparations(formattedPreparations);
-        setMenuSection(menuSectionData || null);
+        setRecipe(transformedRecipe);
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
         console.error('Error fetching recipe details:', err);
@@ -139,7 +159,7 @@ export function useRecipeDetail(recipeId: number | undefined) {
     fetchRecipeDetails();
   }, [recipeId]);
 
-  return { recipe, ingredients, preparations, menuSection, loading, error };
+  return { recipe, loading, error };
 }
 
 /**
@@ -180,7 +200,7 @@ export function useMenuSections() {
 /**
  * Hook to fetch a single preparation with all its related data
  */
-export function usePreparationDetail(preparationId: number | undefined) {
+export function usePreparationDetail(preparationId: string | undefined) {
   const [preparation, setPreparation] = useState<any | null>(null);
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,13 +226,18 @@ export function usePreparationDetail(preparationId: number | undefined) {
         if (preparationError) throw preparationError;
         
         // Fetch preparation ingredients
-        const { data: ingredientsData, error: ingredientsError } = await supabase
+        const { data: preparationIngredients, error: ingredientsError } = await supabase
           .from('preparation_ingredients')
           .select(`
-            amount,
-            ingredients:ingredients!inner (
+            *,
+            ingredients!inner (
               ingredient_id,
               name
+            ),
+            units!inner (
+              unit_id,
+              unit_name,
+              system
             )
           `)
           .eq('preparation_id', preparationId);
@@ -220,9 +245,13 @@ export function usePreparationDetail(preparationId: number | undefined) {
         if (ingredientsError) throw ingredientsError;
 
         // Process ingredients data
-        const formattedIngredients = ingredientsData?.map(item => ({
-          ...item.ingredients,
-          amount: item.amount
+        const formattedIngredients = preparationIngredients?.map(item => ({
+          ingredient_id: item.ingredients.ingredient_id,
+          name: item.ingredients.name,
+          amount: item.amount,
+          unit_id: item.unit_id,
+          unit_name: item.units.unit_name,
+          system: item.units.system
         })) || [];
         
         // Set states

@@ -75,7 +75,6 @@ const HomeScreen = () => {
       <StatusBar style="dark" />
       <AppHeader 
         title="Home"
-        showProfileButton={true}
         onProfilePress={() => navigation.navigate('Settings')}
       />
 
@@ -100,7 +99,7 @@ const HomeScreen = () => {
           ) : (
             <View style={styles.categoriesGrid}>
               {/* Map through categories */}
-              {formattedCategories.slice(0, 3).map(category => (
+              {formattedCategories.slice(0, 7).map(category => (
                 <CategoryCard
                   key={category.menu_section_id}
                   category={category}
@@ -134,12 +133,15 @@ const HomeScreen = () => {
                 <RecipeGridItem
                   key={recipe.recipe_id}
                   recipe={{
-                    id: recipe.recipe_id.toString(),
-                    name: recipe.recipe_name,
-                    category: recipe.menu_section_id.toString(),
-                    imageUrl: '', // Add default image or handle missing image
-                    prepTime: recipe.prep_time,
-                    cookTime: recipe.cook_time,
+                    recipe_id: recipe.recipe_id.toString(),
+                    recipe_name: recipe.recipe_name,
+                    menu_section_id: recipe.menu_section_id.toString(),
+                    directions: recipe.directions || '',
+                    prep_time: recipe.prep_time,
+                    total_time: recipe.total_time,
+                    rest_time: recipe.rest_time,
+                    servings: recipe.servings,
+                    cooking_notes: recipe.cooking_notes || '',
                   }}
                   onPress={() => handleRecipePress(recipe)}
                 />
@@ -234,7 +236,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.padding * 1.5,
     borderRadius: 25, // Pill shape
     margin: 8,
-    elevation: 5,
     ...SHADOWS.medium,
   },
   createButton: {

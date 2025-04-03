@@ -4,7 +4,7 @@ export async function fetchAllData() {
   try {
     // Fetch all tables data
     const [
-      baseUnitsResult,
+      unitsResult,
       ingredientsResult,
       menuSectionResult,
       preparationIngredientsResult,
@@ -12,10 +12,12 @@ export async function fetchAllData() {
       recipeResult,
       recipeIngredientsResult,
       recipePreparationsResult,
+      kitchensResult,
+      kitchenMembersResult,
       userTypesResult,
       usersResult
     ] = await Promise.all([
-      supabase.from('base_units').select('*'),
+      supabase.from('units').select('*'),
       supabase.from('ingredients').select('*'),
       supabase.from('menu_section').select('*'),
       supabase.from('preparation_ingredients').select('*'),
@@ -23,13 +25,15 @@ export async function fetchAllData() {
       supabase.from('recipe').select('*'),
       supabase.from('recipe_ingredients').select('*'),
       supabase.from('recipe_preparations').select('*'),
+      supabase.from('kitchens').select('*'),
+      supabase.from('kitchen_members').select('*'),
       supabase.from('user_types').select('*'),
       supabase.from('users').select('*')
     ]);
 
     // Compile all results
     const allData = {
-      baseUnits: baseUnitsResult.data || [],
+      units: unitsResult.data || [],
       ingredients: ingredientsResult.data || [],
       menuSections: menuSectionResult.data || [],
       preparationIngredients: preparationIngredientsResult.data || [],
@@ -37,13 +41,15 @@ export async function fetchAllData() {
       recipes: recipeResult.data || [],
       recipeIngredients: recipeIngredientsResult.data || [],
       recipePreparations: recipePreparationsResult.data || [],
+      kitchens: kitchensResult.data || [],
+      kitchenMembers: kitchenMembersResult.data || [],
       userTypes: userTypesResult.data || [],
       users: usersResult.data || []
     };
     
     // Log any errors
     const errors = [
-      baseUnitsResult.error,
+      unitsResult.error,
       ingredientsResult.error,
       menuSectionResult.error,
       preparationIngredientsResult.error,
@@ -51,12 +57,15 @@ export async function fetchAllData() {
       recipeResult.error,
       recipeIngredientsResult.error,
       recipePreparationsResult.error,
+      kitchensResult.error,
+      kitchenMembersResult.error,
       userTypesResult.error,
       usersResult.error
     ].filter(error => error !== null);
     
     if (errors.length > 0) {
-      console.error('Some data fetching operations failed:', errors);
+      console.error('Errors occurred while fetching data:', errors);
+      throw new Error('Multiple errors occurred while fetching data');
     }
     
     return allData;
@@ -82,9 +91,15 @@ export async function fetchRecipesWithRelatedData() {
         .from('recipe_ingredients')
         .select(`
           amount,
+          unit_id,
           ingredients (
             ingredient_id,
             name
+          ),
+          units (
+            unit_id,
+            unit_name,
+            system
           )
         `)
         .eq('recipe_id', recipe.recipe_id);
@@ -96,16 +111,57 @@ export async function fetchRecipesWithRelatedData() {
         .from('recipe_preparations')
         .select(`
           amount,
+          unit_id,
           preparations (
             preparation_id,
-            ingredient_id,
-            amount,
-            amount_unit
+            preparation_name,
+            directions,
+            prep_time,
+            total_time,
+            rest_time,
+            servings,
+            cooking_notes
+          ),
+          units (
+            unit_id,
+            unit_name,
+            system
           )
         `)
         .eq('recipe_id', recipe.recipe_id);
       
       if (preparationsError) console.error('Error fetching preparations:', preparationsError);
+      
+      // For each preparation, fetch its ingredients
+      for (const prep of recipePreparations || []) {
+        // Use type assertion to tell TypeScript what structure we expect
+        const preparation = prep.preparations as any;
+        const preparationId = preparation.preparation_id;
+        
+        const { data: prepIngredients, error: prepIngredientsError } = await supabase
+          .from('preparation_ingredients')
+          .select(`
+            amount,
+            unit_id,
+            ingredients (
+              ingredient_id,
+              name
+            ),
+            units (
+              unit_id,
+              unit_name,
+              system
+            )
+          `)
+          .eq('preparation_id', preparationId);
+        
+        if (prepIngredientsError) {
+          console.error('Error fetching preparation ingredients:', prepIngredientsError);
+        } else {
+          // Attach ingredients to the preparation object
+          preparation.ingredients = prepIngredients || [];
+        }
+      }
       
       // Get menu section
       const { data: menuSection, error: menuSectionError } = await supabase

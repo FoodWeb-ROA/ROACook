@@ -157,15 +157,7 @@ export async function fetchRecipeWithRelatedData(recipeId: number) {
     // Fetch ingredients
     const { data: ingredients, error: ingredientsError } = await supabase
       .from('recipe_ingredients')
-      .select(`
-        amount,
-        ingredients:ingredients!inner (
-          ingredient_id,
-          name,
-          inventory_amount,
-          user_id
-        )
-      `)
+      .select('*, ingredients(*), units(*)')
       .eq('recipe_id', recipeId);
     
     if (ingredientsError) throw ingredientsError;
@@ -173,16 +165,7 @@ export async function fetchRecipeWithRelatedData(recipeId: number) {
     // Fetch preparations
     const { data: preparations, error: preparationsError } = await supabase
       .from('recipe_preparations')
-      .select(`
-        amount,
-        preparations:preparations!inner (
-          preparation_id,
-          amount,
-          amount_unit,
-          created_at,
-          updated_at
-        )
-      `)
+      .select('*, preparations(*), units(*)')
       .eq('recipe_id', recipeId);
     
     if (preparationsError) throw preparationsError;

@@ -15,7 +15,7 @@ const RecipeGridItem: React.FC<RecipeGridItemProps> = ({ recipe, onPress }) => {
       onPress={() => onPress(recipe)}
       activeOpacity={0.8}
     >
-      <Text style={styles.title} numberOfLines={2}>{recipe.name}</Text>
+      <Text style={styles.title} numberOfLines={2}>{recipe.recipe_name}</Text>
     </TouchableOpacity>
   );
 };
