@@ -19,12 +19,13 @@ import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
 import AppHeader from '../components/AppHeader';
 import { useMenuSections } from '../hooks/useSupabase';
+import { supabase } from '../data/supabaseClient';
 
 type CategoriesScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const CategoriesScreen = () => {
   const navigation = useNavigation<CategoriesScreenNavigationProp>();
-  const { menuSections, loading, error } = useMenuSections();
+  const { menuSections, loading, error, refresh } = useMenuSections();
   
   // Map menu sections to the format expected by CategoryCard
   const categories = menuSections?.map(section => ({
@@ -40,21 +41,45 @@ const CategoriesScreen = () => {
     });
   };
 
-  const handleAddSection = (sectionName: string) => {
-    // Cross-platform alert handling
-    if (Platform.OS === 'web') {
-      window.alert(`Section "${sectionName}" has been added.`);
-    } else {
-      // React Native's Alert for iOS/Android
-      Alert.alert(
-        "New Section Added",
-        `Section "${sectionName}" has been added.`,
-        [{ text: "OK" }]
-      );
+  const handleAddSection = async (sectionName: string) => {
+    try {
+      // Insert the new section into the database - only specify the name
+      const { data, error } = await supabase
+        .from('menu_section')
+        .insert([{ name: sectionName }]) // Only include name, let the DB generate the ID
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Cross-platform alert handling
+      if (Platform.OS === 'web') {
+        window.alert(`Section "${sectionName}" has been added.`);
+      } else {
+        // React Native's Alert for iOS/Android
+        Alert.alert(
+          "Success",
+          `Section "${sectionName}" has been added.`,
+          [{ text: "OK" }]
+        );
+      }
+      
+      // Refresh the menu sections list
+      refresh();
+    } catch (error) {
+      console.error('Error adding section:', error);
+      
+      // Cross-platform error alert
+      if (Platform.OS === 'web') {
+        window.alert(`Failed to add section "${sectionName}". Please try again.`);
+      } else {
+        Alert.alert(
+          "Error",
+          `Failed to add section "${sectionName}". Please try again.`,
+          [{ text: "OK" }]
+        );
+      }
     }
-    
-    // In a real app, you would add the new section to the database
-    // For now, we'll just show the alert
   };
 
   return (

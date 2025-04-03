@@ -14,6 +14,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
+import CreateRecipeScreen from '../screens/CreateRecipeScreen';
 
 // Types
 import { RootStackParamList, TabParamList } from './types';
@@ -28,16 +29,16 @@ const TabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
-
+          let iconName: any; // Use any to avoid type issues with Ionicons
+          
           if (route.name === 'Home') {
-            iconName = focused ? 'ios-home' : 'ios-home-outline';
+            iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Categories') {
-            iconName = focused ? 'ios-list' : 'ios-list-outline';
+            iconName = focused ? 'list' : 'list-outline';
           } else if (route.name === 'Search') {
-            iconName = focused ? 'ios-search' : 'ios-search-outline';
+            iconName = focused ? 'search' : 'search-outline';
           } else if (route.name === 'Settings') {
-            iconName = focused ? 'ios-settings' : 'ios-settings-outline';
+            iconName = focused ? 'settings' : 'settings-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -103,6 +104,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="CategoryRecipes"
               component={CategoryRecipesScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CreateRecipe"
+              component={CreateRecipeScreen}
               options={{ headerShown: false }}
             />
           </>

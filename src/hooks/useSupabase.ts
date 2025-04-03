@@ -152,7 +152,7 @@ export function useRecipeDetail(recipeId: string | undefined) {
           .from('recipe')
           .select(`
             *,
-            menu_section!inner (*)
+            menu_section (*)
           `)
           .eq('recipe_id', recipeId)
           .single();
@@ -184,7 +184,7 @@ export function useRecipeDetail(recipeId: string | undefined) {
           .from('recipe_preparations')
           .select(`
             *,
-            preparations!inner (
+            preparations (
               *,
               units (
                 unit_id, 
@@ -210,11 +210,11 @@ export function useRecipeDetail(recipeId: string | undefined) {
             .from('preparation_ingredients')
             .select(`
               *,
-              ingredients!inner (
+              ingredients (
                 ingredient_id,
                 name
               ),
-              units!inner (
+              units (
                 unit_id,
                 unit_name,
                 system,
@@ -279,6 +279,11 @@ export function useMenuSections() {
   const [menuSections, setMenuSections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   useEffect(() => {
     async function fetchMenuSections() {
@@ -302,9 +307,9 @@ export function useMenuSections() {
     }
 
     fetchMenuSections();
-  }, []);
+  }, [refreshTrigger]);
 
-  return { menuSections, loading, error };
+  return { menuSections, loading, error, refresh };
 }
 
 /**

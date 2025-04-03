@@ -5,6 +5,7 @@ export type RootStackParamList = {
   CategoryRecipes: { categoryId: string, categoryName: string };
   RecipeDetails: { recipeId: string };
   PreparationDetails: { preparationId: string, recipeServingScale: number };
+  CreateRecipe: undefined;
   Search: undefined;
   Settings: undefined;
   Login: undefined;

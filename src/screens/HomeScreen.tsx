@@ -52,7 +52,7 @@ const HomeScreen = () => {
   }, []);
   
   // Use dynamic data loading hooks
-  const { menuSections, loading: loadingCategories, error: categoriesError } = useMenuSections();
+  const { menuSections, loading: loadingCategories, error: categoriesError, refresh: refreshMenuSections } = useMenuSections();
   const { recipes, loading: loadingRecipes, error: recipesError } = useRecipes();
 
   const handleCategoryPress = (category: any) => {
@@ -67,15 +67,32 @@ const HomeScreen = () => {
   };
 
   const handleAddSection = async (sectionName: string) => {
-    // We would add logic here to save to Supabase
-    Alert.alert(
-      "New Section Added",
-      `Section "${sectionName}" has been added.`,
-      [{ text: "OK" }]
-    );
-    
-    // In a real app, we would call a function to save to Supabase
-    // and then refresh our categories list
+    try {
+      // Insert the new section into the database - only specify the name
+      const { data, error } = await supabase
+        .from('menu_section')
+        .insert([{ name: sectionName }]) // Only include name, let the DB generate the ID
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      Alert.alert(
+        "Success",
+        `Section "${sectionName}" has been added.`,
+        [{ text: "OK" }]
+      );
+      
+      // Refresh menu sections
+      refreshMenuSections();
+    } catch (error) {
+      console.error('Error adding section:', error);
+      Alert.alert(
+        "Error",
+        `Failed to add section "${sectionName}". Please try again.`,
+        [{ text: "OK" }]
+      );
+    }
   };
 
   // Get the 8 most recent recipes for the grid
@@ -180,7 +197,7 @@ const HomeScreen = () => {
       <View style={styles.floatingButtonsContainer}>
         <TouchableOpacity 
           style={[styles.floatingButton, styles.createButton]}
-          onPress={() => console.log('Create Recipe pressed')}
+          onPress={() => navigation.navigate('CreateRecipe')}
           activeOpacity={0.8}
         >
           <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
