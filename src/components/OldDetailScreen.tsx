@@ -6,37 +6,60 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { MeasurementUnit } from '../types';
+import { MeasurementUnit, Ingredient } from '../types';
 import AppHeader from '../components/AppHeader';
-import { useRecipeDetail } from '../hooks/useSupabase';
 
 type RecipeDetailRouteProp = RouteProp<RootStackParamList, 'RecipeDetails'>;
-type RecipeDetailNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const RecipeDetailScreen = () => {
-  const navigation = useNavigation<RecipeDetailNavigationProp>();
+  const navigation = useNavigation<any>();
   const route = useRoute<RecipeDetailRouteProp>();
-  const { recipeId } = route.params;
+  const { recipe } = route.params;
   
-  // Use dynamic data loading hook
-  const { 
-    recipe, 
-    ingredients, 
-    preparations, 
-    loading, 
-    error 
-  } = useRecipeDetail(recipeId);
+  // Debug log to see if the recipe has preparations
+  console.log('Recipe:', recipe.name);
+  console.log('Has preparations:', !!recipe.preparations);
+  console.log('Preparation count:', recipe.preparations?.length || 0);
+  if (recipe.preparations) {
+    recipe.preparations.forEach((prep, index) => {
+      console.log(`Preparation ${index + 1}:`, prep.name);
+    });
+  }
 
   const [servingScale, setServingScale] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
+
+  // Combine all ingredients from main recipe and preparations
+  const allIngredients = useMemo(() => {
+    const ingredients: Ingredient[] = [...recipe.ingredients];
+    
+    // Add ingredients from all preparations
+    if (recipe.preparations) {
+      recipe.preparations.forEach(prep => {
+        prep.ingredients.forEach(ingredient => {
+          // Check if ingredient already exists (by name) and update quantity if it does
+          const existingIngredient = ingredients.find(i => i.name === ingredient.name && i.unit === ingredient.unit);
+          if (existingIngredient) {
+            existingIngredient.quantity += ingredient.quantity;
+          } else {
+            // Add a new ingredient
+            ingredients.push({
+              ...ingredient,
+              id: `${prep.id}-${ingredient.id}` // Create a unique ID
+            });
+          }
+        });
+      });
+    }
+    
+    return ingredients;
+  }, [recipe]);
 
   // Units for conversion
   const unitOptions = {
@@ -99,43 +122,20 @@ const RecipeDetailScreen = () => {
   };
 
   // Function to navigate to preparation details
-  const navigateToPreparation = (preparationId: string) => {
-    navigation.navigate('PreparationDetails', {
-      preparationId,
-      recipeServingScale: servingScale
-    });
+  const navigateToPreparation = (preparationIndex: number) => {
+    if (recipe.preparations && recipe.preparations[preparationIndex]) {
+      navigation.navigate('PreparationDetails', {
+        preparation: recipe.preparations[preparationIndex],
+        recipeServingScale: servingScale
+      });
+    }
   };
-
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="light" />
-        <AppHeader title="Loading..." showBackButton={true} />
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
-  if (error || !recipe) {
-    return (
-      <View style={[styles.container, styles.errorContainer]}>
-        <StatusBar style="light" />
-        <AppHeader title="Error" showBackButton={true} />
-        <Text style={styles.errorText}>
-          {error ? error.message : "Recipe not found"}
-        </Text>
-      </View>
-    );
-  }
-
-  // Parse directions into steps if they exist
-  const directions = recipe.directions ? recipe.directions.split(/\r?\n/).filter(line => line.trim()) : [];
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <AppHeader
-        title={recipe.recipe_name}
+        title={recipe.name}
         showBackButton={true}
       />
       <ScrollView 
@@ -143,7 +143,7 @@ const RecipeDetailScreen = () => {
         contentContainerStyle={styles.scrollContainer}
       >
         <Image 
-          source={{ uri: 'https://via.placeholder.com/600x400' }} 
+          source={{ uri: recipe.imageUrl || 'https://via.placeholder.com/600x400' }} 
           style={styles.recipeImage} 
         />
         
@@ -153,7 +153,7 @@ const RecipeDetailScreen = () => {
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
-                  {recipe.total_time} min
+                  {recipe.prepTime + recipe.cookTime} min
                 </Text>
               </View>
               
@@ -182,7 +182,7 @@ const RecipeDetailScreen = () => {
               </TouchableOpacity>
               
               <Text style={styles.servingsValue}>
-                {`${servingScale}x (${Math.round(parseInt(recipe.servings) * servingScale)} servings)`}
+                {`${servingScale}x (${Math.round(recipe.servings * servingScale)} servings)`}
               </Text>
               
               <TouchableOpacity 
@@ -196,7 +196,7 @@ const RecipeDetailScreen = () => {
           
           <View style={styles.ingredientsContainer}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
-            {ingredients.map((ingredient) => (
+            {allIngredients.map((ingredient) => (
               <View key={ingredient.id} style={styles.ingredientItem}>
                 <Text style={styles.ingredientName}>{ingredient.name}</Text>
                 <TouchableOpacity 
@@ -220,20 +220,20 @@ const RecipeDetailScreen = () => {
             <Text style={styles.sectionTitle}>Instructions</Text>
             
             {/* First, render all preparation blocks */}
-            {preparations && preparations.length > 0 && (
+            {recipe.preparations && recipe.preparations.length > 0 && (
               <View style={styles.preparationsContainer}>
                 <Text style={styles.preparationsTitle}>Preparations</Text>
                 
                 {/* Map through all preparations */}
-                {preparations.map((preparation, prepIndex) => (
+                {recipe.preparations.map((preparation, prepIndex) => (
                   <TouchableOpacity
-                    key={`prep-${preparation.preparation_id}`}
+                    key={`prep-${preparation.id}`}
                     style={styles.preparationBlock}
-                    onPress={() => navigateToPreparation(preparation.preparation_id)}
+                    onPress={() => navigateToPreparation(prepIndex)}
                   >
                     <View style={styles.preparationHeader}>
                       <Text style={styles.preparationTitle}>
-                        {preparation.preparations.preparation_name}
+                        {preparation.name}
                       </Text>
                       <MaterialCommunityIcons 
                         name="chevron-right" 
@@ -242,10 +242,16 @@ const RecipeDetailScreen = () => {
                       />
                     </View>
                     
-                    {/* Just show a preview of the preparation */}
-                    <Text style={styles.preparationInstructionText}>
-                      Click to view preparation instructions
-                    </Text>
+                    {/* Display preparation instructions */}
+                    {preparation.instructions.map((prepInstruction, instructionIndex) => (
+                      <View 
+                        key={`prep-${preparation.id}-inst-${instructionIndex}`} 
+                        style={styles.preparationInstructionItem}
+                      >
+                        <Text style={styles.preparationInstructionNumber}>{instructionIndex + 1}.</Text>
+                        <Text style={styles.preparationInstructionText}>{prepInstruction}</Text>
+                      </View>
+                    ))}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -255,7 +261,7 @@ const RecipeDetailScreen = () => {
             <View style={styles.mainInstructionsContainer}>
               <Text style={styles.mainInstructionsTitle}>Main Directions</Text>
               
-              {directions.map((instruction, index) => (
+              {recipe.instructions.map((instruction, index) => (
                 <View key={`main-inst-${index}`} style={styles.instructionItem}>
                   <View style={styles.instructionNumber}>
                     <Text style={styles.instructionNumberText}>{index + 1}</Text>
@@ -265,15 +271,6 @@ const RecipeDetailScreen = () => {
               ))}
             </View>
           </View>
-          
-          {recipe.cooking_notes && (
-            <View style={styles.notesContainer}>
-              <Text style={styles.sectionTitle}>Cooking Notes</Text>
-              <Text style={styles.notesText}>
-                {recipe.cooking_notes}
-              </Text>
-            </View>
-          )}
         </View>
       </ScrollView>
     </View>
@@ -285,26 +282,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SIZES.padding * 2,
-  },
-  errorText: {
-    ...FONTS.body2,
-    color: COLORS.error,
-    textAlign: 'center',
-    marginTop: 20,
-  },
   scrollView: {
     flex: 1,
   },
   scrollContainer: {
-    paddingBottom: SIZES.padding * 3,
+    paddingBottom: 120, // Extra padding for tab bar
   },
   recipeImage: {
     width: '100%',
@@ -312,19 +294,17 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   contentContainer: {
-    paddingHorizontal: SIZES.padding * 2,
-    paddingTop: SIZES.padding * 2,
+    flex: 1,
+    padding: SIZES.padding * 2,
+    backgroundColor: COLORS.background,
   },
   headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.padding,
+    marginBottom: SIZES.padding * 2,
   },
   recipeName: {
     ...FONTS.h1,
     color: COLORS.white,
-    marginBottom: SIZES.padding / 2,
+    marginBottom: SIZES.padding,
   },
   infoContainer: {
     flexDirection: 'row',
@@ -336,39 +316,43 @@ const styles = StyleSheet.create({
     marginRight: SIZES.padding * 2,
   },
   infoText: {
-    ...FONTS.body3,
+    ...FONTS.body2,
     color: COLORS.textLight,
     marginLeft: 4,
   },
   servingsAdjustContainer: {
-    marginVertical: SIZES.padding,
     backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
+    marginBottom: SIZES.padding * 2,
     ...SHADOWS.small,
   },
   servingsAdjustControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: SIZES.padding / 2,
+    marginTop: SIZES.padding,
   },
   servingsButton: {
-    padding: 8,
-    borderRadius: SIZES.radius,
-    backgroundColor: COLORS.background,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.small,
   },
   servingsValue: {
-    ...FONTS.body2,
+    ...FONTS.h4,
     color: COLORS.white,
   },
   sectionTitle: {
-    ...FONTS.h2,
+    ...FONTS.h3,
     color: COLORS.white,
     marginBottom: SIZES.padding,
   },
   ingredientsContainer: {
-    marginVertical: SIZES.padding,
+    marginBottom: SIZES.padding * 2,
   },
   ingredientItem: {
     flexDirection: 'row',
@@ -376,7 +360,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SIZES.padding,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.tertiary,
+    borderBottomColor: COLORS.border,
   },
   ingredientName: {
     ...FONTS.body2,
@@ -397,7 +381,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   instructionsContainer: {
-    marginVertical: SIZES.padding,
+    marginBottom: SIZES.padding * 2,
   },
   instructionItem: {
     flexDirection: 'row',
@@ -422,15 +406,6 @@ const styles = StyleSheet.create({
     ...FONTS.body2,
     color: COLORS.white,
     flex: 1,
-  },
-  preparationsContainer: {
-    marginBottom: SIZES.padding * 2,
-  },
-  preparationsTitle: {
-    ...FONTS.h3,
-    color: COLORS.primary,
-    marginBottom: SIZES.padding,
-    fontWeight: 'bold',
   },
   preparationBlock: {
     backgroundColor: COLORS.primary,
@@ -470,6 +445,15 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     flex: 1,
   },
+  preparationsContainer: {
+    marginBottom: SIZES.padding * 2,
+  },
+  preparationsTitle: {
+    ...FONTS.h3,
+    color: COLORS.primary,
+    marginBottom: SIZES.padding,
+    fontWeight: 'bold',
+  },
   mainInstructionsContainer: {
     marginBottom: SIZES.padding * 2,
   },
@@ -478,17 +462,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginBottom: SIZES.padding,
     fontWeight: 'bold',
-  },
-  notesContainer: {
-    marginVertical: SIZES.padding,
-  },
-  notesText: {
-    ...FONTS.body2,
-    color: COLORS.white,
-    backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    ...SHADOWS.small,
   },
 });
 

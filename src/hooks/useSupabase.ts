@@ -131,6 +131,9 @@ export function useRecipes(menuSectionId?: string) {
  */
 export function useRecipeDetail(recipeId: string | undefined) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [preparations, setPreparations] = useState<any[]>([]);
+  const [menuSection, setMenuSection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -168,7 +171,8 @@ export function useRecipeDetail(recipeId: string | undefined) {
             units (
               unit_id,
               unit_name,
-              system
+              system,
+              abbreviation
             )
           `)
           .eq('recipe_id', recipeId);
@@ -184,7 +188,8 @@ export function useRecipeDetail(recipeId: string | undefined) {
             units!inner (
               unit_id,
               unit_name,
-              system
+              system,
+              abbreviation
             )
           `)
           .eq('recipe_id', recipeId);
@@ -204,7 +209,8 @@ export function useRecipeDetail(recipeId: string | undefined) {
               units!inner (
                 unit_id,
                 unit_name,
-                system
+                system,
+                abbreviation
               )
             `)
             .eq('preparation_id', prep.preparation_id);
@@ -214,16 +220,36 @@ export function useRecipeDetail(recipeId: string | undefined) {
           // Attach ingredients to the preparation
           prep.preparation_ingredients = prepIngredients;
         }
+        
+        // Transform ingredients
+        const transformedIngredients = recipeIngredients.map(ingredient => {
+          // Get default unit based on ingredient type if needed
+          const defaultUnit = getDefaultUnit(ingredient.ingredients?.name);
+          
+          // Use database unit if available, otherwise use the default
+          const unitData = ingredient.units || {
+            unit_id: defaultUnit.unit_id,
+            unit_name: defaultUnit.unit_name,
+            system: defaultUnit.system,
+            abbreviation: defaultUnit.abbreviation
+          };
+          
+          return {
+            id: ingredient.ingredient_id,
+            name: ingredient.ingredients.name,
+            quantity: ingredient.amount,
+            unit: unitData.abbreviation || unitData.unit_name,
+            unit_id: unitData.unit_id,
+            unit_name: unitData.unit_name,
+            unit_data: unitData
+          };
+        });
 
-        // Transform the data to our UI type
-        const transformedRecipe = transformRecipe(
-          recipeData,
-          recipeData.menu_section,
-          recipeIngredients,
-          recipePreparations
-        );
-
-        setRecipe(transformedRecipe);
+        // Set states
+        setRecipe(recipeData);
+        setIngredients(transformedIngredients);
+        setPreparations(recipePreparations);
+        setMenuSection(recipeData.menu_section);
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
         console.error('Error fetching recipe details:', err);
@@ -235,7 +261,7 @@ export function useRecipeDetail(recipeId: string | undefined) {
     fetchRecipeDetails();
   }, [recipeId]);
 
-  return { recipe, loading, error };
+  return { recipe, ingredients, preparations, menuSection, loading, error };
 }
 
 /**

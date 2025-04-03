@@ -1,14 +1,15 @@
 import { Recipe, Preparation } from '../types';
 
 export type RootStackParamList = {
+  Home: undefined;
+  CategoryRecipes: { categoryId: string, categoryName: string };
+  RecipeDetails: { recipeId: string };
+  PreparationDetails: { preparationId: string, recipeServingScale: number };
+  Search: undefined;
+  Settings: undefined;
   Login: undefined;
   Main: undefined;
-  RecipeDetails: { recipeId: string };
-  PreparationDetails: { preparationId: string; recipeServingScale: number };
-  CategoryRecipes: { categoryId: string; categoryName: string };
-  Settings: undefined;
   Categories: undefined;
-  Search: undefined;
 };
 
 export type TabParamList = {
