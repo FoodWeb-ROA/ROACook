@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../data/supabaseClient';
 import { Recipe } from '../types';
-import { transformRecipe } from '../utils/transforms';
+import { transformRecipe, transformRecipeIngredient, transformMenuSection } from '../utils/transforms';
 
 /**
  * Hook to fetch all recipes with optional filter by menu section
@@ -16,6 +16,7 @@ export function useRecipes(menuSectionId?: string) {
       try {
         setLoading(true);
         
+        // First fetch basic recipe data
         let query = supabase
           .from('recipe')
           .select(`
@@ -31,11 +32,81 @@ export function useRecipes(menuSectionId?: string) {
           query = query.eq('menu_section_id', menuSectionId);
         }
         
-        const { data, error } = await query.order('recipe_name');
+        const { data: recipesData, error: recipesError } = await query.order('recipe_name');
         
-        if (error) throw error;
+        if (recipesError) throw recipesError;
+
+        // For each recipe, fetch its ingredients
+        const recipesWithIngredients = await Promise.all(recipesData.map(async (recipe) => {
+          // Fetch recipe ingredients
+          const { data: recipeIngredients, error: ingredientsError } = await supabase
+            .from('recipe_ingredients')
+            .select(`
+              *,
+              ingredients (
+                ingredient_id,
+                name
+              ),
+              units (
+                unit_id,
+                unit_name,
+                system
+              )
+            `)
+            .eq('recipe_id', recipe.recipe_id);
+            
+          if (ingredientsError) {
+            console.error('Error fetching ingredients:', ingredientsError);
+            return {
+              recipe_id: recipe.recipe_id,
+              recipe_name: recipe.recipe_name,
+              menu_section_id: recipe.menu_section_id,
+              directions: recipe.directions,
+              prep_time: parseInt(recipe.prep_time) || 0,
+              total_time: parseInt(recipe.total_time) || 0,
+              rest_time: parseInt(recipe.rest_time) || 0,
+              servings: recipe.servings,
+              cooking_notes: recipe.cooking_notes,
+              ingredients: []
+            };
+          }
+          
+          // Log raw ingredients data for debugging
+          console.log(`Recipe ${recipe.recipe_id} raw ingredients:`, JSON.stringify(recipeIngredients));
+          
+          // Transform the ingredients to the format expected by the UI
+          const transformedIngredients = recipeIngredients.map(ingredient => {
+            // Get default unit based on ingredient type
+            const defaultUnit = getDefaultUnit(ingredient.ingredients?.name);
+            
+            return transformRecipeIngredient({
+              ...ingredient,
+              // Add default unit information if missing
+              units: ingredient.units || {
+                unit_id: defaultUnit.unit_id,
+                unit_name: defaultUnit.unit_name,
+                system: defaultUnit.system
+              }
+            });
+          });
+          
+          // Create a recipe object with the correct structure
+          return {
+            recipe_id: recipe.recipe_id,
+            recipe_name: recipe.recipe_name,
+            menu_section_id: recipe.menu_section_id,
+            directions: recipe.directions,
+            prep_time: parseInt(recipe.prep_time) || 0,
+            total_time: parseInt(recipe.total_time) || 0,
+            rest_time: parseInt(recipe.rest_time) || 0,
+            servings: recipe.servings,
+            cooking_notes: recipe.cooking_notes,
+            ingredients: transformedIngredients,
+            menu_section: transformMenuSection(recipe.menu_section)
+          };
+        }));
         
-        setRecipes(data || []);
+        setRecipes(recipesWithIngredients || []);
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
         console.error('Error fetching recipes:', err);
@@ -85,11 +156,11 @@ export function useRecipeDetail(recipeId: string | undefined) {
           .from('recipe_ingredients')
           .select(`
             *,
-            ingredients!inner (
+            ingredients (
               ingredient_id,
               name
             ),
-            units!inner (
+            units (
               unit_id,
               unit_name,
               system
@@ -316,4 +387,28 @@ export function useRecipeSearch(searchQuery: string) {
   }, [searchQuery]);
 
   return { results, loading, error };
+}
+
+// Helper function to get default unit based on ingredient name
+function getDefaultUnit(ingredientName: string = ''): { unit_id: string, unit_name: string, system: string } {
+  const lowerName = ingredientName.toLowerCase();
+  
+  // Common liquids
+  if (lowerName.includes('milk') || 
+      lowerName.includes('oil') || 
+      lowerName.includes('broth') || 
+      lowerName.includes('stock')) {
+    return { unit_id: 'ml', unit_name: 'ml', system: 'metric' };
+  }
+  
+  // Common counted items
+  if (lowerName.includes('egg') || 
+      lowerName.includes('onion') || 
+      lowerName.includes('garlic') || 
+      lowerName.includes('pepper')) {
+    return { unit_id: 'count', unit_name: '', system: 'count' };
+  }
+  
+  // Default to grams for most ingredients
+  return { unit_id: 'g', unit_name: 'g', system: 'metric' };
 } 

@@ -3,14 +3,15 @@ export type Recipe = {
   recipe_name: string;
   menu_section_id: string;
   directions: string;
-  prep_time: string;
-  total_time: string;
-  rest_time: string;
+  prep_time: number;
+  total_time: number;
+  rest_time: number;
   servings: string;
   cooking_notes: string;
   ingredients?: RecipeIngredient[];
   preparations?: RecipePreparation[];
   isDeleted?: boolean;
+  imageUrl?: string;
 };
 
 export type RecipeIngredient = {
@@ -35,9 +36,9 @@ export type Preparation = {
   preparation_id: string;
   preparation_name: string;
   directions: string;
-  prep_time: string;
-  total_time: string;
-  rest_time: string;
+  prep_time: number;
+  total_time: number;
+  rest_time: number;
   servings: string;
   cooking_notes: string;
   ingredients?: PreparationIngredient[];

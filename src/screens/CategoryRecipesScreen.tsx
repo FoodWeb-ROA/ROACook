@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -11,7 +11,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import RecipeGridItem from '../components/RecipeGridItem';
+import RecipeCard from '../components/RecipeCard';
 import AppHeader from '../components/AppHeader';
 import { useRecipes } from '../hooks/useSupabase';
 
@@ -25,6 +25,19 @@ const CategoryRecipesScreen = () => {
 
   // Fetch recipes filtered by menu section id
   const { recipes, loading, error } = useRecipes(categoryId);
+  
+  // Debug: Check if ingredients are available
+  useEffect(() => {
+    if (recipes && recipes.length > 0) {
+      console.log('First recipe has ingredients?', !!recipes[0].ingredients);
+      console.log('First recipe ingredients count:', recipes[0].ingredients?.length || 0);
+      
+      // Log the structure of the first ingredient if available
+      if (recipes[0].ingredients && recipes[0].ingredients.length > 0) {
+        console.log('First ingredient structure:', JSON.stringify(recipes[0].ingredients[0], null, 2));
+      }
+    }
+  }, [recipes]);
   
   const handleRecipePress = (recipe: any) => {
     navigation.navigate('RecipeDetails', { recipeId: recipe.recipe_id });
@@ -45,33 +58,22 @@ const CategoryRecipesScreen = () => {
       ) : error ? (
         <Text style={styles.errorText}>Error loading recipes</Text>
       ) : (
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {recipes.length > 0 ? (
-            <View style={styles.recipesGrid}>
-              {recipes.map((recipe) => (
-                <RecipeGridItem
-                  key={recipe.recipe_id}
-                  recipe={{
-                    recipe_id: recipe.recipe_id,
-                    recipe_name: recipe.recipe_name,
-                    menu_section_id: recipe.menu_section_id,
-                    directions: recipe.directions || '',
-                    prep_time: recipe.prep_time,
-                    total_time: recipe.total_time,
-                    rest_time: recipe.rest_time,
-                    servings: recipe.servings,
-                    cooking_notes: recipe.cooking_notes || '',
-                  }}
-                  onPress={() => handleRecipePress(recipe)}
-                />
-              ))}
-            </View>
-          ) : (
+        <FlatList
+          data={recipes}
+          renderItem={({ item }) => (
+            <RecipeCard
+              recipe={item}
+              onPress={handleRecipePress}
+            />
+          )}
+          keyExtractor={(item) => item.recipe_id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No recipes found in this category</Text>
             </View>
-          )}
-        </ScrollView>
+          }
+        />
       )}
     </View>
   );
@@ -89,18 +91,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.padding * 2,
     paddingVertical: SIZES.padding,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
+  listContent: {
     padding: SIZES.padding * 2,
     paddingBottom: 120, // Extra padding for tab bar
-  },
-  recipesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: SIZES.padding,
   },
   emptyContainer: {
     padding: SIZES.padding * 2,

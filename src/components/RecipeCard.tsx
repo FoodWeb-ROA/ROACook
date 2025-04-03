@@ -10,6 +10,9 @@ interface RecipeCardProps {
 }
 
 const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress }) => {
+  // Debug the ingredients structure
+  console.log('Recipe card ingredients:', recipe.ingredients);
+  
   return (
     <TouchableOpacity 
       style={styles.container}
@@ -21,11 +24,11 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress }) => {
         style={styles.image} 
       />
       <View style={styles.infoContainer}>
-        <Text style={styles.title} numberOfLines={1}>{recipe.name}</Text>
+        <Text style={styles.title} numberOfLines={1}>{recipe.recipe_name}</Text>
         <View style={styles.detailsContainer}>
           <View style={styles.detail}>
             <MaterialCommunityIcons name="clock-outline" size={16} color={COLORS.textLight} />
-            <Text style={styles.detailText}>{recipe.prepTime + recipe.cookTime} min</Text>
+            <Text style={styles.detailText}>{recipe.total_time} min</Text>
           </View>
           <View style={styles.detail}>
             <MaterialCommunityIcons name="food-variant" size={16} color={COLORS.textLight} />
@@ -33,24 +36,29 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress }) => {
           </View>
         </View>
         
-        <View style={styles.ingredientsContainer}>
-          <Text style={styles.ingredientsTitle}>Ingredients:</Text>
-          <View style={styles.ingredientsList}>
-            {recipe.ingredients.slice(0, 5).map((ingredient, index) => (
-              <View key={ingredient.id || index} style={styles.ingredientPill}>
-                <Text style={styles.ingredientText} numberOfLines={1}>
-                  {ingredient.quantity > 0 
-                    ? `${ingredient.quantity} ${ingredient.unit} ${ingredient.name}`
-                    : ingredient.name}
+        <View style={{ marginTop: 10 }}>
+          <Text style={{ fontWeight: '700', fontSize: 16 }}>Ingredients:</Text>
+          {recipe.ingredients && recipe.ingredients.length > 0 ? (
+            <View style={{ marginTop: 5 }}>
+              {recipe.ingredients.map((ingredient, index) => (
+                <Text key={index} style={{ fontSize: 14 }}>
+                  {ingredient.amount > 0 ? (
+                    <>
+                      <Text style={{ fontWeight: '500' }}>
+                        {ingredient.amount}
+                        {ingredient.unit && ingredient.unit.unit_name ? ` ${ingredient.unit.unit_name} ` : ' '}
+                      </Text>
+                      {ingredient.ingredient?.name}
+                    </>
+                  ) : (
+                    ingredient.ingredient?.name
+                  )}
                 </Text>
-              </View>
-            ))}
-            {recipe.ingredients.length > 5 && (
-              <View style={[styles.ingredientPill, styles.morePill]}>
-                <Text style={styles.ingredientText}>+{recipe.ingredients.length - 5} more</Text>
-              </View>
-            )}
-          </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={{ fontStyle: 'italic', fontSize: 14 }}>No ingredients listed</Text>
+          )}
         </View>
       </View>
     </TouchableOpacity>

@@ -45,6 +45,26 @@ type DbPreparationIngredientWithRelations = DbPreparationIngredient & {
  * Transform a recipe ingredient from database format to UI format
  */
 export function transformRecipeIngredient(dbIngredient: DbRecipeIngredientWithRelations): RecipeIngredient {
+  // Add defensive checks
+  if (!dbIngredient || !dbIngredient.ingredients) {
+    console.warn('Missing ingredient data in transformRecipeIngredient', dbIngredient);
+    return {
+      recipe_id: dbIngredient?.recipe_id || '',
+      ingredient_id: dbIngredient?.ingredient_id || '',
+      ingredient: {
+        ingredient_id: '',
+        name: 'Unknown Ingredient'
+      },
+      amount: dbIngredient?.amount || 0,
+      unit_id: dbIngredient?.unit_id || '',
+      unit: {
+        unit_id: '',
+        unit_name: '',
+        system: ''
+      }
+    };
+  }
+
   return {
     recipe_id: dbIngredient.recipe_id,
     ingredient_id: dbIngredient.ingredient_id,
@@ -73,9 +93,9 @@ export function transformRecipePreparation(dbPreparation: DbRecipePreparationWit
       preparation_id: dbPreparation.preparations.preparation_id,
       preparation_name: dbPreparation.preparations.preparation_name,
       directions: dbPreparation.preparations.directions,
-      prep_time: dbPreparation.preparations.prep_time,
-      total_time: dbPreparation.preparations.total_time,
-      rest_time: dbPreparation.preparations.rest_time,
+      prep_time: parseInt(dbPreparation.preparations.prep_time) || 0,
+      total_time: parseInt(dbPreparation.preparations.total_time) || 0,
+      rest_time: parseInt(dbPreparation.preparations.rest_time) || 0,
       servings: dbPreparation.preparations.servings,
       cooking_notes: dbPreparation.preparations.cooking_notes
     },
@@ -97,9 +117,9 @@ export function transformPreparation(dbPreparation: DbPreparationWithRelations):
     preparation_id: '',
     preparation_name: '',
     directions: '',
-    prep_time: '',
-    total_time: '',
-    rest_time: '',
+    prep_time: 0,
+    total_time: 0,
+    rest_time: 0,
     servings: '',
     cooking_notes: '',
     ingredients: []
@@ -109,9 +129,9 @@ export function transformPreparation(dbPreparation: DbPreparationWithRelations):
     preparation_id: dbPreparation.preparation_id,
     preparation_name: dbPreparation.preparation_name,
     directions: dbPreparation.directions,
-    prep_time: dbPreparation.prep_time,
-    total_time: dbPreparation.total_time,
-    rest_time: dbPreparation.rest_time,
+    prep_time: parseInt(dbPreparation.prep_time) || 0,
+    total_time: parseInt(dbPreparation.total_time) || 0,
+    rest_time: parseInt(dbPreparation.rest_time) || 0,
     servings: dbPreparation.servings,
     cooking_notes: dbPreparation.cooking_notes,
     ingredients: dbPreparation.preparation_ingredients?.map(transformPreparationIngredient) || []
@@ -190,9 +210,9 @@ export function transformRecipe(
     recipe_name: dbRecipe.recipe_name,
     menu_section_id: dbRecipe.menu_section_id,
     directions: dbRecipe.directions,
-    prep_time: dbRecipe.prep_time,
-    total_time: dbRecipe.total_time,
-    rest_time: dbRecipe.rest_time,
+    prep_time: parseInt(dbRecipe.prep_time) || 0,
+    total_time: parseInt(dbRecipe.total_time) || 0,
+    rest_time: parseInt(dbRecipe.rest_time) || 0,
     servings: dbRecipe.servings,
     cooking_notes: dbRecipe.cooking_notes,
     ingredients: dbRecipeIngredients.map(transformRecipeIngredient),

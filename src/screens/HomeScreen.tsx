@@ -23,12 +23,33 @@ import RecipeGridItem from '../components/RecipeGridItem';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../context/AuthContext';
 import { useMenuSections, useRecipes } from '../hooks/useSupabase';
+import { supabase } from '../data/supabaseClient';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAuth();
+  
+  // Quick DB check for debugging
+  React.useEffect(() => {
+    const checkIngredientsTable = async () => {
+      // Check if there are any ingredients in the recipe_ingredients table
+      const { data, error, count } = await supabase
+        .from('recipe_ingredients')
+        .select('*', { count: 'exact' });
+      
+      console.log('Recipe ingredients check - count:', count);
+      console.log('Recipe ingredients check - error:', error);
+      if (data && data.length > 0) {
+        console.log('Recipe ingredients check - first item:', JSON.stringify(data[0]));
+      } else {
+        console.log('Recipe ingredients check - no data found');
+      }
+    };
+    
+    checkIngredientsTable();
+  }, []);
   
   // Use dynamic data loading hooks
   const { menuSections, loading: loadingCategories, error: categoriesError } = useMenuSections();
