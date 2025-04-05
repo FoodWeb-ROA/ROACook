@@ -17,7 +17,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import AppHeader from '../components/AppHeader';
 import { supabase } from '../data/supabaseClient';
 import { useMenuSections } from '../hooks/useSupabase';
 import { Picker } from '@react-native-picker/picker';
@@ -224,10 +223,6 @@ const CreateRecipeScreen = () => {
     >
       <View style={styles.container}>
         <StatusBar style="dark" />
-        <AppHeader
-          title="Create Recipe"
-          showBackButton={true}
-        />
 
         <ScrollView style={styles.scrollView}>
           <View style={styles.formContainer}>
@@ -240,7 +235,7 @@ const CreateRecipeScreen = () => {
               placeholderTextColor={COLORS.placeholder}
             />
 
-            <Text style={styles.label}>Category *</Text>
+            <Text style={[styles.label, { marginTop: SIZES.padding * 5 }]}>Category *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={recipe.menu_section_id}

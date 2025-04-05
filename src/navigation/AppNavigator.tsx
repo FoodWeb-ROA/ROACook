@@ -1,65 +1,74 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
+import { createDrawerNavigator, DrawerNavigationProp } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, TouchableOpacity } from 'react-native';
+import { useNavigation, NavigationProp, RouteProp } from '@react-navigation/native';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
-import CategoriesScreen from '../screens/CategoriesScreen';
-import SearchScreen from '../screens/SearchScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import AccountScreen from '../screens/AccountScreen';
+import PreferencesScreen from '../screens/PreferencesScreen';
+import SupportScreen from '../screens/SupportScreen';
+import PrepListScreen from '../screens/PrepListScreen';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
 import CreateRecipeScreen from '../screens/CreateRecipeScreen';
 
 // Types
-import { RootStackParamList, TabParamList } from './types';
-import { COLORS } from '../constants/theme';
+import { RootStackParamList } from './types';
+import { COLORS, FONTS, SIZES } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
+// Define DrawerParamList type
+export type DrawerParamList = {
+  Home: undefined;
+  Account: undefined;
+  Preferences: undefined;
+  Support: undefined;
+  PrepList: undefined;
+};
+
+// Define the navigation prop type for the Drawer
+type DrawerNavProp = DrawerNavigationProp<DrawerParamList>;
+
 const Stack = createStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<TabParamList>();
+const Drawer = createDrawerNavigator<DrawerParamList>();
 
-const TabNavigator = () => {
+const DrawerNavigator = () => {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any; // Use any to avoid type issues with Ionicons
-          
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Categories') {
-            iconName = focused ? 'list' : 'list-outline';
-          } else if (route.name === 'Search') {
-            iconName = focused ? 'search' : 'search-outline';
-          } else if (route.name === 'Settings') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: 'gray',
+    <Drawer.Navigator
+      initialRouteName="Home"
+      screenOptions={{
         headerShown: false,
-      })}
+        drawerStyle: {
+          backgroundColor: COLORS.background,
+          width: 240,
+        },
+        drawerActiveTintColor: COLORS.primary,
+        drawerInactiveTintColor: COLORS.textLight,
+        drawerLabelStyle: {
+          fontFamily: 'Poppins',
+          fontSize: SIZES.font,
+          marginLeft: -SIZES.padding,
+        },
+      }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Categories" component={CategoriesScreen} />
-      <Tab.Screen name="Search" component={SearchScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
-    </Tab.Navigator>
+      <Drawer.Screen name="Home" component={HomeScreen} />
+      <Drawer.Screen name="Account" component={AccountScreen} />
+      <Drawer.Screen name="Preferences" component={PreferencesScreen} />
+      <Drawer.Screen name="Support" component={SupportScreen} />
+      <Drawer.Screen name="PrepList" component={PrepListScreen} options={{ title: 'Prep List' }}/>
+    </Drawer.Navigator>
   );
 };
 
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
-  // Show loading indicator while checking authentication
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
@@ -71,53 +80,65 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={user ? "Main" : "Login"}
+        initialRouteName={user ? "MainDrawer" : "Login"}
         screenOptions={{
-          headerStyle: {
-            backgroundColor: COLORS.primary,
-          },
-          headerTintColor: COLORS.white,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerShown: false,
           cardStyle: { backgroundColor: COLORS.background },
         }}
       >
         {user ? (
-          // Authenticated screens
           <>
             <Stack.Screen
-              name="Main"
-              component={TabNavigator}
-              options={{ headerShown: false, title: 'Recipe Manager' }}
+              name="MainDrawer"
+              component={DrawerNavigator}
             />
             <Stack.Screen
               name="RecipeDetails"
               component={RecipeDetailScreen}
-              options={{ headerShown: false }}
+              options={{ headerShown: true, title: 'Recipe Details' }}
             />
             <Stack.Screen
               name="PreparationDetails"
               component={PreparationDetailScreen}
-              options={{ headerShown: false }}
+              options={{ headerShown: true, title: 'Preparation Details' }}
             />
             <Stack.Screen
               name="CategoryRecipes"
               component={CategoryRecipesScreen}
-              options={{ headerShown: false }}
+              options={{ headerShown: false, title: 'Category Recipes' }}
             />
             <Stack.Screen
               name="CreateRecipe"
               component={CreateRecipeScreen}
-              options={{ headerShown: false }}
+              options={({ navigation }: { navigation: StackNavigationProp<RootStackParamList> }) => ({
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: COLORS.background,
+                  shadowOpacity: 0,
+                  elevation: 0,
+                },
+                headerTitle: '',
+                headerBackTitle: ' ',
+                headerTintColor: COLORS.white,
+                headerLeft: () => (
+                  <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={{ 
+                      marginLeft: SIZES.padding * 2,
+                      marginTop: SIZES.padding * 4
+                     }}
+                  >
+                    <Ionicons name="arrow-back" size={28} color={COLORS.white} />
+                  </TouchableOpacity>
+                ),
+              })}
             />
           </>
         ) : (
-          // Authentication screens
-          <Stack.Screen 
-            name="Login" 
-            component={LoginScreen} 
-            options={{ headerShown: false }} 
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
           />
         )}
       </Stack.Navigator>

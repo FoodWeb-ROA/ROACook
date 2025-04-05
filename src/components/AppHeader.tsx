@@ -2,18 +2,23 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 
 interface AppHeaderProps {
   title?: string;
   showBackButton?: boolean;
+  showMenuButton?: boolean;
   onProfilePress?: () => void;
+  onMenuPress?: () => void;
   rightComponent?: React.ReactNode;
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({
   showBackButton = false,
+  showMenuButton = false,
   onProfilePress,
+  onMenuPress,
   rightComponent,
 }) => {
   const navigation = useNavigation();
@@ -23,7 +28,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       <View style={styles.leftContainer}>
         {showBackButton ? (
           <TouchableOpacity 
-            style={styles.backButton} 
+            style={styles.buttonStyle}
             onPress={() => navigation.goBack()}
           >
             <MaterialCommunityIcons 
@@ -32,9 +37,20 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               color={COLORS.white} 
             />
           </TouchableOpacity>
+        ) : showMenuButton ? (
+          <TouchableOpacity 
+            style={styles.buttonStyle}
+            onPress={onMenuPress || (() => {})}
+          >
+            <MaterialCommunityIcons 
+              name="menu" 
+              size={32} 
+              color={COLORS.white} 
+            />
+          </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={styles.profileButton}
+            style={styles.buttonStyle}
             onPress={onProfilePress || (() => {})}
           >
             <MaterialCommunityIcons 
@@ -46,12 +62,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         )}
       </View>
 
-      <View style={styles.centerContainer} />
+      <View style={styles.centerContainer}>
+        <Text style={styles.logoText}>FoodWeb</Text>
+      </View>
 
       <View style={styles.rightContainer}>
-        {rightComponent || (
-          <Text style={styles.logoText}>ROA</Text>
-        )}
+        {rightComponent}
       </View>
     </View>
   );
@@ -68,11 +84,13 @@ const styles = StyleSheet.create({
   },
   leftContainer: {
     width: 50,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   centerContainer: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rightContainer: {
     width: 50,
@@ -84,19 +102,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: 'bold',
   },
-  backButton: {
+  buttonStyle: {
     width: 46,
     height: 46,
-    borderRadius: 23,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
