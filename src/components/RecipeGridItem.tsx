@@ -15,28 +15,27 @@ const RecipeGridItem: React.FC<RecipeGridItemProps> = ({ recipe, onPress }) => {
       onPress={() => onPress(recipe)}
       activeOpacity={0.8}
     >
-      <Text style={styles.title} numberOfLines={2}>{recipe.recipe_name}</Text>
+      <Text style={styles.title} numberOfLines={1}>{recipe.recipe_name}</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '48%',
     backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginBottom: SIZES.padding,
+    paddingVertical: SIZES.small,
+    paddingHorizontal: SIZES.medium,
     ...SHADOWS.small,
     justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 80,
+    alignItems: 'flex-start',
+    minHeight: 50,
   },
   title: {
-    fontSize: 14,
+    fontSize: SIZES.font,
     fontWeight: '600',
     color: COLORS.white,
-    textAlign: 'center',
+    textAlign: 'left',
   },
 });
 

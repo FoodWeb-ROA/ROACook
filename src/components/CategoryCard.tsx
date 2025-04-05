@@ -16,9 +16,11 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
       onPress={() => onPress(category)}
       activeOpacity={0.8}
     >
-      <View style={styles.iconContainer}>
-        <MaterialCommunityIcons name={category.icon as any} size={30} color={COLORS.white} />
-      </View>
+      {category.icon && (
+        <View style={styles.iconContainer}>
+          <MaterialCommunityIcons name={category.icon as any} size={30} color={COLORS.white} />
+        </View>
+      )}
       <Text style={styles.title}>{category.name}</Text>
     </TouchableOpacity>
   );
@@ -26,13 +28,14 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: '45%',
     backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginBottom: SIZES.padding,
+    borderRadius: SIZES.radius * 1.5,
+    paddingVertical: SIZES.padding * 1.5,
+    paddingHorizontal: SIZES.padding,
     alignItems: 'center',
+    justifyContent: 'center',
     ...SHADOWS.small,
+    minHeight: 120,
   },
   iconContainer: {
     width: 70,
@@ -44,10 +47,11 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   title: {
-    fontSize: 16,
+    fontSize: SIZES.medium,
     fontWeight: '600',
     color: COLORS.white,
     textAlign: 'center',
+    marginTop: SIZES.base,
   },
 });
 

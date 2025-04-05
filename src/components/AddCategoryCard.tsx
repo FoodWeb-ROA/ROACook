@@ -8,7 +8,8 @@ import {
   TextInput, 
   TouchableWithoutFeedback, 
   Keyboard,
-  Platform
+  Platform,
+  ViewStyle
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
@@ -40,7 +41,7 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
   const containerStyle = [
     styles.container,
     Platform.OS === 'web' ? { 
-      borderStyle: 'dashed',  // Explicitly set dashed for web
+      borderStyle: 'dashed' as ViewStyle['borderStyle'], 
       borderWidth: 2,
       borderColor: COLORS.border
     } : {}
@@ -105,17 +106,15 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: '45%',
-    backgroundColor: 'transparent', // Transparent background to focus on border
+    backgroundColor: 'transparent',
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
-    marginBottom: SIZES.padding,
     alignItems: 'center',
     ...SHADOWS.small,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: COLORS.border, // Match theme's border color
-    minHeight: 120, // Ensure consistent height
+    borderColor: COLORS.border,
+    minHeight: 120,
   },
   iconContainer: {
     width: 70,

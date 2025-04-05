@@ -7,6 +7,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { AuthProvider } from './src/context/AuthContext';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -51,7 +52,9 @@ export default function App() {
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
           <AuthProvider>
-            <AppNavigator />
+            <ActionSheetProvider>
+              <AppNavigator />
+            </ActionSheetProvider>
           </AuthProvider>
         </PaperProvider>
       </SafeAreaProvider>
