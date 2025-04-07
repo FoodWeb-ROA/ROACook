@@ -205,21 +205,29 @@ const CreateRecipeScreen = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      // Insert the new ingredient with ONLY the name field
+      // Let PostgreSQL handle ID assignment automatically through its sequence
+      const { data: newIngredient, error } = await supabase
         .from('ingredients')
         .insert({ name: newIngredientName.trim() })
-        .select('ingredient_id, name')
+        .select()
         .single();
-
-      if (error) throw error;
-
+      
+      if (error) {
+        console.error('❌ Error from Supabase:', error);
+        throw error;
+      }
+      
+      console.log('✅ Successfully added ingredient:', newIngredient);
+      
       // Add to available ingredients
-      setAvailableIngredients(prev => [...prev, data]);
-      setFilteredIngredients(prev => [...prev, data]); // Update filtered results too
+      setAvailableIngredients(prev => [...prev, newIngredient]);
+      setFilteredIngredients(prev => [...prev, newIngredient]); // Update filtered results too
       
       // Select this ingredient if we have an active selection
       if (currentIngredientIndex >= 0) {
-        handleIngredientSelect(data);
+        console.log(`📝 Selecting new ingredient for index ${currentIngredientIndex}`);
+        handleIngredientSelect(newIngredient);
       }
       
       // Clear and close modal
@@ -228,7 +236,7 @@ const CreateRecipeScreen = () => {
       
       Alert.alert('Success', 'New ingredient added successfully');
     } catch (error: any) {
-      console.error('Error adding new ingredient:', error);
+      console.error('❌ Error adding new ingredient:', error);
       Alert.alert('Error', `Failed to add ingredient: ${error.message || String(error)}`);
     }
   };
@@ -921,7 +929,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   unitSystemText: {
-    ...FONTS.body4,
+    ...FONTS.body3,
+    fontSize: 12,
     color: COLORS.textLight,
     marginTop: 4,
   },
