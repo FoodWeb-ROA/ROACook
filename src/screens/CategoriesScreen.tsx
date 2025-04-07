@@ -43,10 +43,11 @@ const CategoriesScreen = () => {
 
   const handleAddSection = async (sectionName: string) => {
     try {
-      // Insert the new section into the database - only specify the name
+      // Insert the new section with ONLY the name field
+      // Let PostgreSQL handle ID assignment automatically through its sequence
       const { data, error } = await supabase
         .from('menu_section')
-        .insert([{ name: sectionName }]) // Only include name, let the DB generate the ID
+        .insert({ name: sectionName }) // Only specify the name, omit the ID entirely
         .select()
         .single();
       
@@ -54,28 +55,28 @@ const CategoriesScreen = () => {
       
       // Cross-platform alert handling
       if (Platform.OS === 'web') {
-        window.alert(`Section "${sectionName}" has been added.`);
+        window.alert(`Section "${sectionName}" has been added successfully.`);
       } else {
         // React Native's Alert for iOS/Android
         Alert.alert(
           "Success",
-          `Section "${sectionName}" has been added.`,
+          `Section "${sectionName}" has been added successfully.`,
           [{ text: "OK" }]
         );
       }
       
       // Refresh the menu sections list
       refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding section:', error);
       
       // Cross-platform error alert
       if (Platform.OS === 'web') {
-        window.alert(`Failed to add section "${sectionName}". Please try again.`);
+        window.alert(`Failed to add section "${sectionName}". Please try again. Error: ${error.message || String(error)}`);
       } else {
         Alert.alert(
           "Error",
-          `Failed to add section "${sectionName}". Please try again.`,
+          `Failed to add section "${sectionName}". Please try again. Error: ${error.message || String(error)}`,
           [{ text: "OK" }]
         );
       }
