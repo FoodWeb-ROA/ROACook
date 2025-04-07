@@ -439,7 +439,7 @@ const CreateRecipeScreen = () => {
                 />
                 
                 <TouchableOpacity 
-                  style={[styles.unitPickerContainer, { justifyContent: 'center', padding: 0 }]}
+                  style={[styles.input, styles.unitInput]}
                   onPress={() => openUnitSelector(index)}
                 >
                   <Text style={[styles.selectedText, { textAlign: 'center' }]}>
@@ -599,14 +599,14 @@ const CreateRecipeScreen = () => {
                   
                   <View style={styles.buttonRow}>
                     <TouchableOpacity 
-                      style={[styles.closeButton, { flex: 1, marginRight: 10 }]}
+                      style={[styles.actionButton, { backgroundColor: COLORS.secondary, marginRight: 10 }]}
                       onPress={() => setNewIngredientModalVisible(false)}
                     >
                       <Text style={styles.closeButtonText}>Cancel</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
-                      style={[styles.addButton, { flex: 1, marginLeft: 10 }]}
+                      style={[styles.actionButton, { backgroundColor: COLORS.primary, marginLeft: 10 }]}
                       onPress={handleAddNewIngredient}
                     >
                       <Text style={styles.addButtonText}>Add</Text>
@@ -635,39 +635,48 @@ const CreateRecipeScreen = () => {
 
             <View style={styles.timeInputsContainer}>
               <View style={styles.timeInput}>
-                <Text style={styles.label}>Prep Time (min)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={recipe.prep_time}
-                  onChangeText={value => handleChange('prep_time', value)}
-                  placeholder="0"
-                  placeholderTextColor={COLORS.placeholder}
-                  keyboardType="numeric"
-                />
+                <Text style={styles.label}>Prep Time</Text>
+                <View style={styles.timeInputWrapper}>
+                  <TextInput
+                    style={styles.timeInputField}
+                    value={recipe.prep_time}
+                    onChangeText={value => handleChange('prep_time', value)}
+                    placeholder="0"
+                    placeholderTextColor={COLORS.placeholder}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.timeUnit}>min</Text>
+                </View>
               </View>
 
               <View style={styles.timeInput}>
-                <Text style={styles.label}>Total Time (min)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={recipe.total_time}
-                  onChangeText={value => handleChange('total_time', value)}
-                  placeholder="0"
-                  placeholderTextColor={COLORS.placeholder}
-                  keyboardType="numeric"
-                />
+                <Text style={styles.label}>Total Time</Text>
+                <View style={styles.timeInputWrapper}>
+                  <TextInput
+                    style={styles.timeInputField}
+                    value={recipe.total_time}
+                    onChangeText={value => handleChange('total_time', value)}
+                    placeholder="0"
+                    placeholderTextColor={COLORS.placeholder}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.timeUnit}>min</Text>
+                </View>
               </View>
 
               <View style={styles.timeInput}>
-                <Text style={styles.label}>Rest Time (min)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={recipe.rest_time}
-                  onChangeText={value => handleChange('rest_time', value)}
-                  placeholder="0"
-                  placeholderTextColor={COLORS.placeholder}
-                  keyboardType="numeric"
-                />
+                <Text style={styles.label}>Rest Time</Text>
+                <View style={styles.timeInputWrapper}>
+                  <TextInput
+                    style={styles.timeInputField}
+                    value={recipe.rest_time}
+                    onChangeText={value => handleChange('rest_time', value)}
+                    placeholder="0"
+                    placeholderTextColor={COLORS.placeholder}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.timeUnit}>min</Text>
+                </View>
               </View>
             </View>
 
@@ -783,6 +792,13 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  unitInput: {
+    flex: 1.5,
+    marginRight: 8,
+    justifyContent: 'center',
+    height: 50,
+    paddingVertical: 0, // Reduce vertical padding to match height
+  },
   unitPickerContainer: {
     flex: 1.5,
     backgroundColor: COLORS.secondary,
@@ -791,10 +807,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     height: 50,
     justifyContent: 'center',
-  },
-  unitPicker: {
-    color: COLORS.white,
-    height: 50,
   },
   removeButton: {
     width: 40,
@@ -898,6 +910,7 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -933,6 +946,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textLight,
     marginTop: 4,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius,
+    height: 50,
+    paddingHorizontal: SIZES.padding,
+    marginBottom: 8,
+  },
+  timeInputField: {
+    flex: 1,
+    color: COLORS.white,
+    ...FONTS.body3,
+  },
+  timeUnit: {
+    color: COLORS.placeholder,
+    ...FONTS.body3,
+    marginLeft: 4,
   },
 });
 
