@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -194,52 +195,33 @@ const HomeScreen = () => {
   const recentRecipes = recipes
     ? [...recipes]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        // Remove slice, paging handles display
+        .slice(0, 8) // Limit to 8 recipes for the home screen
     : [];
-  const recipePages = chunk(recentRecipes, RECIPES_PER_PAGE);
-  const totalRecipePages = recipePages.length;
-  const [currentRecipePage, setCurrentRecipePage] = useState(0);
-  const recipeFlatListRef = useRef<FlatList | null>(null);
-  const onRecipeViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      setCurrentRecipePage(viewableItems[0].index);
-    }
-  }, []);
-  const recipeViewabilityConfig = { itemVisiblePercentThreshold: 50 };
 
-  // Render a single recipe page (2x4 grid)
-  const renderRecipePage = ({ item: pageItems, index: pageIndex }: { item: Recipe[], index: number }) => {
+  // Render recipe items in a vertical grid
+  const renderRecipeItem = ({ item }: { item: Recipe }) => {
     return (
-      <View style={[styles.recipePageContainer, { width: RECIPE_PAGE_WIDTH }]}>
-        {pageItems.map((recipe, itemIndex) => {
-          const isLastInRow = (itemIndex + 1) % RECIPE_NUM_COLUMNS === 0;
-          return (
-            <View 
-              key={recipe.recipe_id} 
-              style={[
-                styles.recipeItemContainer,
-                { width: recipeItemWidth }, // Use calculated width
-                isLastInRow ? { marginRight: 0 } : { marginRight: RECIPE_ITEM_SPACING } // Dynamic margin
-              ]}
-            >
-              <RecipeGridItem
-                recipe={{
-                  // Map recipe data
-                  recipe_id: recipe.recipe_id.toString(),
-                  recipe_name: recipe.recipe_name,
-                  menu_section_id: recipe.menu_section_id.toString(),
-                  directions: recipe.directions || '',
-                  prep_time: recipe.prep_time,
-                  total_time: recipe.total_time,
-                  rest_time: recipe.rest_time,
-                  servings: recipe.servings,
-                  cooking_notes: recipe.cooking_notes || '',
-                }}
-                onPress={() => handleRecipePress(recipe)}
-              />
-            </View>
-          );
-        })}
+      <View 
+        style={[
+          styles.recipeItemContainer,
+          { width: recipeItemWidth }
+        ]}
+      >
+        <RecipeGridItem
+          recipe={{
+            // Map recipe data
+            recipe_id: item.recipe_id.toString(),
+            recipe_name: item.recipe_name,
+            menu_section_id: item.menu_section_id.toString(),
+            directions: item.directions || '',
+            prep_time: item.prep_time,
+            total_time: item.total_time,
+            rest_time: item.rest_time,
+            servings: item.servings,
+            cooking_notes: item.cooking_notes || '',
+          }}
+          onPress={() => handleRecipePress(item)}
+        />
       </View>
     );
   };
@@ -363,102 +345,105 @@ const HomeScreen = () => {
         onMenuPress={openDrawerMenu}
       />
 
-      {/* This View wraps Categories and Recipes */}
-      <View style={styles.contentArea}>
-        {/* --- Categories Section --- */}
-        <View style={styles.categoriesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Categories</Text>
-          </View>
-          
-          {loadingCategories ? (
-            <View style={styles.loadingContainer} />
-          ) : categoriesError ? (
-            <Text style={styles.errorText}>Error loading categories</Text>
-          ) : (
-            <View style={styles.sectionContentContainer}> 
-              <FlatList
-                ref={categoryFlatListRef}
-                data={categoryPages} 
-                renderItem={renderCategoryPage}
-                keyExtractor={(item, index) => `catPage-${index}`}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onViewableItemsChanged={onCategoryViewableItemsChanged} 
-                viewabilityConfig={categoryViewabilityConfig}
-                style={styles.flatListStyle} 
-                contentContainerStyle={styles.flatListContentContainer} 
-              />
-              {/* Category Pagination Dots */} 
-              {totalCategoryPages > 1 && (
-                <View style={styles.paginationContainer}>
-                  {Array.from({ length: totalCategoryPages }).map((_, index) => (
-                    <View
-                      key={`catDot-${index}`}
-                      style={[
-                        styles.paginationDot,
-                        currentCategoryPage === index ? styles.paginationDotActive : null,
-                      ]}
-                    />
-                  ))}
-                </View>
-              )}
+      {/* Main ScrollView to enable scrolling the whole page */}
+      <ScrollView style={styles.mainScrollView}>
+        {/* This View wraps Categories and Recipes */}
+        <View style={styles.contentArea}>
+          {/* --- Categories Section --- */}
+          <View style={styles.categoriesSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Categories</Text>
             </View>
-          )}
-        </View>
+            
+            {loadingCategories ? (
+              <View style={styles.loadingContainer} />
+            ) : categoriesError ? (
+              <Text style={styles.errorText}>Error loading categories</Text>
+            ) : (
+              <View style={styles.sectionContentContainer}> 
+                <FlatList
+                  ref={categoryFlatListRef}
+                  data={categoryPages} 
+                  renderItem={renderCategoryPage}
+                  keyExtractor={(item, index) => `catPage-${index}`}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onViewableItemsChanged={onCategoryViewableItemsChanged} 
+                  viewabilityConfig={categoryViewabilityConfig}
+                  style={styles.flatListStyle} 
+                  contentContainerStyle={styles.flatListContentContainer}
+                  nestedScrollEnabled={true}
+                />
+                {/* Category Pagination Dots */} 
+                {totalCategoryPages > 1 && (
+                  <View style={styles.paginationContainer}>
+                    {Array.from({ length: totalCategoryPages }).map((_, index) => (
+                      <View
+                        key={`catDot-${index}`}
+                        style={[
+                          styles.paginationDot,
+                          currentCategoryPage === index ? styles.paginationDotActive : null,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
 
-        {/* --- Recent Recipes Section --- */}
-        <View style={styles.recentRecipesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Recipes</Text>
-            {/* Keep View All Button */}
-            <TouchableOpacity onPress={() => console.log('View all recipes')}> 
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity> 
-          </View>
-          
-          {loadingRecipes ? (
-            <View style={styles.loadingContainer} />
-           ) : recipesError ? (
-             <Text style={styles.errorText}>Error loading recipes</Text>
-           ) : recentRecipes.length === 0 ? (
-             <Text style={styles.noDataText}>No recipes found</Text>
-           ) : (
-            // Recipe FlatList with Paging
-            <View style={styles.recipeFlatListContainer}>
-              <FlatList
-                ref={recipeFlatListRef}
-                data={recipePages}
-                renderItem={renderRecipePage}
-                keyExtractor={(item, index) => `recipePage-${index}`}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onViewableItemsChanged={onRecipeViewableItemsChanged}
-                viewabilityConfig={recipeViewabilityConfig}
-                style={styles.flatListStyle} // Use same style as category list
-                contentContainerStyle={styles.flatListContentContainer}
-              />
-              {/* Recipe Pagination Dots */} 
-              {totalRecipePages > 1 && (
-                <View style={styles.paginationContainer}>
-                  {Array.from({ length: totalRecipePages }).map((_, index) => (
-                    <View
-                      key={`recipeDot-${index}`}
-                      style={[
-                        styles.paginationDot,
-                        currentRecipePage === index ? styles.paginationDotActive : null,
-                      ]}
-                    />
-                  ))}
-                </View>
-              )}
+          {/* --- Recent Recipes Section --- */}
+          <View style={styles.recentRecipesSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Recipes</Text>
+              {/* View All Button */}
+              <TouchableOpacity onPress={() => console.log('View all recipes')}> 
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity> 
             </View>
-          )}
+            
+            {loadingRecipes ? (
+              <View style={styles.loadingContainer} />
+             ) : recipesError ? (
+               <Text style={styles.errorText}>Error loading recipes</Text>
+             ) : recentRecipes.length === 0 ? (
+               <Text style={styles.noDataText}>No recipes found</Text>
+             ) : (
+              // Recipe Grid
+              <View style={styles.recipesGrid}>
+                {recentRecipes.map((recipe) => (
+                  <View 
+                    key={recipe.recipe_id}
+                    style={[
+                      styles.recipeItemContainer,
+                      { width: recipeItemWidth, 
+                        marginRight: (recentRecipes.indexOf(recipe) % 2 === 0) ? RECIPE_ITEM_SPACING : 0 
+                      }
+                    ]}
+                  >
+                    <RecipeGridItem
+                      recipe={{
+                        recipe_id: recipe.recipe_id.toString(),
+                        recipe_name: recipe.recipe_name,
+                        menu_section_id: recipe.menu_section_id.toString(),
+                        directions: recipe.directions || '',
+                        prep_time: recipe.prep_time,
+                        total_time: recipe.total_time,
+                        rest_time: recipe.rest_time,
+                        servings: recipe.servings,
+                        cooking_notes: recipe.cooking_notes || '',
+                      }}
+                      onPress={() => handleRecipePress(recipe)}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
-      </View> 
-      {/* End contentArea View */} 
+      </ScrollView>
+      {/* End ScrollView */}
 
       {/* This View wraps the fixed buttons */}
       <View style={styles.fixedFabContainer}>
@@ -491,9 +476,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  mainScrollView: {
+    flex: 1,
+  },
   contentArea: {
-    flex: 1, 
-    flexDirection: 'column', // Ensure vertical layout
+    flexDirection: 'column',
   },
   categoriesSection: {
     paddingVertical: SIZES.padding / 2, 
@@ -513,12 +500,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: RECIPE_PADDING,
-    alignItems: 'flex-start', 
-    alignContent: 'flex-start', 
+    paddingBottom: SIZES.padding,
   },
   recentRecipesSection: {
-    paddingVertical: SIZES.padding / 2, 
-    flex: 1, 
+    paddingVertical: SIZES.padding / 2,
   },
   viewAllText: {
     ...FONTS.body3,
@@ -607,26 +592,13 @@ const styles = StyleSheet.create({
   paginationDotActive: {
     backgroundColor: COLORS.primary,
   },
-  recipePageContainer: { // Style for each page in the recipe FlatList
-    width: RECIPE_PAGE_WIDTH, // Set dynamically
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: RECIPE_PADDING,
-    alignItems: 'flex-start', 
-  },
   recipeItemContainer: {
-    // width and marginRight applied dynamically
-    marginBottom: RECIPE_ITEM_SPACING, 
+    marginBottom: RECIPE_ITEM_SPACING,
   },
   sectionContentContainer: { // Style for category FlatList container
     height: CATEGORY_SECTION_HEIGHT,
     // Add other styles if needed, e.g., backgroundColor for debugging
     // backgroundColor: 'rgba(0, 255, 0, 0.1)', // Example background
-  },
-  recipeFlatListContainer: { // Style for recipe FlatList container
-    height: RECIPE_SECTION_HEIGHT,
-    // Add other styles if needed
-    // backgroundColor: 'rgba(0, 0, 255, 0.1)', // Example background
   },
 });
 
