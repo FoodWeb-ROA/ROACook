@@ -21,7 +21,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
+import { COLORS, SIZES, FONTS, SHADOWS, GRADIENTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import { Category, Recipe } from '../types';
@@ -32,6 +32,7 @@ import AppHeader from '../components/AppHeader';
 import { useAuth } from '../context/AuthContext';
 import { useMenuSections, useRecipes } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Helper function to chunk array with type annotations
 const chunk = <T,>(array: T[], size: number): T[][] => { // Add generic type T and return type T[][]
@@ -448,19 +449,27 @@ const HomeScreen = () => {
       {/* This View wraps the fixed buttons */}
       <View style={styles.fixedFabContainer}>
         <TouchableOpacity 
-          style={[styles.floatingButton, styles.createButton]}
+          style={[styles.floatingButton, styles.createButtonContainer]}
           onPress={() => navigation.navigate('CreateRecipe')}
           activeOpacity={0.8}
         >
+          <LinearGradient
+            colors={GRADIENTS.tertiary}
+            style={StyleSheet.absoluteFill}
+          />
           <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
           <Text style={styles.floatingButtonText}>Create Recipe</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.floatingButton, styles.uploadButton]}
+          style={[styles.floatingButton, styles.uploadButtonContainer]}
           onPress={handleUploadRecipePress}
           activeOpacity={0.8}
         >
+          <LinearGradient
+            colors={GRADIENTS.primary}
+            style={StyleSheet.absoluteFill}
+          />
           <MaterialCommunityIcons name="upload" size={20} color={COLORS.white} />
           <Text style={styles.floatingButtonText}>Upload Recipe</Text>
         </TouchableOpacity>
@@ -526,12 +535,13 @@ const styles = StyleSheet.create({
     borderRadius: 25, // Pill shape
     margin: 8,
     ...SHADOWS.medium,
+    overflow: 'hidden',
   },
-  createButton: {
-    backgroundColor: COLORS.tertiary,
+  createButtonContainer: {
+    // backgroundColor: COLORS.tertiary,
   },
-  uploadButton: {
-    backgroundColor: COLORS.primary,
+  uploadButtonContainer: {
+    // backgroundColor: COLORS.primary,
   },
   floatingButtonText: {
     ...FONTS.body3,
@@ -558,6 +568,8 @@ const styles = StyleSheet.create({
   },
   flatListStyle: {
     // No horizontal padding, FlatList spans screen width for paging
+    ...SHADOWS.medium,
+    overflow: 'hidden',
   },
   flatListContentContainer: {
     // No padding needed here

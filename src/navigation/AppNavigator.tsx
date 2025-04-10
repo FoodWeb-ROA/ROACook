@@ -20,7 +20,7 @@ import CreateRecipeScreen from '../screens/CreateRecipeScreen';
 
 // Types
 import { RootStackParamList } from './types';
-import { COLORS, FONTS, SIZES } from '../constants/theme';
+import { COLORS, FONTS, SIZES, OPACITY } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
 // Define DrawerParamList type
@@ -48,13 +48,17 @@ const DrawerNavigator = () => {
           backgroundColor: COLORS.background,
           width: 240,
         },
-        drawerActiveTintColor: COLORS.primary,
+        drawerActiveTintColor: COLORS.white,
+        drawerActiveBackgroundColor: `rgba(91, 107, 92, ${OPACITY.low})`,
         drawerInactiveTintColor: COLORS.textLight,
         drawerLabelStyle: {
           fontFamily: 'Poppins',
           fontSize: SIZES.font,
-          marginLeft: -SIZES.padding,
         },
+        drawerItemStyle: {
+          marginHorizontal: SIZES.padding,
+          borderRadius: SIZES.radius,
+        }
       }}
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
@@ -95,12 +99,12 @@ const AppNavigator = () => {
             <Stack.Screen
               name="RecipeDetails"
               component={RecipeDetailScreen}
-              options={{ headerShown: true, title: 'Recipe Details' }}
+              options={{ headerShown: false, title: 'Recipe Details' }}
             />
             <Stack.Screen
               name="PreparationDetails"
               component={PreparationDetailScreen}
-              options={{ headerShown: true, title: 'Preparation Details' }}
+              options={{ headerShown: false, title: 'Preparation Details' }}
             />
             <Stack.Screen
               name="CategoryRecipes"
@@ -110,28 +114,7 @@ const AppNavigator = () => {
             <Stack.Screen
               name="CreateRecipe"
               component={CreateRecipeScreen}
-              options={({ navigation }: { navigation: StackNavigationProp<RootStackParamList> }) => ({
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: COLORS.background,
-                  shadowOpacity: 0,
-                  elevation: 0,
-                },
-                headerTitle: '',
-                headerBackTitle: ' ',
-                headerTintColor: COLORS.white,
-                headerLeft: () => (
-                  <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={{ 
-                      marginLeft: SIZES.padding * 2,
-                      marginTop: SIZES.padding * 4
-                     }}
-                  >
-                    <Ionicons name="arrow-back" size={28} color={COLORS.white} />
-                  </TouchableOpacity>
-                ),
-              })}
+              options={{ headerShown: false }}
             />
           </>
         ) : (

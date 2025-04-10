@@ -46,9 +46,11 @@ const CategoryRecipesScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      <AppHeader
-        showBackButton={true}
-      />
+      <View style={{ marginTop: SIZES.verticalPadding }}>
+        <AppHeader
+          showBackButton={true}
+        />
+      </View>
       <Text style={styles.categoryTitle}>{categoryName}</Text>
       
       {loading ? (

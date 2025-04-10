@@ -21,23 +21,69 @@ export const COLORS = {
   black: '#000000',
 };
 
+// Standard Opacity Levels
+export const OPACITY = {
+  high: 0.7,
+  low: 0.6,
+};
+
+// Gradient Colors using Base Colors and Standard Opacity
+export const GRADIENTS = {
+  // Use COLORS.secondary (#243B24 -> rgb(36, 59, 36))
+  secondary: [`rgba(36, 59, 36, ${OPACITY.high})`, `rgba(36, 59, 36, ${OPACITY.low})`] as const,
+  // Use COLORS.primary (#5B6B5C -> rgb(91, 107, 92))
+  primary: [`rgba(91, 107, 92, ${OPACITY.high})`, `rgba(91, 107, 92, ${OPACITY.low})`] as const,
+  // Use COLORS.tertiary (#4A8F4A -> rgb(74, 143, 74))
+  tertiary: [`rgba(74, 143, 74, ${OPACITY.high})`, `rgba(74, 143, 74, ${OPACITY.low})`] as const,
+};
+
+// Spacing constants (Moved Before fontConfig)
+export const SIZES = {
+  base: 8,
+  small: 12,
+  font: 14,
+  medium: 16,
+  large: 18,
+  xl: 24,
+  xxl: 32,
+  xxxl: 48,
+  padding: 16,
+  verticalPadding: 40,
+  margin: 16,
+  radius: 20,
+  borderWidth: 1,
+};
+
 // Font configuration
+// Adjusting fontConfig to align with MD3Type requirements
 const fontConfig = {
   regular: {
     fontFamily: 'Poppins',
     fontWeight: 'normal' as const,
+    fontSize: SIZES.font,
+    lineHeight: SIZES.font * 1.5,
+    letterSpacing: 0.5,
   },
   medium: {
     fontFamily: 'Poppins',
     fontWeight: '500' as const,
+    fontSize: SIZES.font,
+    lineHeight: SIZES.font * 1.5,
+    letterSpacing: 0.5,
   },
   light: {
     fontFamily: 'Poppins',
     fontWeight: '300' as const,
+    fontSize: SIZES.font,
+    lineHeight: SIZES.font * 1.5,
+    letterSpacing: 0.5,
   },
   thin: {
     fontFamily: 'Poppins',
     fontWeight: '100' as const,
+    fontSize: SIZES.font,
+    lineHeight: SIZES.font * 1.5,
+    letterSpacing: 0.5,
   },
 };
 
@@ -61,22 +107,6 @@ export const theme = {
   },
   fonts: configureFonts({config: fontConfig}),
   roundness: 10,
-};
-
-// Spacing constants
-export const SIZES = {
-  base: 8,
-  small: 12,
-  font: 14,
-  medium: 16,
-  large: 18,
-  xl: 24,
-  xxl: 32,
-  xxxl: 48,
-  padding: 16,
-  margin: 16,
-  radius: 8,
-  borderWidth: 1,
 };
 
 // Custom font styles

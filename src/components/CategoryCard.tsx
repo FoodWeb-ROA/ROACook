@@ -1,8 +1,9 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Category } from '../types';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { COLORS, SIZES, SHADOWS, GRADIENTS } from '../constants/theme';
 
 interface CategoryCardProps {
   category: Category;
@@ -16,6 +17,10 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
       onPress={() => onPress(category)}
       activeOpacity={0.8}
     >
+      <LinearGradient
+        colors={GRADIENTS.secondary}
+        style={StyleSheet.absoluteFill}
+      />
       {category.icon && (
         <View style={styles.iconContainer}>
           <MaterialCommunityIcons name={category.icon as any} size={30} color={COLORS.white} />
@@ -28,7 +33,6 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius * 1.5,
     paddingVertical: SIZES.padding * 1.5,
     paddingHorizontal: SIZES.padding,
@@ -36,6 +40,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...SHADOWS.small,
     minHeight: 120,
+    overflow: 'hidden',
   },
   iconContainer: {
     width: 70,

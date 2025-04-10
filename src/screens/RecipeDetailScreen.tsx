@@ -110,7 +110,9 @@ const RecipeDetailScreen = () => {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Loading..." showBackButton={true} />
+        <View style={{ marginTop: SIZES.verticalPadding }}>
+          <AppHeader title="Loading..." showBackButton={true} />
+        </View>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
@@ -120,7 +122,9 @@ const RecipeDetailScreen = () => {
     return (
       <View style={[styles.container, styles.errorContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Error" showBackButton={true} />
+        <View style={{ marginTop: SIZES.verticalPadding }}>
+          <AppHeader title="Error" showBackButton={true} />
+        </View>
         <Text style={styles.errorText}>
           {error ? error.message : "Recipe not found"}
         </Text>
@@ -134,10 +138,12 @@ const RecipeDetailScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <AppHeader
-        title={recipe.recipe_name}
-        showBackButton={true}
-      />
+      <View style={{ marginTop: SIZES.verticalPadding }}>
+        <AppHeader
+          title={recipe.recipe_name}
+          showBackButton={true}
+        />
+      </View>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}

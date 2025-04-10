@@ -17,11 +17,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
+import { COLORS, SIZES, FONTS, SHADOWS, GRADIENTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../data/supabaseClient';
 import { useMenuSections } from '../hooks/useSupabase';
 import { Picker } from '@react-native-picker/picker';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type CreateRecipeNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -706,7 +707,12 @@ const CreateRecipeScreen = () => {
               style={styles.submitButton}
               onPress={handleSubmit}
               disabled={submitting}
+              activeOpacity={0.8}
             >
+              <LinearGradient
+                colors={GRADIENTS.primary}
+                style={StyleSheet.absoluteFill}
+              />
               {submitting ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
@@ -838,7 +844,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   submitButton: {
-    backgroundColor: COLORS.primary,
     borderRadius: SIZES.radius,
     padding: SIZES.padding * 1.5,
     alignItems: 'center',
@@ -846,6 +851,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 40,
     ...SHADOWS.medium,
+    overflow: 'hidden',
   },
   submitButtonText: {
     ...FONTS.h3,

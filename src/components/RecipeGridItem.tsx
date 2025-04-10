@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Recipe } from '../types';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { COLORS, SIZES, SHADOWS, GRADIENTS } from '../constants/theme';
 
 interface RecipeGridItemProps {
   recipe: Recipe;
@@ -15,6 +16,10 @@ const RecipeGridItem: React.FC<RecipeGridItemProps> = ({ recipe, onPress }) => {
       onPress={() => onPress(recipe)}
       activeOpacity={0.8}
     >
+      <LinearGradient
+        colors={GRADIENTS.secondary}
+        style={StyleSheet.absoluteFill}
+      />
       <Text style={styles.title} numberOfLines={1}>{recipe.recipe_name}</Text>
     </TouchableOpacity>
   );
@@ -22,20 +27,20 @@ const RecipeGridItem: React.FC<RecipeGridItemProps> = ({ recipe, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius,
+    borderRadius: 25,
     paddingVertical: SIZES.small,
     paddingHorizontal: SIZES.medium,
     ...SHADOWS.small,
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     minHeight: 50,
+    overflow: 'hidden',
   },
   title: {
     fontSize: SIZES.font,
     fontWeight: '600',
     color: COLORS.white,
-    textAlign: 'left',
+    textAlign: 'center',
   },
 });
 
