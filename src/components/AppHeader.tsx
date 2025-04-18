@@ -15,6 +15,7 @@ interface AppHeaderProps {
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({
+  title = 'FoodWeb',
   showBackButton = false,
   showMenuButton = false,
   onProfilePress,
@@ -63,7 +64,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       </View>
 
       <View style={styles.centerContainer}>
-        <Text style={styles.logoText}>FoodWeb</Text>
+        <Text 
+          style={styles.titleText}
+          numberOfLines={1}
+          ellipsizeMode='tail'
+        >
+          {title}
+        </Text>
       </View>
 
       <View style={styles.rightContainer}>
@@ -91,16 +98,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: SIZES.base,
   },
   rightContainer: {
     width: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoText: {
-    ...FONTS.h2,
+  titleText: {
+    ...FONTS.h3,
     color: COLORS.white,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   buttonStyle: {
     width: 46,

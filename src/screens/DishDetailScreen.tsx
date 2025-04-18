@@ -298,12 +298,15 @@ const DishDetailScreen = () => {
           
           {/* --- Directions Section --- */}
           {directions.length > 0 && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.instructionsContainer}> 
               <Text style={styles.sectionTitle}>Directions</Text>
               {directions.map((step: string, index: number) => (
-                <Text key={index} style={styles.directionStep}>
-                  {`${index + 1}. ${step}`}
-                </Text>
+                <View key={index} style={styles.instructionItem}>
+                  <View style={styles.instructionNumber}>
+                     <Text style={styles.instructionNumberText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.instructionText}>{step}</Text>
+                </View>
               ))}
             </View>
           )}
@@ -358,7 +361,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   contentContainer: {
-    paddingHorizontal: SIZES.padding * 2,
+    paddingHorizontal: SIZES.padding,
     paddingTop: SIZES.padding * 2,
   },
   headerContainer: {
@@ -410,7 +413,6 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     marginVertical: SIZES.padding,
-    paddingHorizontal: SIZES.padding * 2,
   },
   sectionTitle: {
     ...FONTS.h2,
@@ -424,6 +426,7 @@ const styles = StyleSheet.create({
     paddingVertical: SIZES.padding,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.tertiary,
+    paddingHorizontal: SIZES.padding,
   },
   ingredientName: {
     ...FONTS.body2,
@@ -444,11 +447,35 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginRight: 4,
   },
-  directionStep: {
+  instructionsContainer: {
+    marginVertical: SIZES.padding,
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    marginBottom: SIZES.padding * 1.5,
+    alignItems: 'flex-start',
+    paddingHorizontal: SIZES.padding,
+  },
+  instructionNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SIZES.padding,
+    marginTop: 2,
+  },
+  instructionNumberText: {
     ...FONTS.body3,
-    color: COLORS.text,
-    marginBottom: SIZES.padding,
-    lineHeight: FONTS.body3.fontSize * 1.5,
+    color: COLORS.white,
+    fontWeight: 'bold',
+  },
+  instructionText: {
+    ...FONTS.body2,
+    color: COLORS.white,
+    flex: 1,
+    lineHeight: FONTS.body2.fontSize * 1.5,
   },
   notesText: {
     ...FONTS.body2,

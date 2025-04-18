@@ -55,12 +55,11 @@ const CategoryRecipesScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
-      <AppHeader
+      <AppHeader 
         title={categoryName || 'Category Dishes'}
-        showBackButton={true}
+        showBackButton={true} 
       />
       <View style={styles.container}>
-        <Text style={styles.categoryTitle}>{categoryName}</Text>
         <FlatList
           data={dishes}
           renderItem={({ item }) => (
@@ -91,11 +90,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoryTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    ...FONTS.h2,
     color: COLORS.white,
     paddingHorizontal: SIZES.padding * 2,
-    paddingVertical: SIZES.padding,
+    paddingTop: SIZES.padding,
+    paddingBottom: SIZES.padding,
+    textAlign: 'center',
   },
   listContent: {
     padding: SIZES.padding * 2,
