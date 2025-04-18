@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -24,13 +24,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { DrawerParamList } from '../navigation/AppNavigator';
-import { Category, Recipe } from '../types';
+import { Category, Dish } from '../types';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
-import RecipeGridItem from '../components/RecipeGridItem';
+import DishGridItem from '../components/DishGridItem';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../context/AuthContext';
-import { useMenuSections, useRecipes } from '../hooks/useSupabase';
+import { useMenuSections, useDishes } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
 
 // Helper function to chunk array with type annotations
@@ -84,48 +84,36 @@ const HomeScreen = () => {
   const { user } = useAuth();
   const { showActionSheetWithOptions } = useActionSheet();
   
-  // Quick DB check for debugging
-  React.useEffect(() => {
-    const checkIngredientsTable = async () => {
-      // Check if there are any ingredients in the recipe_ingredients table
-      const { data, error, count } = await supabase
-        .from('recipe_ingredients')
-        .select('*', { count: 'exact' });
-      
-      console.log('Recipe ingredients check - count:', count);
-      console.log('Recipe ingredients check - error:', error);
-      if (data && data.length > 0) {
-        console.log('Recipe ingredients check - first item:', JSON.stringify(data[0]));
-      } else {
-        console.log('Recipe ingredients check - no data found');
-      }
-    };
-    
-    checkIngredientsTable();
-  }, []);
-  
   // Use dynamic data loading hooks
   const { menuSections, loading: loadingCategories, error: categoriesError, refresh: refreshMenuSections } = useMenuSections();
-  const { recipes, loading: loadingRecipes, error: recipesError } = useRecipes();
+  const { dishes, loading: loadingDishes, error: dishesError } = useDishes();
 
-  const handleCategoryPress = (category: any) => {
+  const handleCategoryPress = (category: Category) => {
     navigation.navigate('CategoryRecipes', {
       categoryId: category.menu_section_id,
       categoryName: category.name,
     });
   };
 
-  const handleRecipePress = (recipe: any) => {
-    navigation.navigate('RecipeDetails', { recipeId: recipe.recipe_id });
+  const handleDishPress = (dish: Dish) => {
+    navigation.navigate('DishDetails', { dishId: dish.dish_id });
   };
 
   const handleAddSection = async (sectionName: string) => {
     try {
-      // Insert the new section with ONLY the name field
-      // Let PostgreSQL handle ID assignment automatically through its sequence
+      // TODO: Replace placeholder with actual logic to get kitchen_id
+      const placeholderKitchenId = 'YOUR_DEFAULT_KITCHEN_ID_HERE'; 
+      if (placeholderKitchenId === 'YOUR_DEFAULT_KITCHEN_ID_HERE') {
+          console.warn('Using placeholder kitchen ID in handleAddSection');
+          // Optionally Alert the user or prevent adding if no real ID is available
+          // Alert.alert("Setup Needed", "Kitchen selection not implemented yet.");
+          // return;
+      }
+
       const { data, error } = await supabase
         .from('menu_section')
-        .insert({ name: sectionName }) // Only specify the name, omit the ID entirely
+        // Provide the required kitchen_id
+        .insert({ name: sectionName, kitchen_id: placeholderKitchenId }) 
         .select()
         .single();
       
@@ -137,7 +125,6 @@ const HomeScreen = () => {
         [{ text: "OK" }]
       );
       
-      // Refresh menu sections
       refreshMenuSections();
     } catch (error: any) {
       console.error('Error adding section:', error);
@@ -191,15 +178,20 @@ const HomeScreen = () => {
     );
   };
 
-  // --- Recipe Paging Logic ---
-  const recentRecipes = recipes
-    ? [...recipes]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 8) // Limit to 8 recipes for the home screen
-    : [];
+  // Filter and sort dishes for the 'Recent Dishes' section
+  const recentDishes = useMemo(() => {
+    if (!dishes) return [];
+    // Example sorting: by creation date if available, otherwise just slice
+    // Assuming dishes array might have a created_at or similar field eventually
+    // For now, just take the first 8 as they come from the hook
+    return dishes.slice(0, 8);
+  }, [dishes]);
 
-  // Render recipe items in a vertical grid
-  const renderRecipeItem = ({ item }: { item: Recipe }) => {
+  const isLoading = loadingCategories || loadingDishes;
+  const hasError = categoriesError || dishesError;
+  
+  // Render dish items in a vertical grid
+  const renderDishItem = ({ item }: { item: Dish }) => {
     return (
       <View 
         style={[
@@ -207,20 +199,9 @@ const HomeScreen = () => {
           { width: recipeItemWidth }
         ]}
       >
-        <RecipeGridItem
-          recipe={{
-            // Map recipe data
-            recipe_id: item.recipe_id.toString(),
-            recipe_name: item.recipe_name,
-            menu_section_id: item.menu_section_id.toString(),
-            directions: item.directions || '',
-            prep_time: item.prep_time,
-            total_time: item.total_time,
-            rest_time: item.rest_time,
-            servings: item.servings,
-            cooking_notes: item.cooking_notes || '',
-          }}
-          onPress={() => handleRecipePress(item)}
+        <DishGridItem
+          dish={item}
+          onPress={() => handleDishPress(item)}
         />
       </View>
     );
@@ -393,48 +374,38 @@ const HomeScreen = () => {
             )}
           </View>
 
-          {/* --- Recent Recipes Section --- */}
+          {/* --- Recent Dishes Section --- */}
           <View style={styles.recentRecipesSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Recipes</Text>
+              <Text style={styles.sectionTitle}>Recent Dishes</Text>
               {/* View All Button */}
-              <TouchableOpacity onPress={() => console.log('View all recipes')}> 
+              <TouchableOpacity onPress={() => console.log('View all dishes')}> 
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity> 
             </View>
             
-            {loadingRecipes ? (
+            {isLoading ? (
               <View style={styles.loadingContainer} />
-             ) : recipesError ? (
-               <Text style={styles.errorText}>Error loading recipes</Text>
-             ) : recentRecipes.length === 0 ? (
-               <Text style={styles.noDataText}>No recipes found</Text>
+             ) : hasError ? (
+               <Text style={styles.errorText}>Error loading dishes</Text>
+             ) : recentDishes.length === 0 ? (
+               <Text style={styles.noDataText}>No dishes found</Text>
              ) : (
-              // Recipe Grid
+              // Dish Grid
               <View style={styles.recipesGrid}>
-                {recentRecipes.map((recipe) => (
+                {recentDishes.map((dish) => (
                   <View 
-                    key={recipe.recipe_id}
+                    key={dish.dish_id}
                     style={[
                       styles.recipeItemContainer,
                       { width: recipeItemWidth, 
-                        marginRight: (recentRecipes.indexOf(recipe) % 2 === 0) ? RECIPE_ITEM_SPACING : 0 
+                        marginRight: (recentDishes.indexOf(dish) % 2 === 0) ? RECIPE_ITEM_SPACING : 0 
                       }
                     ]}
                   >
-                    <RecipeGridItem
-                      recipe={{
-                        recipe_id: recipe.recipe_id.toString(),
-                        recipe_name: recipe.recipe_name,
-                        menu_section_id: recipe.menu_section_id.toString(),
-                        directions: recipe.directions || '',
-                        prep_time: recipe.prep_time,
-                        total_time: recipe.total_time,
-                        rest_time: recipe.rest_time,
-                        servings: recipe.servings,
-                        cooking_notes: recipe.cooking_notes || '',
-                      }}
-                      onPress={() => handleRecipePress(recipe)}
+                    <DishGridItem
+                      dish={dish}
+                      onPress={() => handleDishPress(dish)}
                     />
                   </View>
                 ))}
@@ -449,11 +420,11 @@ const HomeScreen = () => {
       <View style={styles.fixedFabContainer}>
         <TouchableOpacity 
           style={[styles.floatingButton, styles.createButton]}
-          onPress={() => navigation.navigate('CreateRecipe')}
+          onPress={() => navigation.navigate('CreateDish')}
           activeOpacity={0.8}
         >
           <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
-          <Text style={styles.floatingButtonText}>Create Recipe</Text>
+          <Text style={styles.floatingButtonText}>Create Dish</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 

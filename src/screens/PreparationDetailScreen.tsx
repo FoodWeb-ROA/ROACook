@@ -14,7 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { MeasurementUnit } from '../types';
+import { Preparation, PreparationIngredient, MeasurementUnit } from '../types';
 import AppHeader from '../components/AppHeader';
 import { usePreparationDetail } from '../hooks/useSupabase';
 
@@ -26,14 +26,17 @@ const PreparationDetailScreen = () => {
   const route = useRoute<PreparationDetailRouteProp>();
   const { preparationId, recipeServingScale } = route.params;
   
-  // Use dynamic data loading hook
-  const { preparation, ingredients, loading, error } = usePreparationDetail(preparationId);
+  const { preparation, ingredients, loading, error } = usePreparationDetail(preparationId) as { 
+      preparation: Preparation | null, 
+      ingredients: PreparationIngredient[], 
+      loading: boolean, 
+      error: Error | null 
+  };
   
   const [amountScale, setAmountScale] = useState(recipeServingScale || 1);
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
 
-  // Units for conversion
-  const unitOptions = {
+  const unitOptions: Record<MeasurementUnit, MeasurementUnit[]> = {
     g: ['g', 'kg'],
     kg: ['g', 'kg'],
     ml: ['ml', 'l'],
@@ -44,11 +47,10 @@ const PreparationDetailScreen = () => {
     oz: ['oz', 'lb'],
     lb: ['oz', 'lb'],
     count: ['count'],
+    pinch: ['pinch'],
   };
 
-  // Function to convert between units
   const convertUnit = (value: number, fromUnit: string, toUnit: string): number => {
-    // Conversion constants
     const conversions: Record<string, Record<string, number>> = {
       g: { kg: 0.001 },
       kg: { g: 1000 },
@@ -64,31 +66,39 @@ const PreparationDetailScreen = () => {
     return value * (conversions[fromUnit]?.[toUnit] || 0);
   };
 
-  // Get display value for ingredient
-  const getDisplayValue = (quantity: number, unit: string, ingredientId: string) => {
+  const getDisplayValue = (quantity: number | null, unitObj: { abbreviation?: string | null, unit_name?: string | null } | null, ingredientId: string) => {
+    if (quantity === null || quantity === undefined || !unitObj) return 'N/A';
+    const unit = unitObj.abbreviation || unitObj.unit_name;
+    if (!unit) return quantity.toString();
+
     const scaledQuantity = quantity * amountScale;
     const currentUnit = selectedUnit[ingredientId] || unit;
+    let displayValue: number;
     
     if (currentUnit !== unit) {
-      return convertUnit(scaledQuantity, unit, currentUnit).toFixed(2);
+      displayValue = convertUnit(scaledQuantity, unit, currentUnit);
+    } else {
+        displayValue = scaledQuantity;
     }
     
-    return unit === 'count' ? 
-      Math.round(scaledQuantity).toString() : 
-      scaledQuantity % 1 === 0 ? 
-        scaledQuantity.toString() : 
-        scaledQuantity.toFixed(1);
+    return displayValue % 1 === 0 ? 
+      displayValue.toString() : 
+      displayValue.toFixed(1);
   };
 
-  // Toggle between unit options for an ingredient
-  const toggleUnit = (ingredientId: string, currentUnit: string) => {
-    const options = unitOptions[currentUnit as keyof typeof unitOptions] || [currentUnit];
-    const currentIndex = options.indexOf(selectedUnit[ingredientId] || currentUnit);
-    const nextIndex = (currentIndex + 1) % options.length;
+  const toggleUnit = (ingredientId: string, unitObj: { abbreviation?: string | null, unit_name?: string | null } | null) => {
+    if (!unitObj) return;
+    const baseUnitKey = (unitObj.abbreviation || unitObj.unit_name) as MeasurementUnit;
+    if (!unitOptions[baseUnitKey]) return;
+
+    const currentOptions = unitOptions[baseUnitKey];
+    const currentSelected = (selectedUnit[ingredientId] || baseUnitKey) as MeasurementUnit;
+    const currentIndex = currentOptions.indexOf(currentSelected);
+    const nextIndex = (currentIndex + 1) % currentOptions.length;
     
     setSelectedUnit({
       ...selectedUnit,
-      [ingredientId]: options[nextIndex] as MeasurementUnit,
+      [ingredientId]: currentOptions[nextIndex],
     });
   };
 
@@ -114,18 +124,17 @@ const PreparationDetailScreen = () => {
     );
   }
 
-  // Parse directions into steps if they exist
   const directions = preparation.directions ? preparation.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
 
-  // Calculate current amount with scaling
-  const currentAmount = preparation.amount ? preparation.amount * amountScale : 0;
-  const unitAbbreviation = preparation.unit?.abbreviation || preparation.unit?.name || '';
+  const baseYieldAmount = preparation.yield_amount;
+  const currentYieldAmount = typeof baseYieldAmount === 'number' ? baseYieldAmount * amountScale : null;
+  const yieldUnitAbbreviation = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <AppHeader
-        title={preparation.preparation_name}
+        title={preparation.name || 'Preparation'}
         showBackButton={true}
       />
       <ScrollView 
@@ -147,18 +156,18 @@ const PreparationDetailScreen = () => {
                 </Text>
               </View>
               
-              {preparation.amount > 0 && preparation.unit && (
+              {typeof currentYieldAmount === 'number' && preparation.yield_unit && (
                 <View style={styles.infoItem}>
                   <MaterialCommunityIcons name="scale" size={18} color={COLORS.textLight} />
                   <Text style={styles.infoText}>
-                    {currentAmount.toFixed(currentAmount % 1 === 0 ? 0 : 1)} {unitAbbreviation}
+                    {currentYieldAmount.toFixed(currentYieldAmount % 1 === 0 ? 0 : 1)} {yieldUnitAbbreviation}
                   </Text>
                 </View>
               )}
             </View>
           </View>
           
-          {preparation.amount > 0 && (
+          {typeof baseYieldAmount === 'number' && baseYieldAmount > 0 && (
             <View style={styles.amountAdjustContainer}>
               <Text style={styles.sectionTitle}>Adjust Amount</Text>
               <View style={styles.amountAdjustControls}>
@@ -176,11 +185,13 @@ const PreparationDetailScreen = () => {
                 
                 <View style={styles.amountValueContainer}>
                   <Text style={styles.amountValue}>
-                    {`${amountScale}x`}
+                    {`${amountScale.toFixed(1)}x`}
                   </Text>
-                  <Text style={styles.amountTotal}>
-                    {currentAmount.toFixed(currentAmount % 1 === 0 ? 0 : 1)} {unitAbbreviation}
-                  </Text>
+                  {typeof currentYieldAmount === 'number' && (
+                     <Text style={styles.amountTotal}>
+                       ({currentYieldAmount.toFixed(currentYieldAmount % 1 === 0 ? 0 : 1)} {yieldUnitAbbreviation})
+                     </Text>
+                   )}
                 </View>
                 
                 <TouchableOpacity 
@@ -195,24 +206,33 @@ const PreparationDetailScreen = () => {
           
           <View style={styles.ingredientsContainer}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
-            {ingredients.map((ingredient) => (
-              <View key={ingredient.id} style={styles.ingredientItem}>
-                <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                <TouchableOpacity 
-                  style={styles.ingredientQuantity}
-                  onPress={() => toggleUnit(ingredient.id, ingredient.unit)}
-                >
-                  <Text style={styles.ingredientQuantityText}>
-                    {getDisplayValue(ingredient.quantity, ingredient.unit, ingredient.id)} {selectedUnit[ingredient.id] || ingredient.unit}
-                  </Text>
-                  <MaterialCommunityIcons 
-                    name="swap-horizontal" 
-                    size={16} 
-                    color={COLORS.primary} 
-                  />
-                </TouchableOpacity>
-              </View>
-            ))}
+            {ingredients.map((ingredient) => {
+              const unitKey = (ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
+              const isToggleable = ingredient.unit && (unitOptions[unitKey]?.length || 0) > 1;
+              const displayUnit = (selectedUnit[ingredient.ingredient_id] || ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
+
+              return (
+                <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
+                  <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                  <TouchableOpacity 
+                    style={styles.ingredientQuantity}
+                    onPress={() => toggleUnit(ingredient.ingredient_id, ingredient.unit)}
+                    disabled={!isToggleable}
+                  >
+                    <Text style={styles.ingredientQuantityText}>
+                      {getDisplayValue(ingredient.amount, ingredient.unit, ingredient.ingredient_id)} {displayUnit}
+                    </Text>
+                    {isToggleable && (
+                      <MaterialCommunityIcons 
+                        name="swap-horizontal" 
+                        size={16} 
+                        color={COLORS.primary} 
+                      />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
           
           <View style={styles.instructionsContainer}>

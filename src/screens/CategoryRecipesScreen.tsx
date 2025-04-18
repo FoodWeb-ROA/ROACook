@@ -11,9 +11,10 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import RecipeCard from '../components/RecipeCard';
+import { Dish } from '../types';
+import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
-import { useRecipes } from '../hooks/useSupabase';
+import { useDishes } from '../hooks/useSupabase';
 
 type CategoryRecipesRouteProp = RouteProp<RootStackParamList, 'CategoryRecipes'>;
 type CategoryRecipesNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -23,24 +24,11 @@ const CategoryRecipesScreen = () => {
   const route = useRoute<CategoryRecipesRouteProp>();
   const { categoryId, categoryName } = route.params;
 
-  // Fetch recipes filtered by menu section id
-  const { recipes, loading, error } = useRecipes(categoryId);
+  // Fetch dishes filtered by menu section id (assuming useDishes supports this)
+  const { dishes, loading: loadingDishes, error: dishesError } = useDishes(categoryId);
   
-  // Debug: Check if ingredients are available
-  useEffect(() => {
-    if (recipes && recipes.length > 0) {
-      console.log('First recipe has ingredients?', !!recipes[0].ingredients);
-      console.log('First recipe ingredients count:', recipes[0].ingredients?.length || 0);
-      
-      // Log the structure of the first ingredient if available
-      if (recipes[0].ingredients && recipes[0].ingredients.length > 0) {
-        console.log('First ingredient structure:', JSON.stringify(recipes[0].ingredients[0], null, 2));
-      }
-    }
-  }, [recipes]);
-  
-  const handleRecipePress = (recipe: any) => {
-    navigation.navigate('RecipeDetails', { recipeId: recipe.recipe_id });
+  const handleDishPress = (dish: Dish) => {
+    navigation.navigate('DishDetails', { dishId: dish.dish_id });
   };
   
   return (
@@ -51,26 +39,26 @@ const CategoryRecipesScreen = () => {
       />
       <Text style={styles.categoryTitle}>{categoryName}</Text>
       
-      {loading ? (
+      {loadingDishes ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
-      ) : error ? (
-        <Text style={styles.errorText}>Error loading recipes</Text>
+      ) : dishesError ? (
+        <Text style={styles.errorText}>Error loading dishes</Text>
       ) : (
         <FlatList
-          data={recipes}
+          data={dishes}
           renderItem={({ item }) => (
-            <RecipeCard
-              recipe={item}
-              onPress={handleRecipePress}
+            <DishCard
+              dish={item}
+              onPress={handleDishPress}
             />
           )}
-          keyExtractor={(item) => item.recipe_id}
+          keyExtractor={(item) => item.dish_id}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No recipes found in this category</Text>
+              <Text style={styles.emptyText}>No dishes found in this category</Text>
             </View>
           }
         />

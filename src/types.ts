@@ -1,64 +1,80 @@
-export type Dish = {
-  dish_id: string;
-  dish_name: string;
-  menu_section: MenuSection;
-  directions: string | null;
-  total_time: string | null;
-  serving_size: number | null;
-  serving_unit: Unit | null;
-  cooking_notes: string | null;
-  components: DishComponent[];
-  isDeleted?: boolean;
-  imageUrl?: string;
+import { Database } from './data/database.types';
+
+// Re-exporting base types or defining custom app types
+export type Unit = Database['public']['Tables']['units']['Row'];
+
+// Update Ingredient type to include optional isPreparation flag and base_unit details
+export type Ingredient = Database['public']['Tables']['ingredients']['Row'] & {
+    isPreparation?: boolean; // Added by useIngredients hook
+    base_unit?: Unit | null; // Potentially added by useIngredients hook
 };
 
-export type DishComponent = {
-  dish_id: string;
-  ingredient_id: string;
-  name: string;
-  amount: number;
-  unit: Unit;
-  isPreparation: boolean;
-  preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;
-  rawIngredientDetails: (Ingredient & { base_unit: Unit | null }) | null;
-};
+export type MenuSection = Database['public']['Tables']['menu_section']['Row'];
 
+// Define Preparation type based on DB + transformed structure
 export type Preparation = {
-  preparation_id: string;
-  name: string;
-  directions: string | null;
-  total_time: number | null;
-  yield_unit: Unit | null;
-  cooking_notes: string | null;
-  ingredients: PreparationIngredient[];
+    preparation_id: string;
+    name: string;
+    directions: string | null;
+    total_time: number | null;
+    yield_unit: Unit | null;
+    yield_amount: number | null; // Add yield amount
+    ingredients: PreparationIngredient[];
+    cooking_notes: string | null;
+    // Add other relevant fields if needed
 };
 
+// Define PreparationIngredient based on transformed structure
 export type PreparationIngredient = {
-  preparation_id: string;
-  ingredient_id: string;
-  name: string;
-  amount: number;
-  unit: Unit;
+    preparation_id: string; 
+    ingredient_id: string;
+    name: string; // Ingredient name
+    amount: number | null;
+    unit: Unit | null;
+    // Add other relevant fields if needed
 };
 
-export type Ingredient = {
-  ingredient_id: string;
-  name: string;
-  cooking_notes: string | null;
-  storage_location: string | null;
+// Define DishComponent based on transformed structure
+export type DishComponent = {
+    dish_id: string;
+    ingredient_id: string;
+    name: string; // Name of the component (ingredient or preparation)
+    amount: number | null;
+    unit: Unit | null;
+    isPreparation: boolean;
+    // Include details based on whether it's a raw ingredient or a preparation
+    preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;
+    rawIngredientDetails: (Ingredient & { base_unit: Unit | null }) | null;
+    // Add imageUrl or other specific fields?
 };
 
-export type Unit = {
-  unit_id: string;
-  unit_name: string;
-  system: string | null;
-  abbreviation: string | null;
+// Define Dish type based on DB + transformed structure
+export type Dish = {
+    dish_id: string;
+    dish_name: string;
+    menu_section: MenuSection | null; // Transformed menu section
+    directions: string | null;
+    total_time: string | null; // Keep as string for now (interval type)
+    serving_size: number | null;
+    serving_unit: Unit | null; // Transformed unit
+    components: DishComponent[]; // Array of components
+    cooking_notes: string | null;
+    imageUrl?: string; // Optional image URL
+    // Add other relevant fields
 };
 
-export type MenuSection = {
-  menu_section_id: string;
-  name: string;
-};
+// Re-export Category if it's just MenuSection
+export type Category = MenuSection;
+
+// Measurement Unit Type (as defined locally before)
+export type MeasurementUnit = 
+  | 'g' | 'kg' 
+  | 'ml' | 'l' 
+  | 'tsp' | 'tbsp' 
+  | 'oz' | 'lb' 
+  | 'cup'
+  | 'count'
+  | 'pinch';
 
 export type Kitchen = {
   kitchen_id: string;
@@ -87,11 +103,3 @@ export type UserType = {
   id: number;
   name: string;
 };
-
-export type Category = {
-  menu_section_id: string;
-  name: string;
-  icon: string;
-};
-
-export type MeasurementUnit = 'g' | 'kg' | 'ml' | 'l' | 'tbsp' | 'tsp' | 'cup' | 'oz' | 'lb' | 'count';

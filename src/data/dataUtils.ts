@@ -66,20 +66,18 @@ export async function insertData<T>(
   } = {}
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
-    // Rely on inference
-    let query = supabase.from(tableName).insert(data);
+    const query = supabase.from(tableName).insert(data);
     
     if (options.returnData) {
-      // Chained .select() is allowed by inference after .insert()
-      query = query.select();
+      // If returnData is true, chain select and await
+      const { data: returnedData, error } = await query.select().single(); // Often you insert one or want one back
+      return { data: returnedData as T | null, error: error as any };
+    } else {
+      // Otherwise, just await the insert operation without select
+      const { error } = await query;
+      return { data: null, error: error as any };
     }
     
-    const { data: returnedData, error } = await query;
-    
-    return { 
-      data: options.returnData ? (returnedData as T) : null, 
-      error: error as any 
-    };
   } catch (error) {
     console.error(`Error inserting into ${tableName}:`, error);
     return { data: null, error: error as any };
@@ -96,23 +94,21 @@ export async function updateData<T>(
   } = {}
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
-    // Rely on inference
-    let query = supabase
+    const query = supabase
       .from(tableName)
       .update(data)
       .eq(filter.column, filter.value);
       
     if (options.returnData) {
-      // Chaining select might have type issues, but we proceed
-      query = query.select();
+      // Chain select and await
+      const { data: returnedData, error } = await query.select(); // Select potentially returns multiple rows
+      return { data: returnedData as T | null, error: error as any };
+    } else {
+       // Await update without select
+      const { error } = await query;
+      return { data: null, error: error as any };
     }
-    
-    const { data: returnedData, error } = await query;
-    
-    return { 
-      data: options.returnData ? (returnedData as T) : null, 
-      error: error as any 
-    };
+
   } catch (error) {
     console.error(`Error updating ${tableName}:`, error);
     return { data: null, error: error as any };
@@ -128,23 +124,21 @@ export async function deleteData<T>(
   } = {}
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
-    // Rely on inference
-    let query = supabase
+    const query = supabase
       .from(tableName)
       .delete()
       .eq(filter.column, filter.value);
     
     if (options.returnData) {
-      // Chaining select might have type issues, but we proceed
-      query = query.select();
+       // Chain select and await
+      const { data: returnedData, error } = await query.select();
+      return { data: returnedData as T | null, error: error as any };
+    } else {
+       // Await delete without select
+       const { error } = await query;
+       return { data: null, error: error as any };
     }
-    
-    const { data: returnedData, error } = await query;
-    
-    return { 
-      data: options.returnData ? (returnedData as T) : null, 
-      error: error as any 
-    };
+
   } catch (error) {
     console.error(`Error deleting from ${tableName}:`, error);
     return { data: null, error: error as any };

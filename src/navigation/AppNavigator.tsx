@@ -13,10 +13,10 @@ import AccountScreen from '../screens/AccountScreen';
 import PreferencesScreen from '../screens/PreferencesScreen';
 import SupportScreen from '../screens/SupportScreen';
 import PrepListScreen from '../screens/PrepListScreen';
-import RecipeDetailScreen from '../screens/RecipeDetailScreen';
+import DishDetailScreen from '../screens/DishDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
-import CreateRecipeScreen from '../screens/CreateRecipeScreen';
+import CreateDishScreen from '../screens/CreateDishScreen';
 
 // Types
 import { RootStackParamList } from './types';
@@ -93,9 +93,9 @@ const AppNavigator = () => {
               component={DrawerNavigator}
             />
             <Stack.Screen
-              name="RecipeDetails"
-              component={RecipeDetailScreen}
-              options={{ headerShown: true, title: 'Recipe Details' }}
+              name="DishDetails"
+              component={DishDetailScreen}
+              options={{ headerShown: true, title: 'Dish Details' }}
             />
             <Stack.Screen
               name="PreparationDetails"
@@ -108,8 +108,8 @@ const AppNavigator = () => {
               options={{ headerShown: false, title: 'Category Recipes' }}
             />
             <Stack.Screen
-              name="CreateRecipe"
-              component={CreateRecipeScreen}
+              name="CreateDish"
+              component={CreateDishScreen}
               options={({ navigation }: { navigation: StackNavigationProp<RootStackParamList> }) => ({
                 headerShown: true,
                 headerStyle: {

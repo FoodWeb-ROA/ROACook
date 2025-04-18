@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,16 +7,17 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
-import { RECIPES, CATEGORIES } from '../constants/dummyData';
 import { RootStackParamList } from '../navigation/types';
-import { Recipe } from '../types';
-import RecipeCard from '../components/RecipeCard';
+import { Dish, MenuSection } from '../types';
+import { useDishes, useMenuSections } from '../hooks/useSupabase';
+import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -24,33 +25,42 @@ type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 const SearchScreen = () => {
   const navigation = useNavigation<SearchScreenNavigationProp>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('All');
+  const [activeFilter, setActiveFilter] = useState<string | 'All'>('All');
 
-  const handleRecipePress = (recipe: Recipe) => {
-    navigation.navigate('RecipeDetails', { recipe });
+  const { dishes, loading: loadingDishes, error: errorDishes } = useDishes();
+  const { menuSections, loading: loadingSections, error: errorSections } = useMenuSections();
+
+  const handleDishPress = (dish: Dish) => {
+    navigation.navigate('DishDetails', { dishId: dish.dish_id });
   };
 
-  // Filter recipes based on search query and category filter
-  const filteredRecipes = RECIPES.filter(recipe => {
-    const matchesSearch = recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.ingredients.some(ingredient => 
-        ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    
-    const matchesCategory = activeFilter === 'All' || 
-      recipe.category === CATEGORIES.find(cat => cat.name === activeFilter)?.id;
-    
-    return matchesSearch && matchesCategory;
-  });
+  const filteredDishes = useMemo(() => {
+    if (!dishes) return [];
+    return dishes.filter(dish => {
+      const matchesSearch = dish.dish_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = activeFilter === 'All' || dish.menu_section_id === activeFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [dishes, searchQuery, activeFilter]);
 
-  // Get all category names for filter
-  const filterOptions = ['All', ...CATEGORIES.map(category => category.name)];
+  const filterOptions = useMemo(() => {
+    if (!menuSections) return ['All'];
+    return ['All', ...menuSections.filter(s => s.name && s.menu_section_id).map(section => ({ 
+      id: section.menu_section_id, 
+      name: section.name 
+    }))];
+  }, [menuSections]);
+
+  const isLoading = loadingDishes || loadingSections;
+  const hasError = errorDishes || errorSections;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <AppHeader
-        title="Search Recipes"
+        title="Search Dishes"
         showBackButton={false}
       />
       
@@ -59,7 +69,7 @@ const SearchScreen = () => {
           <MaterialCommunityIcons name="magnify" size={24} color={COLORS.textLight} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by recipe name or ingredient"
+            placeholder="Search by dish name"
             placeholderTextColor={COLORS.placeholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -71,43 +81,57 @@ const SearchScreen = () => {
           )}
         </View>
         
-        <FlatList
-          data={filterOptions}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={[
-                styles.filterButton,
-                activeFilter === item && styles.activeFilterButton
-              ]}
-              onPress={() => setActiveFilter(item)}
-            >
-              <Text 
-                style={[
-                  styles.filterButtonText,
-                  activeFilter === item && styles.activeFilterText
-                ]}
-              >
-                {item}
-              </Text>
-            </TouchableOpacity>
-          )}
-          keyExtractor={(item) => item}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersContainer}
-        />
+        {!loadingSections && !errorSections && filterOptions.length > 1 && (
+          <FlatList
+            data={filterOptions}
+            renderItem={({ item }) => {
+              const id = typeof item === 'string' ? item : item.id;
+              const name = typeof item === 'string' ? item : item.name;
+              return (
+                <TouchableOpacity 
+                  style={[
+                    styles.filterButton,
+                    activeFilter === id && styles.activeFilterButton
+                  ]}
+                  onPress={() => setActiveFilter(id)}
+                >
+                  <Text 
+                    style={[
+                      styles.filterButtonText,
+                      activeFilter === id && styles.activeFilterText
+                    ]}
+                  >
+                    {name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+            keyExtractor={(item) => (typeof item === 'string' ? item : item.id)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersContainer}
+          />
+        )}
       </View>
       
-      {filteredRecipes.length > 0 ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+           <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : hasError ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.errorText}>Error loading data. Please try again.</Text>
+        </View>
+      ) : filteredDishes.length > 0 ? (
         <FlatList
-          data={filteredRecipes}
+          data={filteredDishes}
           renderItem={({ item }) => (
-            <RecipeCard
-              recipe={item}
-              onPress={handleRecipePress}
+            <DishCard
+              dish={item}
+              onPress={handleDishPress}
             />
           )}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.dish_id}
           contentContainerStyle={styles.listContent}
         />
       ) : (
@@ -118,10 +142,11 @@ const SearchScreen = () => {
             color={COLORS.textLight} 
           />
           <Text style={styles.emptyText}>
-            No recipes found for "{searchQuery}"
+            No dishes found {searchQuery ? `for "${searchQuery}"` : ''}
+            {activeFilter !== 'All' ? ` in selected category` : ''}
           </Text>
           <Text style={styles.emptySubtext}>
-            Try searching for another recipe or ingredient
+            Try adjusting your search or filter
           </Text>
         </View>
       )}
@@ -148,44 +173,52 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.radius,
     paddingHorizontal: SIZES.padding,
-    paddingVertical: SIZES.padding / 2,
+    paddingVertical: SIZES.padding * 0.75,
     marginBottom: SIZES.padding,
   },
   searchInput: {
     flex: 1,
     marginLeft: SIZES.padding,
-    fontSize: 16,
+    fontSize: SIZES.font,
     color: COLORS.text,
+    height: 24,
+    lineHeight: 24,
   },
   filtersContainer: {
-    paddingVertical: SIZES.padding / 2,
+    paddingBottom: SIZES.padding,
   },
   filterButton: {
-    paddingHorizontal: SIZES.padding,
+    paddingHorizontal: SIZES.padding * 1.5,
     paddingVertical: SIZES.base,
-    borderRadius: SIZES.radius,
+    borderRadius: SIZES.radius * 2,
     backgroundColor: COLORS.surface,
     marginRight: SIZES.base,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   activeFilterButton: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterButtonText: {
     ...FONTS.body3,
     color: COLORS.text,
+    fontWeight: '500',
   },
   activeFilterText: {
     color: COLORS.white,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   listContent: {
     padding: SIZES.padding * 2,
+    paddingBottom: SIZES.padding * 6,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: SIZES.padding * 2,
+    marginTop: -SIZES.padding * 4,
   },
   emptyText: {
     ...FONTS.h3,
@@ -194,10 +227,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptySubtext: {
-    ...FONTS.body2,
+    ...FONTS.body3,
     color: COLORS.textLight,
     marginTop: SIZES.base,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    ...FONTS.body3,
+    color: COLORS.error,
+    textAlign: 'center',
+    padding: SIZES.padding * 2,
   },
 });
 

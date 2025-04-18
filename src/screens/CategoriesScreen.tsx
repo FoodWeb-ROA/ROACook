@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { Category } from '../types';
+import { MenuSection } from '../types';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
 import AppHeader from '../components/AppHeader';
@@ -27,14 +27,7 @@ const CategoriesScreen = () => {
   const navigation = useNavigation<CategoriesScreenNavigationProp>();
   const { menuSections, loading, error, refresh } = useMenuSections();
   
-  // Map menu sections to the format expected by CategoryCard
-  const categories = menuSections?.map(section => ({
-    menu_section_id: section.menu_section_id,
-    name: section.name,
-    icon: 'silverware-fork-knife' // Default icon
-  })) || [];
-
-  const handleCategoryPress = (category: Category) => {
+  const handleCategoryPress = (category: MenuSection) => {
     navigation.navigate('CategoryRecipes', {
       categoryId: category.menu_section_id,
       categoryName: category.name,
@@ -43,11 +36,16 @@ const CategoriesScreen = () => {
 
   const handleAddSection = async (sectionName: string) => {
     try {
-      // Insert the new section with ONLY the name field
-      // Let PostgreSQL handle ID assignment automatically through its sequence
+      // TODO: Replace placeholder with actual logic to get kitchen_id
+      const placeholderKitchenId = 'YOUR_DEFAULT_KITCHEN_ID_HERE'; 
+      if (placeholderKitchenId === 'YOUR_DEFAULT_KITCHEN_ID_HERE') {
+          console.warn('Using placeholder kitchen ID in handleAddSection (CategoriesScreen)');
+      }
+
       const { data, error } = await supabase
         .from('menu_section')
-        .insert({ name: sectionName }) // Only specify the name, omit the ID entirely
+        // Provide the required kitchen_id
+        .insert({ name: sectionName, kitchen_id: placeholderKitchenId }) 
         .select()
         .single();
       
@@ -87,7 +85,7 @@ const CategoriesScreen = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <AppHeader 
-        title="Recipe Categories"
+        title="Categories"
         showBackButton={true}
       />
       
@@ -100,15 +98,14 @@ const CategoriesScreen = () => {
       ) : (
         <ScrollView contentContainerStyle={styles.listContent}>
           <View style={styles.categoriesGrid}>
-            {categories.map(category => (
+            {menuSections?.map(section => (
               <CategoryCard
-                key={category.menu_section_id}
-                category={category}
+                key={section.menu_section_id}
+                category={section}
                 onPress={handleCategoryPress}
               />
             ))}
             
-            {/* Add Category Card - explicitly rendered */}
             <AddCategoryCard onAdd={handleAddSection} />
           </View>
         </ScrollView>

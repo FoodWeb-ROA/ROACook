@@ -56,6 +56,9 @@ export type AssembledComponentData = {
     prepIngredients: PreparationIngredient[] | undefined; // Already transformed in the hook
 };
 
+// Update combined data type for transformPreparation input
+export type FetchedPreparationDataCombined = FetchedIngredientDetail & FetchedPreparationDetail & { amount: number };
+
 // -- Export Transformation Functions --
 
 /**
@@ -114,28 +117,29 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
 
 /**
  * Transform a preparation from the COMBINED ingredient + preparation data 
- * passed from useDishDetail hook (or potentially usePreparationDetail)
+ * (Now includes yield amount from ingredient table)
  */
-export function transformPreparation(combinedData: FetchedIngredientDetail & FetchedPreparationDetail): Preparation {
-  // This function now expects the merged data 
+export function transformPreparation(combinedData: FetchedPreparationDataCombined | null): Preparation { 
   if (!combinedData) return { 
       preparation_id: '',
       name: 'Unknown Preparation',
       directions: null,
       total_time: null,
       yield_unit: transformUnit(null),
+      yield_amount: null, // Add default yield_amount
       ingredients: [],
       cooking_notes: null 
-    }; // Add default structure
+    };
 
   return {
-    preparation_id: combinedData.preparation_id, // from FetchedPreparationDetail part
-    name: combinedData.name, // from FetchedIngredientDetail part
-    directions: combinedData.directions || '', // from FetchedPreparationDetail part
-    total_time: combinedData.total_time || 0, // from FetchedPreparationDetail part
-    yield_unit: transformUnit(combinedData.yield_unit), // from FetchedPreparationDetail part
-    ingredients: [], // Placeholder - Ingredients added in the hook
-    cooking_notes: combinedData.cooking_notes, // from FetchedIngredientDetail part
+    preparation_id: combinedData.preparation_id, 
+    name: combinedData.name, 
+    directions: combinedData.directions || '', 
+    total_time: combinedData.total_time || 0, 
+    yield_unit: transformUnit(combinedData.yield_unit), 
+    yield_amount: combinedData.amount, // Get yield amount from ingredient data
+    ingredients: [], 
+    cooking_notes: combinedData.cooking_notes, 
   };
 }
 
@@ -160,13 +164,28 @@ export function transformPreparationIngredient(dbIngredient: FetchedPreparationI
  * Transform an ingredient from the fetched data structure
  */
 export function transformIngredient(dbIngredient: FetchedIngredientDetail | DbIngredient | null): Ingredient {
-  if (!dbIngredient) return { ingredient_id: '', name: 'Unknown', cooking_notes: null, storage_location: null };
+  // Return a default structure matching Ingredient type if input is null
+  if (!dbIngredient) return { 
+      ingredient_id: '', 
+      name: 'Unknown', 
+      cooking_notes: null, 
+      storage_location: null,
+      amount: 0,          // Add default required fields
+      created_at: '',    // Use appropriate default (e.g., empty string, epoch date)
+      synonyms: null,
+      unit_id: '',
+      updated_at: '',
+      isPreparation: false, // Add optional fields with defaults
+      base_unit: null
+    };
   
+  // Return all properties from dbIngredient, ensuring required fields exist
+  // The `Ingredient` type in types.ts should closely match DbIngredient + optional fields
   return {
-    ingredient_id: dbIngredient.ingredient_id,
-    name: dbIngredient.name,
-    cooking_notes: dbIngredient.cooking_notes,
-    storage_location: dbIngredient.storage_location,
+    ...dbIngredient, // Spread all properties from the DB object
+    // Ensure optional fields added by hooks are handled or defaulted if necessary
+    // isPreparation: (dbIngredient as any).isPreparation ?? false, // Example if isPreparation was added before transform
+    // base_unit: transformUnit((dbIngredient as FetchedIngredientDetail).base_unit) // Example if transforming nested unit
   };
 }
 
@@ -187,12 +206,19 @@ export function transformUnit(dbUnit: DbUnit | null | undefined): Unit { // Allo
 /**
  * Transform a menu section from the fetched data structure
  */
-export function transformMenuSection(dbMenuSection: DbMenuSection | null): MenuSection { // Input is simpler now
-  if (!dbMenuSection) return { menu_section_id: '', name: 'Uncategorized' };
+export function transformMenuSection(dbMenuSection: DbMenuSection | null): MenuSection { 
+  // Add kitchen_id to the default return object
+  if (!dbMenuSection) return { 
+      menu_section_id: '', 
+      name: 'Uncategorized', 
+      kitchen_id: '' // Add default kitchen_id
+    };
   
+  // Include kitchen_id in the returned object
   return {
     menu_section_id: dbMenuSection.menu_section_id,
-    name: dbMenuSection.name
+    name: dbMenuSection.name,
+    kitchen_id: dbMenuSection.kitchen_id // Include kitchen_id
   };
 }
 
