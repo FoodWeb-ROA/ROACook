@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { fetchAllData, fetchRecipesWithRelatedData } from '../src/data/fetchDatabase';
+import { fetchAllData, fetchDishesWithRelatedData } from '../src/data/fetchDatabase';
 
 // Create output directory if it doesn't exist
 const outputDir = path.join(__dirname, '../exports');
@@ -10,7 +10,7 @@ if (!fs.existsSync(outputDir)) {
 
 async function exportData() {
   try {
-    console.log('Fetching all database data...');
+    console.log('Fetching all relevant database data...');
     
     // Fetch all data
     const allData = await fetchAllData();
@@ -25,14 +25,14 @@ async function exportData() {
     // Export all data to a single file
     const allDataPath = path.join(outputDir, 'all-data.json');
     fs.writeFileSync(allDataPath, JSON.stringify(allData, null, 2));
-    console.log(`Exported complete database to ${allDataPath}`);
+    console.log(`Exported complete relevant database tables to ${allDataPath}`);
     
-    // Fetch and export recipes with related data
-    console.log('Fetching recipes with related data...');
-    const recipesWithData = await fetchRecipesWithRelatedData();
-    const recipesPath = path.join(outputDir, 'recipes-with-related-data.json');
-    fs.writeFileSync(recipesPath, JSON.stringify(recipesWithData, null, 2));
-    console.log(`Exported recipes with related data to ${recipesPath}`);
+    // Fetch and export dishes with related data
+    console.log('Fetching dishes with related data...');
+    const dishesWithData = await fetchDishesWithRelatedData();
+    const dishesPath = path.join(outputDir, 'dishes-with-related-data.json');
+    fs.writeFileSync(dishesPath, JSON.stringify(dishesWithData, null, 2));
+    console.log(`Exported dishes with related data to ${dishesPath}`);
     
     console.log('Data export completed successfully!');
   } catch (error) {
