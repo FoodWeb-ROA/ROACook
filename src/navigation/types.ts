@@ -1,4 +1,4 @@
-import { Category, Preparation, Dish, MenuSection, Unit, Ingredient } from '../types';
+import { Category, Preparation, Dish, MenuSection, Unit, Ingredient, ParsedRecipe } from '../types';
 import { DrawerParamList } from './AppNavigator';
 
 export type RootStackParamList = {
@@ -16,4 +16,7 @@ export type RootStackParamList = {
   Support: undefined;
   MainDrawer: { screen: keyof DrawerParamList };
   CreateDish: undefined;
+  ConfirmParsedRecipe: { parsedRecipes: ParsedRecipe[] };
 };
+
+// Ensure no duplicate DrawerParamList export/declaration exists below

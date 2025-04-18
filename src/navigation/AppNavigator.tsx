@@ -17,6 +17,7 @@ import DishDetailScreen from '../screens/DishDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
 import CreateDishScreen from '../screens/CreateDishScreen';
+import ConfirmParsedRecipeScreen from '../screens/ConfirmParsedRecipeScreen';
 
 // Types
 import { RootStackParamList } from './types';
@@ -132,6 +133,14 @@ const AppNavigator = () => {
                   </TouchableOpacity>
                 ),
               })}
+            />
+            <Stack.Screen
+              name="ConfirmParsedRecipe"
+              component={ConfirmParsedRecipeScreen}
+              options={{ 
+                headerShown: true,
+                title: 'Confirm Recipe' 
+              }}
             />
           </>
         ) : (

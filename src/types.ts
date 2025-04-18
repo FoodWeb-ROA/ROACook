@@ -103,3 +103,38 @@ export type UserType = {
   id: number;
   name: string;
 };
+
+// --- Types related to Recipe Parser Output ---
+
+// Interface for a component returned by the parser (can be raw or prep)
+// Note: Units are strings initially, need mapping/validation later.
+export interface ParsedComponent {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  notes?: string | null;
+  // Fields specific to Preparations identified by the parser
+  isPreparation?: boolean; // Flag to distinguish
+  ingredients?: ParsedComponent[]; // Nested components if it's a prep
+  directions?: string[]; // Directions if it's a prep
+  yield_quantity?: number | null;
+  yield_unit?: string | null;
+  total_time_minutes?: number | null; // Prep-specific time
+}
+
+// Interface for the overall Recipe structure returned by the parser
+export interface ParsedRecipe {
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  components: ParsedComponent[]; // List of raw ingredients or preparations
+  directions: string[];
+  prep_time_minutes?: number | null;
+  cook_time_minutes?: number | null;
+  total_time_minutes?: number | null; // Might be redundant if prep/cook exist
+  servings?: number | null;
+  serving_unit?: string | null;
+  notes?: string | null;
+}
+
+// --- End Recipe Parser Types --- 

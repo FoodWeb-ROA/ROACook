@@ -33,6 +33,7 @@ import AppHeader from '../components/AppHeader';
 import { useAuth } from '../context/AuthContext';
 import { useMenuSections, useDishes } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
+import { uploadRecipeImages } from '../services/recipeParser';
 
 // Helper function to chunk array with type annotations
 const chunk = <T,>(array: T[], size: number): T[][] => { // Add generic type T and return type T[][]
@@ -88,6 +89,8 @@ const HomeScreen = () => {
   // Use dynamic data loading hooks
   const { menuSections, loading: loadingCategories, error: categoriesError, refresh: refreshMenuSections } = useMenuSections();
   const { dishes, loading: loadingDishes, error: dishesError } = useDishes();
+
+  const [isParsing, setIsParsing] = useState(false);
 
   const handleCategoryPress = (category: Category) => {
     navigation.navigate('CategoryRecipes', {
@@ -210,113 +213,111 @@ const HomeScreen = () => {
 
   // --- Action Sheet Logic for Upload ---
   const handleUploadRecipePress = async () => {
-    const options = ['Upload File', 'Choose from Library', 'Take Photo', 'Cancel'];
+    const options = ['Choose from Library', 'Take Photo', 'Upload File', 'Cancel'];
     const cancelButtonIndex = 3;
-    const destructiveButtonIndex = -1; // No destructive action
 
     showActionSheetWithOptions(
       {
         options,
         cancelButtonIndex,
-        destructiveButtonIndex,
-        title: 'Upload Recipe',
-        message: 'Choose an upload method',
-        // You can customize colors here if needed using containerStyle, textStyle, etc.
+        title: 'Import Recipe',
+        message: 'Select images or a file containing the recipe',
       },
       async (selectedIndex?: number) => {
-        if (selectedIndex === undefined) return; // Handle case where nothing is selected
+        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex) return;
 
-        switch (selectedIndex) {
-          case 0: // Upload File
-            console.log('Upload File selected');
-            try {
-              const result = await DocumentPicker.getDocumentAsync({
-                // type: '*/*', // Allow all file types or specify (e.g., 'application/pdf', 'text/plain')
-                copyToCacheDirectory: false, // Saves memory if you only need the URI
-              });
-              console.log('Document Picker Result:', JSON.stringify(result));
-              if (!result.canceled && result.assets && result.assets.length > 0) {
-                const fileUri = result.assets[0].uri;
-                const fileName = result.assets[0].name;
-                // TODO: Implement actual file upload logic here with fileUri and fileName
-                Alert.alert('File Selected', `Selected: ${fileName}`);
-              } else {
-                console.log('Document picking cancelled or failed');
-              }
-            } catch (error) {
-              console.error('Error picking document:', error);
-              Alert.alert('Error', 'Could not pick document.');
+        let imageUris: string[] = [];
+
+        try {
+            if (selectedIndex === 0) {
+                let result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    quality: 0.8,
+                });
+
+                if (!result.canceled && result.assets) {
+                    imageUris = result.assets.map(asset => asset.uri);
+                }
+            } else if (selectedIndex === 1) {
+                const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+                if (permissionResult.granted === false) {
+                    Alert.alert("Permission Required", "Camera access is needed to take a photo.");
+                    return;
+                }
+
+                let result = await ImagePicker.launchCameraAsync({
+                    quality: 0.8,
+                });
+
+                if (!result.canceled && result.assets) {
+                    imageUris = [result.assets[0].uri];
+                }
+            } else if (selectedIndex === 2) {
+                console.log('Upload File selected');
+                 try {
+                    const result = await DocumentPicker.getDocumentAsync({
+                        copyToCacheDirectory: false, 
+                    });
+                    console.log('Document Picker Result:', JSON.stringify(result));
+                    if (!result.canceled && result.assets && result.assets.length > 0) {
+                        const asset = result.assets[0];
+                        if (asset.mimeType?.startsWith('image/')) {
+                            imageUris = [asset.uri];
+                        } else {
+                           Alert.alert('File Type Note', `Selected: ${asset.name}. Parsing non-image files via this method is not fully supported yet.`);
+                        }
+                    } else {
+                        console.log('Document picking cancelled or failed');
+                    }
+                } catch (error) {
+                    console.error('Error picking document:', error);
+                    Alert.alert('Error', 'Could not pick document.');
+                }
             }
-            break;
 
-          case 1: // Choose from Library
-            console.log('Choose from Library selected');
-            try {
-              const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (!permissionResult.granted) {
-                Alert.alert('Permission Required', 'Allow access to your photos to choose an image.');
-                return;
-              }
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 1,
-              });
-              console.log('Image Library Result:', JSON.stringify(result));
-              if (!result.canceled && result.assets && result.assets.length > 0) {
-                const imageUri = result.assets[0].uri;
-                // TODO: Implement actual image upload logic here with imageUri
-                Alert.alert('Image Selected', 'Ready to upload from library.');
-              } else {
-                console.log('Image picking cancelled or failed');
-              }
-            } catch (error) {
-              console.error('Error picking image from library:', error);
-              Alert.alert('Error', 'Could not select image from library.');
+            if (imageUris.length > 0) {
+                setIsParsing(true);
+                try {
+                    const parsedRecipes = await uploadRecipeImages(imageUris);
+                    console.log('Parsed Recipes:', parsedRecipes);
+                    if (parsedRecipes && parsedRecipes.length > 0) {
+                        navigation.navigate('ConfirmParsedRecipe', { parsedRecipes });
+                    } else {
+                        Alert.alert('Parsing Failed', 'Could not extract recipes from the provided image(s).');
+                    }
+                } catch (parseError: any) {
+                    console.error('Error parsing recipe images:', parseError);
+                    Alert.alert('Parsing Error', parseError.message || 'An error occurred during parsing.');
+                }
+                finally {
+                    setIsParsing(false);
+                }
+            } else if (selectedIndex !== 2) {
+               console.log('No images selected or camera cancelled.');
             }
-            break;
 
-          case 2: // Take Photo
-            console.log('Take Photo selected');
-            try {
-              const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-              if (!permissionResult.granted) {
-                Alert.alert('Permission Required', 'Allow access to your camera to take a photo.');
-                return;
-              }
-              const result = await ImagePicker.launchCameraAsync({
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 1,
-              });
-              console.log('Camera Result:', JSON.stringify(result));
-              if (!result.canceled && result.assets && result.assets.length > 0) {
-                const imageUri = result.assets[0].uri;
-                // TODO: Implement actual image upload logic here with imageUri
-                Alert.alert('Photo Taken', 'Ready to upload captured photo.');
-              } else {
-                console.log('Camera capture cancelled or failed');
-              }
-            } catch (error) {
-              console.error('Error taking photo:', error);
-              Alert.alert('Error', 'Could not take photo.');
-            }
-            break;
-
-          case cancelButtonIndex:
-            console.log('Upload cancelled');
-            break;
+        } catch (error) {
+            console.error('Error during recipe import process:', error);
+            Alert.alert('Error', 'An unexpected error occurred.');
+            setIsParsing(false);
         }
       }
     );
   };
-  // --- End Action Sheet Logic ---
 
   // Function to open the drawer
   const openDrawerMenu = () => {
     navigation.openDrawer();
   };
+
+  const renderHeaderRight = () => (
+    <TouchableOpacity onPress={handleUploadRecipePress} style={styles.uploadButton} disabled={isParsing}>
+      {isParsing ? 
+        <ActivityIndicator size="small" color={COLORS.primary} /> : 
+        <MaterialCommunityIcons name="upload" size={28} color={COLORS.primary} />
+      }
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -325,6 +326,7 @@ const HomeScreen = () => {
         title="FoodWeb"
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
+        rightComponent={renderHeaderRight()}
       />
 
       <ScrollView
@@ -429,15 +431,6 @@ const HomeScreen = () => {
           <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
           <Text style={styles.floatingButtonText}>Create Dish</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.floatingButton, styles.uploadButton]}
-          onPress={handleUploadRecipePress}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="upload" size={20} color={COLORS.white} />
-          <Text style={styles.floatingButtonText}>Upload Recipe</Text>
-        </TouchableOpacity>
       </View>
       {/* End fixedFabContainer View */} 
 
@@ -507,9 +500,6 @@ const styles = StyleSheet.create({
   createButton: {
     backgroundColor: COLORS.tertiary,
   },
-  uploadButton: {
-    backgroundColor: COLORS.primary,
-  },
   floatingButtonText: {
     ...FONTS.body3,
     color: COLORS.white,
@@ -576,6 +566,9 @@ const styles = StyleSheet.create({
     height: CATEGORY_SECTION_HEIGHT,
     // Add other styles if needed, e.g., backgroundColor for debugging
     // backgroundColor: 'rgba(0, 255, 0, 0.1)', // Example background
+  },
+  uploadButton: {
+    padding: SIZES.base,
   },
 });
 
