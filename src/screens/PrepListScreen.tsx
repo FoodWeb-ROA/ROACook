@@ -18,6 +18,7 @@ import AppHeader from '../components/AppHeader';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { Preparation } from '../types';
 import { usePreparations } from '../hooks/useSupabase';
+import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
 
 type PrepListScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'PrepList'>;
 type PrepListScreenStackProp = StackNavigationProp<RootStackParamList>;
@@ -48,7 +49,7 @@ const PrepListScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaViewRN style={styles.safeArea}>
       <StatusBar style="dark" />
       <AppHeader
         title="Preparations List"
@@ -56,29 +57,34 @@ const PrepListScreen = () => {
         onMenuPress={openDrawerMenu}
       />
       
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : error ? (
-        <Text style={styles.errorText}>Error loading preparations</Text>
-      ) : (
-        <FlatList
-          data={preparations}
-          renderItem={renderPreparationItem}
-          keyExtractor={(item) => item.preparation_id}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={<Text style={styles.emptyText}>No preparations found.</Text>}
-        />
-      )}
-    </SafeAreaView>
+      <View style={styles.container}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : error ? (
+          <Text style={styles.errorText}>Error loading preparations</Text>
+        ) : (
+          <FlatList
+            data={preparations}
+            renderItem={renderPreparationItem}
+            keyExtractor={(item) => item.preparation_id}
+            contentContainerStyle={styles.listContainer}
+            ListEmptyComponent={<Text style={styles.emptyText}>No preparations found.</Text>}
+          />
+        )}
+      </View>
+    </SafeAreaViewRN>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  container: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

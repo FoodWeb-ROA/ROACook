@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -104,23 +105,23 @@ const PreparationDetailScreen = () => {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
+      <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Loading..." showBackButton={true} />
+        <AppHeader title="Loading Preparation..." showBackButton={true} />
         <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !preparation) {
     return (
-      <View style={[styles.container, styles.errorContainer]}>
+      <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
         <AppHeader title="Error" showBackButton={true} />
         <Text style={styles.errorText}>
           {error ? error.message : "Preparation not found"}
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -131,7 +132,7 @@ const PreparationDetailScreen = () => {
   const yieldUnitAbbreviation = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <AppHeader
         title={preparation.name || 'Preparation'}
@@ -257,14 +258,20 @@ const PreparationDetailScreen = () => {
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    paddingBottom: SIZES.padding * 3,
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -280,12 +287,6 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     textAlign: 'center',
     marginTop: 20,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContainer: {
-    paddingBottom: SIZES.padding * 3,
   },
   preparationImage: {
     width: '100%',

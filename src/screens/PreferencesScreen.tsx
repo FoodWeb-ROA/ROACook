@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
@@ -54,7 +54,7 @@ const PreferencesScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <AppHeader
         title="Preferences"
@@ -62,7 +62,7 @@ const PreferencesScreen = () => {
         onMenuPress={openDrawerMenu}
       />
       
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.container}>
         <View style={styles.section}>
           {renderSettingItem('theme-light-dark', 'Dark Mode', darkMode, setDarkMode)}
           {renderSettingItem('bell-outline', 'Notifications', notifications, setNotifications)}
@@ -75,11 +75,11 @@ const PreferencesScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  scrollView: {
+  container: {
     flex: 1,
   },
   section: {

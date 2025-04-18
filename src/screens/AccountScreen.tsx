@@ -18,6 +18,7 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
+import { useAuth } from '../context/AuthContext';
 
 // Define composite navigation prop type
 type AccountScreenNavigationProp = CompositeNavigationProp<
@@ -27,6 +28,7 @@ type AccountScreenNavigationProp = CompositeNavigationProp<
 
 const AccountScreen = () => {
   const navigation = useNavigation<AccountScreenNavigationProp>();
+  const { user } = useAuth();
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
@@ -77,26 +79,21 @@ const AccountScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
-      {/* Update AppHeader props */}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
       <AppHeader
         title="Account"
-        showMenuButton={true} // Show menu button instead of back button
-        onMenuPress={openDrawerMenu} // Handle menu press
+        showMenuButton={true}
+        onMenuPress={openDrawerMenu}
       />
       
-      <ScrollView style={styles.scrollView}>
-        {/* Account Section from SettingsScreen */}
+      <ScrollView style={styles.container}>
         <View style={styles.section}>
-          {/* Remove section title if header title is sufficient */}
-          {/* <Text style={styles.sectionTitle}>Account</Text> */}
           {renderSettingItem('account-outline', 'Edit Profile', () => console.log('Edit Profile'))}
           {renderSettingItem('key-outline', 'Change Password', () => console.log('Change Password'))}
           {renderSettingItem('restaurant-outline', 'Manage Kitchens', () => console.log('Manage Kitchens'))}
         </View>
 
-        {/* Logout Button from SettingsScreen */}
         <TouchableOpacity 
           style={styles.logoutButton}
           onPress={handleLogout}
@@ -110,30 +107,26 @@ const AccountScreen = () => {
   );
 };
 
-// Copy relevant styles from SettingsScreen.tsx and adapt
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  scrollView: {
+  container: {
     flex: 1,
   },
   section: {
-    marginTop: SIZES.padding * 2, // Add margin top if section title removed
-    // marginBottom: SIZES.padding * 2, // Remove bottom margin if only one section
+    marginTop: SIZES.padding * 2,
   },
-  // sectionTitle removed for now
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: SIZES.padding * 1.5, // Adjusted padding
+    paddingVertical: SIZES.padding * 1.5,
     paddingHorizontal: SIZES.padding * 2,
-    backgroundColor: COLORS.surface, // Use surface color for items
+    backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    // Add top border for the first item if section title removed
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
@@ -142,25 +135,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   settingItemText: {
-    ...FONTS.body1, // Use slightly larger font
-    color: COLORS.text, // Use main text color
-    marginLeft: SIZES.padding * 1.5, // Adjusted margin
+    ...FONTS.body1,
+    color: COLORS.text,
+    marginLeft: SIZES.padding * 1.5,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: SIZES.padding * 2,
-    marginTop: SIZES.padding * 3, // Increased top margin
+    marginTop: SIZES.padding * 3,
     marginBottom: SIZES.padding,
-    padding: SIZES.padding * 1.2, // Adjusted padding
+    padding: SIZES.padding * 1.2,
     borderRadius: SIZES.radius,
-    backgroundColor: COLORS.surface, // Use surface color
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.error,
   },
   logoutText: {
-    ...FONTS.h4, // Make logout text bolder/larger
+    ...FONTS.h4,
     color: COLORS.error,
     marginLeft: SIZES.padding,
   },

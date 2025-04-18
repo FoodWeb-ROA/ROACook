@@ -13,6 +13,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -288,164 +289,166 @@ const CreateDishScreen = () => {
   const selectedServingUnitName = units.find(u => u.unit_id === servingUnitId)?.unit_name || 'Select Unit';
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0} // Adjust offset
-    >
-      <StatusBar style="dark" />
-      <AppHeader title="Create New Dish" showBackButton={true} /> 
-      
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        {/* Dish Name Input */}
-        <Text style={styles.label}>Dish Name *</Text>
-        <TextInput 
-            style={styles.input}
-            placeholder="Enter dish name"
-            placeholderTextColor={COLORS.placeholder}
-            value={dishName}
-            onChangeText={setDishName}
-        />
-
-        {/* Category Picker Trigger */}
-        <Text style={styles.label}>Category</Text>
-        <TouchableOpacity style={styles.pickerTrigger} onPress={openCategorySelector}>
-            <Text style={[styles.pickerText, !menuSectionId && styles.placeholderText]}>
-                {selectedCategoryName}
-            </Text>
-            <MaterialCommunityIcons name="chevron-down" size={24} color={COLORS.textLight} />
-        </TouchableOpacity>
-
-        {/* Serving Size & Unit Inputs Row */}
-        <View style={styles.rowContainer}>
-            <View style={styles.inputGroup}> 
-                <Text style={styles.label}>Serving Size</Text>
-                <TextInput 
-                    style={styles.input}
-                    placeholder="e.g., 4"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={servingSize}
-                    onChangeText={setServingSize}
-                    keyboardType="numeric"
-                />
-            </View>
-            <View style={styles.inputGroup}> 
-                <Text style={styles.label}>Serving Unit *</Text>
-                <TouchableOpacity style={styles.pickerTrigger} onPress={openServingUnitSelector}>
-                    <Text style={[styles.pickerText, !servingUnitId && styles.placeholderText]}>
-                         {selectedServingUnitName}
-                    </Text>
-                     <MaterialCommunityIcons name="chevron-down" size={24} color={COLORS.textLight} />
-                </TouchableOpacity>
-            </View>
-        </View>
-
-        {/* Total Time Inputs Row */}
-         <View style={styles.rowContainer}>
-            <View style={styles.inputGroup}> 
-                <Text style={styles.label}>Total Time (Hrs)</Text>
-                <TextInput 
-                    style={styles.input}
-                    placeholder="0"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={totalTimeHours}
-                    onChangeText={setTotalTimeHours}
-                    keyboardType="numeric"
-                    maxLength={2} // Limit hours input
-                />
-            </View>
-            <View style={styles.inputGroup}> 
-                <Text style={styles.label}>Total Time (Min)</Text>
-                <TextInput 
-                    style={styles.input}
-                    placeholder="30"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={totalTimeMinutes}
-                    onChangeText={setTotalTimeMinutes}
-                    keyboardType="numeric"
-                    maxLength={2} // Limit minutes input
-                />
-            </View>
-        </View>
-
-        {/* Directions Input */}
-        <Text style={styles.label}>Directions</Text>
-        <TextInput 
-            style={[styles.input, styles.textArea]}
-            placeholder="Enter step-by-step directions"
-            placeholderTextColor={COLORS.placeholder}
-            value={directions}
-            onChangeText={setDirections}
-            multiline
-        />
-
-        {/* Cooking Notes Input */}
-        <Text style={styles.label}>Cooking Notes</Text>
-        <TextInput 
-            style={[styles.input, styles.textArea, { minHeight: 60 }]} // Shorter text area
-            placeholder="Optional notes, tips, variations"
-            placeholderTextColor={COLORS.placeholder}
-            value={cookingNotes}
-            onChangeText={setCookingNotes}
-            multiline
-        />
-
-        {/* --- Components Section --- */}
-        <Text style={styles.sectionTitle}>Components</Text>
-        <FlatList
-            data={components}
-            keyExtractor={(item) => item.key}
-            renderItem={({ item }) => (
-                <View style={styles.componentItemContainer}>
-                    <Text style={styles.componentNameText}>{item.name} {item.isPreparation ? '(Prep)' : ''}</Text>
-                    <View style={styles.componentControlsContainer}>
-                        <TextInput 
-                            style={styles.componentInputAmount}
-                            placeholder="Amt"
-                            placeholderTextColor={COLORS.placeholder}
-                            value={item.amount}
-                            onChangeText={(value) => handleComponentUpdate(item.key, 'amount', value)}
-                            keyboardType="numeric"
-                        />
-                        {/* Unit Picker Trigger for Component */}
-                        <TouchableOpacity 
-                            style={styles.componentUnitTrigger}
-                            onPress={() => openComponentUnitSelector(item.key)} 
-                        >
-                            <Text style={[styles.pickerText, !item.unit_id && styles.placeholderText]}>
-                                {units.find(u => u.unit_id === item.unit_id)?.abbreviation || 'Unit'}
-                            </Text>
-                             <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
-                        </TouchableOpacity>
-                        {/* Remove Button */}
-                        <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButton}>
-                            <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            )}
-            ListEmptyComponent={<Text style={styles.emptyListText}>No components added yet.</Text>}
-            // Disable scrolling within the main ScrollView
-            scrollEnabled={false} 
-        />
-
-        <TouchableOpacity 
-            style={styles.addButton} 
-            onPress={() => setComponentSearchModalVisible(true)}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled" // Closes keyboard when tapping outside inputs
         >
-            <Text style={styles.addButtonText}>+ Add Component</Text>
-        </TouchableOpacity>
+          {/* Dish Name Input */}
+          <Text style={styles.label}>Dish Name *</Text>
+          <TextInput 
+              style={styles.input}
+              placeholder="Enter dish name"
+              placeholderTextColor={COLORS.placeholder}
+              value={dishName}
+              onChangeText={setDishName}
+          />
 
-        <TouchableOpacity 
-            style={[styles.button, styles.saveButton]} 
-            onPress={handleSaveDish} 
-            disabled={submitting}
-        >
-            {submitting ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.buttonText}>Save Dish</Text>}
-        </TouchableOpacity>
+          {/* Category Picker Trigger */}
+          <Text style={styles.label}>Category</Text>
+          <TouchableOpacity style={styles.pickerTrigger} onPress={openCategorySelector}>
+              <Text style={[styles.pickerText, !menuSectionId && styles.placeholderText]}>
+                  {selectedCategoryName}
+              </Text>
+              <MaterialCommunityIcons name="chevron-down" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
 
-      </ScrollView>
+          {/* Serving Size & Unit Inputs Row */}
+          <View style={styles.rowContainer}>
+              <View style={styles.inputGroup}> 
+                  <Text style={styles.label}>Serving Size</Text>
+                  <TextInput 
+                      style={styles.input}
+                      placeholder="e.g., 4"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={servingSize}
+                      onChangeText={setServingSize}
+                      keyboardType="numeric"
+                  />
+              </View>
+              <View style={styles.inputGroup}> 
+                  <Text style={styles.label}>Serving Unit *</Text>
+                  <TouchableOpacity style={styles.pickerTrigger} onPress={openServingUnitSelector}>
+                      <Text style={[styles.pickerText, !servingUnitId && styles.placeholderText]}>
+                           {selectedServingUnitName}
+                      </Text>
+                       <MaterialCommunityIcons name="chevron-down" size={24} color={COLORS.textLight} />
+                  </TouchableOpacity>
+              </View>
+          </View>
+
+          {/* Total Time Inputs Row */}
+           <View style={styles.rowContainer}>
+              <View style={styles.inputGroup}> 
+                  <Text style={styles.label}>Total Time (Hrs)</Text>
+                  <TextInput 
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={totalTimeHours}
+                      onChangeText={setTotalTimeHours}
+                      keyboardType="numeric"
+                      maxLength={2} // Limit hours input
+                  />
+              </View>
+              <View style={styles.inputGroup}> 
+                  <Text style={styles.label}>Total Time (Min)</Text>
+                  <TextInput 
+                      style={styles.input}
+                      placeholder="30"
+                      placeholderTextColor={COLORS.placeholder}
+                      value={totalTimeMinutes}
+                      onChangeText={setTotalTimeMinutes}
+                      keyboardType="numeric"
+                      maxLength={2} // Limit minutes input
+                  />
+              </View>
+          </View>
+
+          {/* Directions Input */}
+          <Text style={styles.label}>Directions</Text>
+          <TextInput 
+              style={[styles.input, styles.textArea]}
+              placeholder="Enter step-by-step directions"
+              placeholderTextColor={COLORS.placeholder}
+              value={directions}
+              onChangeText={setDirections}
+              multiline
+          />
+
+          {/* Cooking Notes Input */}
+          <Text style={styles.label}>Cooking Notes</Text>
+          <TextInput 
+              style={[styles.input, styles.textArea, { minHeight: 60 }]} // Shorter text area
+              placeholder="Optional notes, tips, variations"
+              placeholderTextColor={COLORS.placeholder}
+              value={cookingNotes}
+              onChangeText={setCookingNotes}
+              multiline
+          />
+
+          {/* --- Components Section --- */}
+          <Text style={styles.sectionTitle}>Components</Text>
+          <FlatList
+              data={components}
+              keyExtractor={(item) => item.key}
+              renderItem={({ item }) => (
+                  <View style={styles.componentItemContainer}>
+                      <Text style={styles.componentNameText}>{item.name} {item.isPreparation ? '(Prep)' : ''}</Text>
+                      <View style={styles.componentControlsContainer}>
+                          <TextInput 
+                              style={styles.componentInputAmount}
+                              placeholder="Amt"
+                              placeholderTextColor={COLORS.placeholder}
+                              value={item.amount}
+                              onChangeText={(value) => handleComponentUpdate(item.key, 'amount', value)}
+                              keyboardType="numeric"
+                          />
+                          {/* Unit Picker Trigger for Component */}
+                          <TouchableOpacity 
+                              style={styles.componentUnitTrigger}
+                              onPress={() => openComponentUnitSelector(item.key)} 
+                          >
+                              <Text style={[styles.pickerText, !item.unit_id && styles.placeholderText]}>
+                                  {units.find(u => u.unit_id === item.unit_id)?.abbreviation || 'Unit'}
+                              </Text>
+                               <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
+                          </TouchableOpacity>
+                          {/* Remove Button */}
+                          <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButton}>
+                              <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
+                          </TouchableOpacity>
+                      </View>
+                  </View>
+              )}
+              ListEmptyComponent={<Text style={styles.emptyListText}>No components added yet.</Text>}
+              // Disable scrolling within the main ScrollView
+              scrollEnabled={false} 
+          />
+
+          <TouchableOpacity 
+              style={styles.addButton} 
+              onPress={() => setComponentSearchModalVisible(true)}
+          >
+              <Text style={styles.addButtonText}>+ Add Component</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+              style={[styles.button, styles.saveButton]} 
+              onPress={handleSaveDish} 
+              disabled={submitting}
+          >
+              {submitting ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.buttonText}>Save Dish</Text>}
+          </TouchableOpacity>
+
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* --- Modals --- */}
       
@@ -587,42 +590,124 @@ const CreateDishScreen = () => {
             </View>
         </Modal>
 
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 // --- Styles (Keep existing styles, add/modify as needed) --- 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: COLORS.background,
+  container: {
+    flex: 1,
+    // Remove padding if added by SafeAreaView
+    // padding: SIZES.padding,
   },
-  scrollContent: {
-    padding: SIZES.padding * 2,
-    paddingBottom: 100, // Extra padding at bottom
+  scrollView: {
+    flex: 1,
   },
-  title: {
-    ...FONTS.h2,
-    color: COLORS.white,
-    marginBottom: SIZES.padding * 2,
-    textAlign: 'center',
+  scrollContainer: {
+    padding: SIZES.padding * 2, // Add padding inside scroll view
+    paddingBottom: SIZES.padding * 5, // Ensure space for save button
   },
-  sectionTitle: {
-      ...FONTS.h3,
-      color: COLORS.white,
-      marginTop: SIZES.padding * 2,
-      marginBottom: SIZES.padding,
-      borderBottomWidth: 1,
-      borderBottomColor: COLORS.border,
-      paddingBottom: SIZES.base,
+  inputGroup: {
+    marginBottom: SIZES.padding * 1.5,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  label: {
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    marginBottom: SIZES.base,
   },
   input: {
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding * 0.75,
+    ...FONTS.body3,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  pickerTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding * 0.75, // Match input padding
+    minHeight: 48, // Ensure consistent height with TextInput
+  },
+  pickerText: {
+    ...FONTS.body3,
+    color: COLORS.text,
+  },
+  placeholderText: {
+    color: COLORS.placeholder,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  modalContent: {
+    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding * 2,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    ...FONTS.h3,
+    color: COLORS.white,
+    marginBottom: SIZES.padding * 1.5,
+    textAlign: 'center',
+  },
+  modalItem: {
+    paddingVertical: SIZES.padding, 
+  },
+  modalItemText: { 
+    fontSize: SIZES.font,
+    color: COLORS.white,
+  },
+  closeButton: {
+    backgroundColor: COLORS.primary,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    marginTop: SIZES.padding * 2,
+  },
+  closeButtonText: {
+    ...FONTS.body3,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  emptyListText: { // Style for empty lists in modals or main list
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    textAlign: 'center',
+    paddingVertical: SIZES.padding * 2, // Add padding
+    fontStyle: 'italic',
+  },
+  searchInput: {
     backgroundColor: COLORS.surface,
     color: COLORS.text,
     paddingHorizontal: SIZES.padding,
@@ -633,9 +718,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top', // For Android
+  sectionTitle: {
+    ...FONTS.h3,
+    color: COLORS.text,
+    marginBottom: SIZES.padding,
+    marginTop: SIZES.base, 
+  },
+  componentItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SIZES.padding,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    marginBottom: SIZES.base, // Add space below each component item
+  },
+  componentNameText: {
+    ...FONTS.body3,
+    color: COLORS.text,
+    flex: 1, // Allow name to take up space
+    marginRight: SIZES.base,
+  },
+  componentControlsContainer: { // Container for amount, unit, remove
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  componentInputAmount: {
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
+    paddingHorizontal: SIZES.base,
+    paddingVertical: SIZES.base / 2,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minWidth: 50, 
+    textAlign: 'right',
+    fontSize: SIZES.font,
+  },
+  componentUnitTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.base,
+    paddingVertical: SIZES.base / 2, 
+    marginLeft: SIZES.base,
+    minHeight: 36, // Make trigger slightly shorter than amount input
+    minWidth: 60, // Ensure minimum width
+  },
+  removeButton: {
+    paddingLeft: SIZES.base, // Space before remove icon
   },
   button: {
     padding: SIZES.padding * 1.5,
@@ -644,8 +778,8 @@ const styles = StyleSheet.create({
     marginTop: SIZES.padding,
   },
   saveButton: {
-      backgroundColor: COLORS.primary,
-      ...SHADOWS.medium, // Add shadow for emphasis
+    backgroundColor: COLORS.primary,
+    ...SHADOWS.medium, // Add shadow for emphasis
   },
   buttonText: {
     ...FONTS.h3,
@@ -653,160 +787,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addButton: {
-      backgroundColor: COLORS.secondary,
-      borderColor: COLORS.primary,
-      borderWidth: 1,
-      padding: SIZES.padding,
-      borderRadius: SIZES.radius,
-      alignItems: 'center',
-      marginTop: SIZES.padding,
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    marginTop: SIZES.padding,
   },
   addButtonText: {
-      color: COLORS.primary,
-      ...FONTS.body3,
-      fontWeight: '600',
-  },
-  componentItemContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: SIZES.padding,
-      borderBottomWidth: 1,
-      borderBottomColor: COLORS.border,
-      marginBottom: SIZES.base, // Add space below each component item
-  },
-  componentNameText: {
-      ...FONTS.body3,
-      color: COLORS.white,
-      flex: 1, // Allow name to take up space
-      marginRight: SIZES.base,
-  },
-  componentControlsContainer: { // Container for amount, unit, remove
-      flexDirection: 'row',
-      alignItems: 'center',
-  },
-  componentInputAmount: {
-      backgroundColor: COLORS.surface,
-      color: COLORS.text,
-      paddingHorizontal: SIZES.base,
-      paddingVertical: SIZES.base / 2,
-      borderRadius: SIZES.radius,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      minWidth: 50, 
-      textAlign: 'right',
-      fontSize: SIZES.font,
-  },
-  componentUnitTrigger: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: COLORS.surface,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: SIZES.radius,
-      paddingHorizontal: SIZES.base,
-      paddingVertical: SIZES.base / 2, 
-      marginLeft: SIZES.base,
-      minHeight: 36, // Make trigger slightly shorter than amount input
-      minWidth: 60, // Ensure minimum width
-  },
-  removeButton: {
-      paddingLeft: SIZES.base, // Space before remove icon
-  },
-  label: {
-      ...FONTS.body3,
-      color: COLORS.textLight,
-      marginBottom: SIZES.base,
-      marginTop: SIZES.padding, // Add margin top
-  },
-  rowContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: SIZES.padding, // Add margin below row
-  },
-  inputGroup: {
-      flex: 1,
-      marginHorizontal: SIZES.base / 2, // Add horizontal spacing between groups
-  },
-  pickerTrigger: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: COLORS.surface,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: SIZES.radius,
-      paddingHorizontal: SIZES.padding,
-      paddingVertical: SIZES.padding * 0.75, // Match input padding
-      minHeight: 48, // Ensure consistent height with TextInput
-  },
-  pickerText: {
-      ...FONTS.body3,
-      color: COLORS.text,
-  },
-  placeholderText: {
-      color: COLORS.placeholder,
-  },
-  modalContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  modalContent: {
-      backgroundColor: COLORS.secondary,
-      borderRadius: SIZES.radius,
-      padding: SIZES.padding * 2,
-      width: '90%',
-      maxHeight: '80%',
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
-      elevation: 5,
-  },
-  modalTitle: {
-      ...FONTS.h3,
-      color: COLORS.white,
-      marginBottom: SIZES.padding * 1.5,
-      textAlign: 'center',
-  },
-  modalItem: {
-      paddingVertical: SIZES.padding, 
-  },
-  modalItemText: { 
-      fontSize: SIZES.font,
-      color: COLORS.white,
-  },
-  closeButton: {
-      backgroundColor: COLORS.primary,
-      padding: SIZES.padding,
-      borderRadius: SIZES.radius,
-      alignItems: 'center',
-      marginTop: SIZES.padding * 2,
-  },
-  closeButtonText: {
-      ...FONTS.body3,
-      color: COLORS.white,
-      fontWeight: '600',
-  },
-  emptyListText: { // Style for empty lists in modals or main list
+    color: COLORS.primary,
     ...FONTS.body3,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    paddingVertical: SIZES.padding * 2, // Add padding
-    fontStyle: 'italic',
+    fontWeight: '600',
   },
-  searchInput: {
-      backgroundColor: COLORS.surface,
-      color: COLORS.text,
-      paddingHorizontal: SIZES.padding,
-      paddingVertical: SIZES.padding * 0.75,
-      borderRadius: SIZES.radius,
-      marginBottom: SIZES.padding,
-      fontSize: SIZES.font,
-      borderWidth: 1,
-      borderColor: COLORS.border,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
 });
 

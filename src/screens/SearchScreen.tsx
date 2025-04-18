@@ -19,6 +19,7 @@ import { Dish, MenuSection } from '../types';
 import { useDishes, useMenuSections } from '../hooks/useSupabase';
 import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
+import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -57,107 +58,107 @@ const SearchScreen = () => {
   const hasError = errorDishes || errorSections;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaViewContext style={styles.safeArea}>
       <StatusBar style="dark" />
-      <AppHeader
-        title="Search Dishes"
-        showBackButton={false}
-      />
-      
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBarWrapper}>
-          <MaterialCommunityIcons name="magnify" size={24} color={COLORS.textLight} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by dish name"
-            placeholderTextColor={COLORS.placeholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <MaterialCommunityIcons name="close" size={20} color={COLORS.textLight} />
-            </TouchableOpacity>
+      <View style={styles.container}>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBarWrapper}>
+            <MaterialCommunityIcons name="magnify" size={24} color={COLORS.textLight} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by dish name"
+              placeholderTextColor={COLORS.placeholder}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <MaterialCommunityIcons name="close" size={20} color={COLORS.textLight} />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {!loadingSections && !errorSections && filterOptions.length > 1 && (
+            <FlatList
+              data={filterOptions}
+              renderItem={({ item }) => {
+                const id = typeof item === 'string' ? item : item.id;
+                const name = typeof item === 'string' ? item : item.name;
+                return (
+                  <TouchableOpacity 
+                    style={[
+                      styles.filterButton,
+                      activeFilter === id && styles.activeFilterButton
+                    ]}
+                    onPress={() => setActiveFilter(id)}
+                  >
+                    <Text 
+                      style={[
+                        styles.filterButtonText,
+                        activeFilter === id && styles.activeFilterText
+                      ]}
+                    >
+                      {name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+              keyExtractor={(item) => (typeof item === 'string' ? item : item.id)}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtersContainer}
+            />
           )}
         </View>
         
-        {!loadingSections && !errorSections && filterOptions.length > 1 && (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+             <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : hasError ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.errorText}>Error loading data. Please try again.</Text>
+          </View>
+        ) : filteredDishes.length > 0 ? (
           <FlatList
-            data={filterOptions}
-            renderItem={({ item }) => {
-              const id = typeof item === 'string' ? item : item.id;
-              const name = typeof item === 'string' ? item : item.name;
-              return (
-                <TouchableOpacity 
-                  style={[
-                    styles.filterButton,
-                    activeFilter === id && styles.activeFilterButton
-                  ]}
-                  onPress={() => setActiveFilter(id)}
-                >
-                  <Text 
-                    style={[
-                      styles.filterButtonText,
-                      activeFilter === id && styles.activeFilterText
-                    ]}
-                  >
-                    {name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            }}
-            keyExtractor={(item) => (typeof item === 'string' ? item : item.id)}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersContainer}
+            data={filteredDishes}
+            renderItem={({ item }) => (
+              <DishCard
+                dish={item}
+                onPress={handleDishPress}
+              />
+            )}
+            keyExtractor={(item) => item.dish_id}
+            contentContainerStyle={styles.listContent}
           />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons 
+              name="food-off" 
+              size={60} 
+              color={COLORS.textLight} 
+            />
+            <Text style={styles.emptyText}>
+              No dishes found {searchQuery ? `for "${searchQuery}"` : ''}
+              {activeFilter !== 'All' ? ` in selected category` : ''}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              Try adjusting your search or filter
+            </Text>
+          </View>
         )}
       </View>
-      
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-           <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : hasError ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.errorText}>Error loading data. Please try again.</Text>
-        </View>
-      ) : filteredDishes.length > 0 ? (
-        <FlatList
-          data={filteredDishes}
-          renderItem={({ item }) => (
-            <DishCard
-              dish={item}
-              onPress={handleDishPress}
-            />
-          )}
-          keyExtractor={(item) => item.dish_id}
-          contentContainerStyle={styles.listContent}
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons 
-            name="food-off" 
-            size={60} 
-            color={COLORS.textLight} 
-          />
-          <Text style={styles.emptyText}>
-            No dishes found {searchQuery ? `for "${searchQuery}"` : ''}
-            {activeFilter !== 'All' ? ` in selected category` : ''}
-          </Text>
-          <Text style={styles.emptySubtext}>
-            Try adjusting your search or filter
-          </Text>
-        </View>
-      )}
-    </SafeAreaView>
+    </SafeAreaViewContext>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  container: {
+    flex: 1,
   },
   searchContainer: {
     paddingHorizontal: SIZES.padding * 2,

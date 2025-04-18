@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
+import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
 
 // Define navigation prop type
 type SupportScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Support'>;
@@ -48,7 +49,7 @@ const SupportScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaViewRN style={styles.safeArea}>
       <StatusBar style="dark" />
       <AppHeader
         title="Support"
@@ -56,23 +57,23 @@ const SupportScreen = () => {
         onMenuPress={openDrawerMenu}
       />
       
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.container}>
         <View style={styles.section}>
           {renderSettingItem('help-circle-outline', 'Help & Support', () => console.log('Help & Support'))}
           {renderSettingItem('information-outline', 'About', () => console.log('About'))}
           {renderSettingItem('message-outline', 'Send Feedback', () => console.log('Send Feedback'))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaViewRN>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  scrollView: {
+  container: {
     flex: 1,
   },
   section: {

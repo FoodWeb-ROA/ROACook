@@ -27,8 +27,8 @@ export function useDishes(menuSectionId?: string) {
             serving_item,
             total_yield,
             directions,
-            menu_section:dishes_menu_section_id_fkey (*),
-            serving_unit:dishes_serving_unit_id_fkey (*)
+            menu_section:recipe_menu_section_id_fkey (*),
+            serving_unit:dishes_serving_unit_fkey (*)
           `);
         
         if (menuSectionId) {
@@ -49,8 +49,8 @@ export function useDishes(menuSectionId?: string) {
             .from('dish_components')
             .select(`
               *,
-              unit:dish_components_unit_id_fkey(*),
-              ingredient:dish_components_ingredient_id_fkey (
+              unit:fk_components_unit(*),
+              ingredient:fk_components_ing (
                 *,
                 base_unit:ingredients_unit_id_fkey ( * ),
                 preparation:preparations!preparation_id (
@@ -131,7 +131,7 @@ export function useDishDetail(dishId: string | undefined) {
         .from('dishes')
           .select(`
             *,
-          serving_unit:dishes_serving_unit_id_fkey (*)
+          serving_unit:dishes_serving_unit_fkey (*)
         `)
         .eq('dish_id', dishId)
         .single() as { data: FetchedDishData | null, error: any };

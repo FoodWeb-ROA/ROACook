@@ -21,6 +21,7 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { KITCHENS } from '../constants/dummyData';
 import { useAuth } from '../context/AuthContext';
+import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -102,161 +103,152 @@ const LoginScreen = () => {
   );
 
   return (
-    <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80' }}
-      style={styles.backgroundImage}
-    >
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoidView}
+    <SafeAreaViewContext style={styles.safeArea}>
+      <StatusBar style="light" />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.header}>
-              <MaterialCommunityIcons name="chef-hat" size={60} color={COLORS.white} />
-              <Text style={styles.title}>Chef's Recipes</Text>
-              <Text style={styles.subtitle}>Restaurant Recipe Management</Text>
-            </View>
-            
-            <View style={styles.formContainer}>
-              {showSearch ? (
-                <View style={styles.searchContainer}>
-                  <Text style={styles.formLabel}>Find Your Kitchen</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Search kitchen by name or location"
-                    placeholderTextColor={COLORS.placeholder}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                  />
-                  
-                  {searchQuery.length > 0 && (
-                    <View style={styles.resultsContainer}>
-                      {filteredKitchens.length > 0 ? (
-                        filteredKitchens.map(kitchen => (
-                          <TouchableOpacity 
-                            key={kitchen.id} 
-                            style={styles.resultItem}
-                            onPress={() => {
-                              setSearchQuery(kitchen.name);
-                              setShowSearch(false);
-                            }}
-                          >
-                            <Text style={styles.resultItemName}>{kitchen.name}</Text>
-                            <Text style={styles.resultItemLocation}>{kitchen.location}</Text>
-                          </TouchableOpacity>
-                        ))
-                      ) : (
-                        <Text style={styles.noResults}>No kitchens found</Text>
-                      )}
-                    </View>
-                  )}
-                  
-                  <TouchableOpacity 
-                    style={styles.backButton}
-                    onPress={() => setShowSearch(false)}
-                  >
-                    <Text style={styles.backButtonText}>Back to Login</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.formLabel}>
-                    {isSignUp ? 'Create Account' : 'Login to your kitchen'}
-                  </Text>
-                  
-                  {isSignUp && (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Username"
-                      placeholderTextColor={COLORS.placeholder}
-                      autoCapitalize="none"
-                      value={username}
-                      onChangeText={setUsername}
-                    />
-                  )}
-                  
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    placeholderTextColor={COLORS.placeholder}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={email}
-                    onChangeText={setEmail}
-                  />
-                  
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor={COLORS.placeholder}
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                  />
-                  
-                  <TouchableOpacity 
-                    style={[styles.loginButton, isLoading && styles.disabledButton]}
-                    onPress={isSignUp ? handleSignUp : handleLogin}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color={COLORS.white} />
+          <View style={styles.header}>
+            <MaterialCommunityIcons name="chef-hat" size={60} color={COLORS.white} />
+            <Text style={styles.title}>Chef's Recipes</Text>
+            <Text style={styles.subtitle}>Restaurant Recipe Management</Text>
+          </View>
+          
+          <View style={styles.formContainer}>
+            {showSearch ? (
+              <View style={styles.searchContainer}>
+                <Text style={styles.formLabel}>Find Your Kitchen</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Search kitchen by name or location"
+                  placeholderTextColor={COLORS.placeholder}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                
+                {searchQuery.length > 0 && (
+                  <View style={styles.resultsContainer}>
+                    {filteredKitchens.length > 0 ? (
+                      filteredKitchens.map(kitchen => (
+                        <TouchableOpacity 
+                          key={kitchen.name}
+                          style={styles.resultItem}
+                          onPress={() => {
+                            setSearchQuery(kitchen.name);
+                            setShowSearch(false);
+                          }}
+                        >
+                          <Text style={styles.resultItemName}>{kitchen.name}</Text>
+                          <Text style={styles.resultItemLocation}>{kitchen.location}</Text>
+                        </TouchableOpacity>
+                      ))
                     ) : (
-                      <Text style={styles.loginButtonText}>
-                        {isSignUp ? 'Sign Up' : 'Login'}
-                      </Text>
+                      <Text style={styles.noResults}>No kitchens found</Text>
                     )}
-                  </TouchableOpacity>
-                  
+                  </View>
+                )}
+                
+                <TouchableOpacity 
+                  style={styles.backButton}
+                  onPress={() => setShowSearch(false)}
+                >
+                  <Text style={styles.backButtonText}>Back to Login</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.formLabel}>
+                  {isSignUp ? 'Create Account' : 'Login to your kitchen'}
+                </Text>
+                
+                {isSignUp && (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    placeholderTextColor={COLORS.placeholder}
+                    autoCapitalize="none"
+                    value={username}
+                    onChangeText={setUsername}
+                  />
+                )}
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor={COLORS.placeholder}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={COLORS.placeholder}
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                
+                <TouchableOpacity 
+                  style={[styles.loginButton, isLoading && styles.disabledButton]}
+                  onPress={isSignUp ? handleSignUp : handleLogin}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={COLORS.white} />
+                  ) : (
+                    <Text style={styles.loginButtonText}>
+                      {isSignUp ? 'Sign Up' : 'Login'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.toggleAuthButton}
+                  onPress={() => {
+                    setIsSignUp(!isSignUp);
+                    setEmail('');
+                    setPassword('');
+                    setUsername('');
+                  }}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.toggleAuthText}>
+                    {isSignUp ? 'Already have an account? Login' : 'Don\'t have an account? Sign Up'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {!isSignUp && (
                   <TouchableOpacity 
-                    style={styles.toggleAuthButton}
-                    onPress={() => {
-                      setIsSignUp(!isSignUp);
-                      setEmail('');
-                      setPassword('');
-                      setUsername('');
-                    }}
+                    style={styles.searchKitchenButton}
+                    onPress={() => setShowSearch(true)}
                     disabled={isLoading}
                   >
-                    <Text style={styles.toggleAuthText}>
-                      {isSignUp ? 'Already have an account? Login' : 'Don\'t have an account? Sign Up'}
-                    </Text>
+                    <Text style={styles.searchKitchenText}>Search for kitchen</Text>
                   </TouchableOpacity>
-                  
-                  {!isSignUp && (
-                    <TouchableOpacity 
-                      style={styles.searchKitchenButton}
-                      onPress={() => setShowSearch(true)}
-                      disabled={isLoading}
-                    >
-                      <Text style={styles.searchKitchenText}>Search for kitchen</Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ImageBackground>
+                )}
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaViewContext>
   );
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {
+  safeArea: {
     flex: 1,
-    resizeMode: 'cover',
+    backgroundColor: COLORS.background,
   },
   container: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  keyboardAvoidView: {
     flex: 1,
   },
   scrollContainer: {

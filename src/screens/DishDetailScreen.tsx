@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -16,6 +17,7 @@ import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { Dish, DishComponent, Unit } from '../types';
 import AppHeader from '../components/AppHeader';
+import PreparationCard from '../components/PreparationCard';
 import { useDishDetail } from '../hooks/useSupabase';
 
 type MeasurementUnit = 
@@ -113,25 +115,44 @@ const DishDetailScreen = () => {
     });
   };
 
+  // Separate components into preparations and assembly ingredients
+  const preparationComponents = useMemo(() => 
+    dish?.components?.filter(c => c.isPreparation) || [], 
+    [dish?.components]
+  );
+  const assemblyComponents = useMemo(() => 
+    dish?.components?.filter(c => !c.isPreparation) || [], 
+    [dish?.components]
+  );
+
+  // Navigation handler for preparation press
+  const handlePreparationPress = (preparationId: string) => {
+    if (!preparationId) {
+      console.warn('Attempted to navigate to preparation with invalid ID');
+      return;
+    }
+    navigation.navigate('PreparationDetails', { preparationId });
+  };
+
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
+      <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />
         <AppHeader title="Loading Dish..." showBackButton={true} />
         <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !dish) {
     return (
-      <View style={[styles.container, styles.errorContainer]}>
+      <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
         <AppHeader title="Error" showBackButton={true} />
         <Text style={styles.errorText}>
           {error ? error.message : "Dish not found"}
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -158,7 +179,7 @@ const DishDetailScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <AppHeader
         title={dish.dish_name}
@@ -220,54 +241,76 @@ const DishDetailScreen = () => {
             </View>
           </View>
           
-          <View style={styles.ingredientsContainer}>
-            <Text style={styles.sectionTitle}>Components</Text>
-            {dish.components && dish.components.length > 0 ? dish.components.map((component) => {
-              const unitKey = (component.unit?.abbreviation || component.unit?.unit_name) as MeasurementUnit;
-              const isToggleable = component.unit && (unitOptions[unitKey]?.length || 0) > 1;
-              const displayUnit = (selectedUnit[component.ingredient_id] || component.unit?.abbreviation || component.unit?.unit_name) as MeasurementUnit;
-              
-              return (
-                <View key={component.ingredient_id} style={styles.ingredientItem}>
-                  <Text style={styles.ingredientName}>{component.ingredient_id || 'Unknown'}</Text>
-                  <TouchableOpacity 
-                    style={styles.ingredientQuantity}
-                    onPress={() => toggleUnit(component)}
-                    disabled={!isToggleable}
-                  >
-                    <Text style={styles.ingredientQuantityText}>
-                      {getDisplayValue(component)} {displayUnit}
-                    </Text>
-                    {isToggleable && (
-                      <MaterialCommunityIcons 
-                        name="swap-horizontal" 
-                        size={16} 
-                        color={COLORS.primary} 
-                      />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              );
-            }) : (
-              <Text style={styles.noItemsText}>No components listed for this dish.</Text>
-            )}
-          </View>
+          {/* --- Preparations Section --- */}
+          {preparationComponents.length > 0 && (
+            <View style={styles.sectionContainer}> 
+              <Text style={styles.sectionTitle}>Preparations</Text>
+              {preparationComponents.map((component) => (
+                <PreparationCard 
+                  key={component.ingredient_id} 
+                  component={component}
+                  onPress={() => handlePreparationPress(component.ingredient_id)}
+                />
+              ))}
+            </View>
+          )}
+
+          {/* --- Assembly Ingredients Section --- */}
+          {assemblyComponents.length > 0 && (
+            <View style={styles.sectionContainer}> 
+              <Text style={styles.sectionTitle}>Assembly Ingredients</Text>
+              {assemblyComponents.map((component) => {
+                const unitKey = (component.unit?.abbreviation || component.unit?.unit_name) as MeasurementUnit;
+                const isToggleable = component.unit && (unitOptions[unitKey]?.length || 0) > 1;
+                const displayUnit = (selectedUnit[component.ingredient_id] || component.unit?.abbreviation || component.unit?.unit_name) as MeasurementUnit;
+                
+                return (
+                  <View key={component.ingredient_id} style={styles.ingredientItem}>
+                    <Text style={styles.ingredientName}>{component.name || 'Unknown Ingredient'}</Text>
+                    <TouchableOpacity 
+                      style={styles.ingredientQuantity}
+                      onPress={() => toggleUnit(component)}
+                      disabled={!isToggleable}
+                    >
+                      <Text style={styles.ingredientQuantityText}>
+                        {getDisplayValue(component)} {displayUnit}
+                      </Text>
+                      {isToggleable && (
+                        <MaterialCommunityIcons 
+                          name="swap-horizontal" 
+                          size={16} 
+                          color={COLORS.primary} 
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Show message if NO components exist at all */}
+          {preparationComponents.length === 0 && assemblyComponents.length === 0 && (
+             <View style={styles.sectionContainer}> 
+                <Text style={styles.noIngredientsText}>No components listed for this dish.</Text>
+             </View>
+          )}
           
-          <View style={styles.instructionsContainer}>
-            <Text style={styles.sectionTitle}>Directions</Text>
-            
-            {directions.length > 0 ? directions.map((step: string, index: number) => (
-              <View key={`direction-${index}`} style={styles.instructionStep}>
-                <Text style={styles.instructionNumber}>{index + 1}.</Text>
-                <Text style={styles.instructionText}>{step}</Text>
-              </View>
-            )) : (
-              <Text style={styles.noItemsText}>No directions provided.</Text>
-            )}
-          </View>
+          {/* --- Directions Section --- */}
+          {directions.length > 0 && (
+            <View style={styles.sectionContainer}> 
+              <Text style={styles.sectionTitle}>Directions</Text>
+              {directions.map((step: string, index: number) => (
+                <Text key={index} style={styles.directionStep}>
+                  {`${index + 1}. ${step}`}
+                </Text>
+              ))}
+            </View>
+          )}
           
+          {/* --- Notes Section --- */}
           {dish.cooking_notes && (
-            <View style={styles.notesContainer}>
+            <View style={styles.sectionContainer}> 
               <Text style={styles.sectionTitle}>Notes</Text>
               <Text style={styles.notesText}>
                 {dish.cooking_notes}
@@ -276,14 +319,17 @@ const DishDetailScreen = () => {
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  container: {
+    flex: 1,
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -362,13 +408,14 @@ const styles = StyleSheet.create({
     ...FONTS.body2,
     color: COLORS.white,
   },
+  sectionContainer: {
+    marginVertical: SIZES.padding,
+    paddingHorizontal: SIZES.padding * 2,
+  },
   sectionTitle: {
     ...FONTS.h2,
     color: COLORS.white,
     marginBottom: SIZES.padding,
-  },
-  ingredientsContainer: {
-    marginVertical: SIZES.padding,
   },
   ingredientItem: {
     flexDirection: 'row',
@@ -382,6 +429,7 @@ const styles = StyleSheet.create({
     ...FONTS.body2,
     color: COLORS.white,
     flex: 1,
+    marginRight: SIZES.base,
   },
   ingredientQuantity: {
     flexDirection: 'row',
@@ -396,28 +444,11 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginRight: 4,
   },
-  instructionsContainer: {
-    marginVertical: SIZES.padding,
-  },
-  instructionStep: {
-    flexDirection: 'row',
-    marginBottom: SIZES.padding,
-  },
-  instructionNumber: {
-    ...FONTS.body3,
-    color: COLORS.primary,
-    fontWeight: 'bold',
-    marginRight: SIZES.padding,
-    minWidth: 20,
-  },
-  instructionText: {
+  directionStep: {
     ...FONTS.body3,
     color: COLORS.text,
-    flex: 1,
-    lineHeight: 22,
-  },
-  notesContainer: {
-    marginVertical: SIZES.padding,
+    marginBottom: SIZES.padding,
+    lineHeight: FONTS.body3.fontSize * 1.5,
   },
   notesText: {
     ...FONTS.body2,
@@ -426,8 +457,9 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
     ...SHADOWS.small,
+    lineHeight: FONTS.body2.fontSize * 1.5,
   },
-  noItemsText: {
+  noIngredientsText: {
     ...FONTS.body3,
     color: COLORS.textLight,
     textAlign: 'center',

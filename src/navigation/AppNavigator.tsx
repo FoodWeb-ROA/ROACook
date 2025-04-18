@@ -95,12 +95,12 @@ const AppNavigator = () => {
             <Stack.Screen
               name="DishDetails"
               component={DishDetailScreen}
-              options={{ headerShown: true, title: 'Dish Details' }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="PreparationDetails"
               component={PreparationDetailScreen}
-              options={{ headerShown: true, title: 'Preparation Details' }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="CategoryRecipes"

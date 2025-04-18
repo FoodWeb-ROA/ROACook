@@ -9,6 +9,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { Dish } from '../types';
@@ -31,21 +32,35 @@ const CategoryRecipesScreen = () => {
     navigation.navigate('DishDetails', { dishId: dish.dish_id });
   };
   
+  if (loadingDishes) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title={`Loading ${categoryName}...`} showBackButton={true} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (dishesError) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title="Error" showBackButton={true} />
+        <Text style={styles.errorText}>{dishesError.message}</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
       <AppHeader
+        title={categoryName || 'Category Dishes'}
         showBackButton={true}
       />
-      <Text style={styles.categoryTitle}>{categoryName}</Text>
-      
-      {loadingDishes ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : dishesError ? (
-        <Text style={styles.errorText}>Error loading dishes</Text>
-      ) : (
+      <View style={styles.container}>
+        <Text style={styles.categoryTitle}>{categoryName}</Text>
         <FlatList
           data={dishes}
           renderItem={({ item }) => (
@@ -62,15 +77,18 @@ const CategoryRecipesScreen = () => {
             </View>
           }
         />
-      )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  container: {
+    flex: 1,
   },
   categoryTitle: {
     fontSize: 22,
@@ -95,9 +113,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.padding * 2,
   },
   errorText: {
     ...FONTS.body3,

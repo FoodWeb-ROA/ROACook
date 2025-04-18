@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -318,17 +319,19 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
       <AppHeader 
-        title="Home"
+        title="FoodWeb"
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
       />
 
-      {/* Main ScrollView to enable scrolling the whole page */}
-      <ScrollView style={styles.mainScrollView}>
-        {/* This View wraps Categories and Recipes */}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Main ScrollView to enable scrolling the whole page */}
         <View style={styles.contentArea}>
           {/* --- Categories Section --- */}
           <View style={styles.categoriesSection}>
@@ -443,12 +446,15 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  mainScrollView: {
+  container: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: SIZES.padding * 2,
   },
   contentArea: {
     flexDirection: 'column',
