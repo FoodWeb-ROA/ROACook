@@ -1,69 +1,58 @@
-export type Recipe = {
-  recipe_id: string;
-  recipe_name: string;
-  menu_section_id: string;
-  directions: string;
-  prep_time: number;
-  total_time: number;
-  rest_time: number;
-  servings: string;
-  cooking_notes: string;
-  ingredients?: RecipeIngredient[];
-  preparations?: RecipePreparation[];
+export type Dish = {
+  dish_id: string;
+  dish_name: string;
+  menu_section: MenuSection;
+  directions: string | null;
+  total_time: string | null;
+  serving_size: number | null;
+  serving_unit: Unit | null;
+  cooking_notes: string | null;
+  components: DishComponent[];
   isDeleted?: boolean;
   imageUrl?: string;
-  menu_section?: MenuSection;
 };
 
-export type RecipeIngredient = {
-  recipe_id: string;
+export type DishComponent = {
+  dish_id: string;
   ingredient_id: string;
-  ingredient: Ingredient;
+  name: string;
   amount: number;
-  unit_id: string;
   unit: Unit;
-};
-
-export type RecipePreparation = {
-  recipe_id: string;
-  preparation_id: string;
-  preparation: Preparation;
-  amount: number;
-  unit_id: string;
-  unit: Unit;
+  isPreparation: boolean;
+  preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;
+  rawIngredientDetails: (Ingredient & { base_unit: Unit | null }) | null;
 };
 
 export type Preparation = {
   preparation_id: string;
-  preparation_name: string;
-  directions: string;
-  prep_time: number;
-  total_time: number;
-  rest_time: number;
-  servings: string;
-  cooking_notes: string;
-  ingredients?: PreparationIngredient[];
+  name: string;
+  directions: string | null;
+  total_time: number | null;
+  yield_unit: Unit | null;
+  cooking_notes: string | null;
+  ingredients: PreparationIngredient[];
 };
 
 export type PreparationIngredient = {
   preparation_id: string;
   ingredient_id: string;
-  ingredient: Ingredient;
+  name: string;
   amount: number;
-  unit_id: string;
   unit: Unit;
 };
 
 export type Ingredient = {
   ingredient_id: string;
   name: string;
+  cooking_notes: string | null;
+  storage_location: string | null;
 };
 
 export type Unit = {
   unit_id: string;
   unit_name: string;
-  system: string;
-  abbreviation?: string;
+  system: string | null;
+  abbreviation: string | null;
 };
 
 export type MenuSection = {

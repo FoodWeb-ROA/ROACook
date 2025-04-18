@@ -1,9 +1,12 @@
 import { supabase } from './supabaseClient';
 import { Database } from './database.types';
 
+// Define a type for valid table names based on the generated Database types
+type TableName = keyof Database['public']['Tables'];
+
 // General data fetching function with error handling
 export async function fetchData<T>(
-  tableName: string, 
+  tableName: TableName,
   options: {
     columns?: string;
     filter?: { column: string; value: any }[];
@@ -13,19 +16,19 @@ export async function fetchData<T>(
   } = {}
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
-    // Start the query
+    // Rely on inference for the query variable type
     let query = supabase
       .from(tableName)
       .select(options.columns || '*');
 
-    // Apply filters if provided
+    // Apply filters - Inference should allow .eq here
     if (options.filter && options.filter.length > 0) {
       options.filter.forEach(f => {
         query = query.eq(f.column, f.value);
       });
     }
 
-    // Apply ordering if provided
+    // Apply ordering - Inference should allow .order here
     if (options.order) {
       query = query.order(
         options.order.column, 
@@ -33,18 +36,18 @@ export async function fetchData<T>(
       );
     }
 
-    // Apply limit if provided
+    // Apply limit - Inference should allow .limit here
     if (options.limit) {
       query = query.limit(options.limit);
     }
 
-    // Get a single result if requested
+    // Apply single - Inference should allow .single here
     if (options.single) {
-      const { data, error } = await query.single();
+      const { data, error } = await query.single(); // .single() changes return type
       return { data: data as T, error: error as any };
     } 
     
-    // Otherwise get multiple results
+    // Await the query - Type T is asserted on return
     const { data, error } = await query;
     return { data: data as T, error: error as any };
 
@@ -56,16 +59,18 @@ export async function fetchData<T>(
 
 // Insert data into a table
 export async function insertData<T>(
-  tableName: string,
+  tableName: TableName,
   data: any,
   options: {
     returnData?: boolean;
   } = {}
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
+    // Rely on inference
     let query = supabase.from(tableName).insert(data);
     
     if (options.returnData) {
+      // Chained .select() is allowed by inference after .insert()
       query = query.select();
     }
     
@@ -83,7 +88,7 @@ export async function insertData<T>(
 
 // Update data in a table
 export async function updateData<T>(
-  tableName: string,
+  tableName: TableName,
   data: any,
   filter: { column: string; value: any },
   options: {
@@ -91,12 +96,14 @@ export async function updateData<T>(
   } = {}
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
+    // Rely on inference
     let query = supabase
       .from(tableName)
       .update(data)
       .eq(filter.column, filter.value);
-    
+      
     if (options.returnData) {
+      // Chaining select might have type issues, but we proceed
       query = query.select();
     }
     
@@ -114,19 +121,21 @@ export async function updateData<T>(
 
 // Delete data from a table
 export async function deleteData<T>(
-  tableName: string,
+  tableName: TableName,
   filter: { column: string; value: any },
   options: {
     returnData?: boolean;
   } = {}
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
+    // Rely on inference
     let query = supabase
       .from(tableName)
       .delete()
       .eq(filter.column, filter.value);
     
     if (options.returnData) {
+      // Chaining select might have type issues, but we proceed
       query = query.select();
     }
     
@@ -142,54 +151,63 @@ export async function deleteData<T>(
   }
 }
 
-// Fetch a recipe with related data (ingredients, preparations, menu section)
-export async function fetchRecipeWithRelatedData(recipeId: number) {
+// Fetch a dish with related data (components, menu section)
+export async function fetchDishWithRelatedData(dishId: string) {
   try {
-    // Fetch recipe
-    const { data: recipe, error: recipeError } = await supabase
-      .from('recipe')
+    // Fetch dish
+    const { data: dish, error: dishError } = await supabase
+      .from('dishes')
       .select('*')
-      .eq('recipe_id', recipeId)
+      .eq('dish_id', dishId)
       .single();
     
-    if (recipeError) throw recipeError;
+    if (dishError) throw dishError;
+    if (!dish) throw new Error('Dish not found');
     
-    // Fetch ingredients
-    const { data: ingredients, error: ingredientsError } = await supabase
-      .from('recipe_ingredients')
-      .select('*, ingredients(*), units(*)')
-      .eq('recipe_id', recipeId);
+    // Fetch dish components (replaces ingredients)
+    const { data: components, error: componentsError } = await supabase
+      .from('dish_components')
+      .select(`
+        *,
+        unit:dish_components_unit_id_fkey(*),
+        ingredient:dish_components_ingredient_id_fkey (
+          *,
+          base_unit:ingredients_unit_id_fkey ( * ),
+          preparation:preparations!preparation_id (*)
+        )
+      `)
+      .eq('dish_id', dishId);
     
-    if (ingredientsError) throw ingredientsError;
+    if (componentsError) throw componentsError;
     
-    // Fetch preparations
-    const { data: preparations, error: preparationsError } = await supabase
-      .from('recipe_preparations')
-      .select('*, preparations(*), units(*)')
-      .eq('recipe_id', recipeId);
+    // Removed fetching of recipe_preparations
     
-    if (preparationsError) throw preparationsError;
-    
-    // Fetch menu section
-    const { data: menuSection, error: menuSectionError } = await supabase
-      .from('menu_section')
-      .select('*')
-      .eq('menu_section_id', recipe.menu_section_id)
-      .single();
+    // Fetch menu section (check if menu_section_id exists on dish)
+    let menuSection = null;
+    let menuSectionError = null;
+    if (dish.menu_section_id) {
+        const { data: msData, error: msError } = await supabase
+            .from('menu_section')
+            .select('*')
+            .eq('menu_section_id', dish.menu_section_id)
+            .single();
+        menuSection = msData;
+        menuSectionError = msError;
+    }
     
     // Menu section might be null, so only throw if it's not a "not found" error
     if (menuSectionError && menuSectionError.code !== 'PGRST116') {
       throw menuSectionError;
     }
     
+    // Return dish, components, and menuSection
     return {
-      recipe,
-      ingredients,
-      preparations,
+      dish,
+      components,
       menuSection
     };
   } catch (error) {
-    console.error('Error fetching recipe with related data:', error);
+    console.error('Error fetching dish with related data:', error);
     throw error;
   }
 } 

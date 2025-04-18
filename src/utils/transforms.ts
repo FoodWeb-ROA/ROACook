@@ -1,7 +1,6 @@
 import { 
-  Recipe, 
-  RecipeIngredient, 
-  RecipePreparation, 
+  Dish, 
+  DishComponent, 
   Ingredient, 
   Unit, 
   MenuSection,
@@ -11,175 +10,171 @@ import {
 
 import { Database } from '../data/database.types';
 
-// Database types
-type DbRecipe = Database['public']['Tables']['recipe']['Row'];
-type DbMenuSection = Database['public']['Tables']['menu_section']['Row'];
+// Base Database types (Keep private unless needed elsewhere)
+type DbDish = Database['public']['Tables']['dishes']['Row'];
+export type DbMenuSection = Database['public']['Tables']['menu_section']['Row']; // Export needed for hook
 type DbIngredient = Database['public']['Tables']['ingredients']['Row'];
-type DbUnit = Database['public']['Tables']['units']['Row'];
+export type DbUnit = Database['public']['Tables']['units']['Row']; // Export needed for hook
 type DbPreparation = Database['public']['Tables']['preparations']['Row'];
-type DbRecipeIngredient = Database['public']['Tables']['recipe_ingredients']['Row'];
-type DbRecipePreparation = Database['public']['Tables']['recipe_preparations']['Row'];
+export type DbDishComponent = Database['public']['Tables']['dish_components']['Row']; // Export needed for hook
 type DbPreparationIngredient = Database['public']['Tables']['preparation_ingredients']['Row'];
 
-// Extended types for joined queries
-type DbRecipeIngredientWithRelations = DbRecipeIngredient & {
-  ingredients: DbIngredient;
-  units: DbUnit;
+// --- Export TYPES REPRESENTING DATA STRUCTURES AS FETCHED in the refactored hooks ---
+
+// Type for the initial dish fetch in useDishDetail
+export type FetchedDishData = DbDish & {
+  menu_section: DbMenuSection | null; // Joined data
+  serving_unit: DbUnit | null;       // Joined data
 };
 
-type DbRecipePreparationWithRelations = DbRecipePreparation & {
-  preparations: DbPreparation;
-  units: DbUnit;
+// Type for the base components fetched in useDishDetail
+export type FetchedBaseComponent = Pick<DbDishComponent, 'ingredient_id' | 'unit_id' | 'amount'>;
+
+// Type for ingredient details fetched separately
+export type FetchedIngredientDetail = DbIngredient & { 
+    base_unit: DbUnit | null; // Joined base unit
 };
 
-type DbPreparationWithRelations = DbPreparation & {
-  preparation_ingredients?: DbPreparationIngredientWithRelations[];
+// Type for preparation details fetched separately
+export type FetchedPreparationDetail = DbPreparation & { 
+    yield_unit: DbUnit | null; // Joined yield unit
 };
 
-type DbPreparationIngredientWithRelations = DbPreparationIngredient & {
-  ingredients: DbIngredient;
-  units: DbUnit;
+// Type for preparation ingredients fetched separately
+export type FetchedPreparationIngredient = DbPreparationIngredient & {
+    unit: DbUnit | null;
+    ingredient: DbIngredient | null;
 };
+
+// Type for the assembled component data *before* final transformation in useDishDetail hook
+export type AssembledComponentData = {
+    dish_id: string;
+    baseComponent: FetchedBaseComponent;
+    ingredient: FetchedIngredientDetail | undefined;
+    preparation: FetchedPreparationDetail | undefined;
+    componentUnit: DbUnit | undefined;
+    prepIngredients: PreparationIngredient[] | undefined; // Already transformed in the hook
+};
+
+// -- Export Transformation Functions --
 
 /**
- * Transform a recipe ingredient from database format to UI format
+ * Transform a dish component from the ASSEMBLED data in useDishDetail hook
  */
-export function transformRecipeIngredient(dbIngredient: DbRecipeIngredientWithRelations): RecipeIngredient {
-  // Add defensive checks
-  if (!dbIngredient || !dbIngredient.ingredients) {
-    console.warn('Missing ingredient data in transformRecipeIngredient', dbIngredient);
-    return {
-      recipe_id: dbIngredient?.recipe_id || '',
-      ingredient_id: dbIngredient?.ingredient_id || '',
-      ingredient: {
-        ingredient_id: '',
-        name: 'Unknown Ingredient'
-      },
-      amount: dbIngredient?.amount || 0,
-      unit_id: dbIngredient?.unit_id || '',
-      unit: {
-        unit_id: '',
-        unit_name: '',
-        system: '',
-        abbreviation: ''
-      }
+export function transformDishComponent(assembledData: AssembledComponentData): DishComponent {
+  const { baseComponent, ingredient, preparation, componentUnit, prepIngredients, dish_id } = assembledData;
+
+  // Check if essential ingredient info is present
+  if (!ingredient) {
+    console.warn('Missing ingredient details for component', baseComponent);
+    return { 
+        dish_id: dish_id,
+        ingredient_id: baseComponent.ingredient_id || '',
+        name: 'Unknown Component',
+        amount: baseComponent.amount || 0,
+        unit: transformUnit(componentUnit), // Use the unit fetched for the component instance
+        isPreparation: false,
+        preparationDetails: null,
+        rawIngredientDetails: null
     };
   }
 
+  const isPreparation = !!preparation; // Check if preparation details exist
+  let finalPrepDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null = null;
+  let finalRawIngredientDetails: (Ingredient & { base_unit: Unit | null }) | null = null;
+
+  if (isPreparation && preparation) {
+      // Transform the combined ingredient + preparation data
+      const transformedPrep = transformPreparation({
+          ...ingredient, // Base info like name, cooking_notes
+          ...preparation // Prep specific info like directions, time, yield_unit
+      });
+      // Assign the already fetched & transformed ingredients from the hook
+      transformedPrep.ingredients = prepIngredients || [];
+      finalPrepDetails = transformedPrep as (Preparation & { ingredients: PreparationIngredient[] }); // Cast needed if transformPreparation return type is just Preparation
+  } else {
+      // Transform raw ingredient details
+      finalRawIngredientDetails = {
+          ...transformIngredient(ingredient),
+          base_unit: transformUnit(ingredient.base_unit)
+      };
+  }
+
   return {
-    recipe_id: dbIngredient.recipe_id,
-    ingredient_id: dbIngredient.ingredient_id,
-    ingredient: {
-      ingredient_id: dbIngredient.ingredients.ingredient_id,
-      name: dbIngredient.ingredients.name
-    },
-    amount: dbIngredient.amount,
-    unit_id: dbIngredient.unit_id,
-    unit: {
-      unit_id: dbIngredient.units?.unit_id || '',
-      unit_name: dbIngredient.units?.unit_name || '',
-      system: dbIngredient.units?.system || '',
-      abbreviation: dbIngredient.units?.abbreviation || dbIngredient.units?.unit_name || ''
-    }
+    dish_id: dish_id,
+    ingredient_id: ingredient.ingredient_id,
+    name: ingredient.name,
+    amount: baseComponent.amount || 0,
+    unit: transformUnit(componentUnit), // Unit specifically for this component usage
+    isPreparation: isPreparation,
+    preparationDetails: finalPrepDetails, 
+    rawIngredientDetails: finalRawIngredientDetails
   };
 }
 
 /**
- * Transform a recipe preparation from database format to UI format
+ * Transform a preparation from the COMBINED ingredient + preparation data 
+ * passed from useDishDetail hook (or potentially usePreparationDetail)
  */
-export function transformRecipePreparation(dbPreparation: DbRecipePreparationWithRelations): RecipePreparation {
+export function transformPreparation(combinedData: FetchedIngredientDetail & FetchedPreparationDetail): Preparation {
+  // This function now expects the merged data 
+  if (!combinedData) return { 
+      preparation_id: '',
+      name: 'Unknown Preparation',
+      directions: null,
+      total_time: null,
+      yield_unit: transformUnit(null),
+      ingredients: [],
+      cooking_notes: null 
+    }; // Add default structure
+
   return {
-    recipe_id: dbPreparation.recipe_id,
-    preparation_id: dbPreparation.preparation_id,
-    preparation: {
-      preparation_id: dbPreparation.preparations.preparation_id,
-      preparation_name: dbPreparation.preparations.preparation_name,
-      directions: dbPreparation.preparations.directions,
-      prep_time: parseInt(dbPreparation.preparations.prep_time) || 0,
-      total_time: parseInt(dbPreparation.preparations.total_time) || 0,
-      rest_time: parseInt(dbPreparation.preparations.rest_time) || 0,
-      servings: dbPreparation.preparations.servings,
-      cooking_notes: dbPreparation.preparations.cooking_notes
-    },
-    amount: dbPreparation.amount,
-    unit_id: dbPreparation.unit_id,
-    unit: {
-      unit_id: dbPreparation.units?.unit_id || '',
-      unit_name: dbPreparation.units?.unit_name || '',
-      system: dbPreparation.units?.system || '',
-      abbreviation: dbPreparation.units?.abbreviation || dbPreparation.units?.unit_name || ''
-    }
+    preparation_id: combinedData.preparation_id, // from FetchedPreparationDetail part
+    name: combinedData.name, // from FetchedIngredientDetail part
+    directions: combinedData.directions || '', // from FetchedPreparationDetail part
+    total_time: combinedData.total_time || 0, // from FetchedPreparationDetail part
+    yield_unit: transformUnit(combinedData.yield_unit), // from FetchedPreparationDetail part
+    ingredients: [], // Placeholder - Ingredients added in the hook
+    cooking_notes: combinedData.cooking_notes, // from FetchedIngredientDetail part
   };
 }
 
 /**
- * Transform a preparation from database format to UI format
+ * Transform a preparation ingredient from the fetched data structure
  */
-export function transformPreparation(dbPreparation: DbPreparationWithRelations): Preparation {
-  if (!dbPreparation) return {
-    preparation_id: '',
-    preparation_name: '',
-    directions: '',
-    prep_time: 0,
-    total_time: 0,
-    rest_time: 0,
-    servings: '',
-    cooking_notes: '',
-    ingredients: []
-  };
-  
-  return {
-    preparation_id: dbPreparation.preparation_id,
-    preparation_name: dbPreparation.preparation_name,
-    directions: dbPreparation.directions,
-    prep_time: parseInt(dbPreparation.prep_time) || 0,
-    total_time: parseInt(dbPreparation.total_time) || 0,
-    rest_time: parseInt(dbPreparation.rest_time) || 0,
-    servings: dbPreparation.servings,
-    cooking_notes: dbPreparation.cooking_notes,
-    ingredients: dbPreparation.preparation_ingredients?.map(transformPreparationIngredient) || []
-  };
-}
-
-/**
- * Transform a preparation ingredient from database format to UI format
- */
-export function transformPreparationIngredient(dbIngredient: DbPreparationIngredientWithRelations): PreparationIngredient {
+export function transformPreparationIngredient(dbIngredient: FetchedPreparationIngredient): PreparationIngredient {
+  if (!dbIngredient || !dbIngredient.ingredient) {
+     // ... (keep warning and default return)
+     return { preparation_id: '', ingredient_id: '', name: '', amount: 0, unit: transformUnit(null) };
+  }
   return {
     preparation_id: dbIngredient.preparation_id,
-    ingredient_id: dbIngredient.ingredient_id,
-    ingredient: {
-      ingredient_id: dbIngredient.ingredients.ingredient_id,
-      name: dbIngredient.ingredients.name
-    },
-    amount: dbIngredient.amount,
-    unit_id: dbIngredient.unit_id,
-    unit: {
-      unit_id: dbIngredient.units?.unit_id || '',
-      unit_name: dbIngredient.units?.unit_name || '',
-      system: dbIngredient.units?.system || '',
-      abbreviation: dbIngredient.units?.abbreviation || dbIngredient.units?.unit_name || ''
-    }
+    ingredient_id: dbIngredient.ingredient.ingredient_id,
+    name: dbIngredient.ingredient.name,
+    amount: dbIngredient.amount || 0,
+    unit: transformUnit(dbIngredient.unit)
   };
 }
 
 /**
- * Transform an ingredient from database format to UI format
+ * Transform an ingredient from the fetched data structure
  */
-export function transformIngredient(dbIngredient: DbIngredient): Ingredient {
-  if (!dbIngredient) return { ingredient_id: '', name: '' };
+export function transformIngredient(dbIngredient: FetchedIngredientDetail | DbIngredient | null): Ingredient {
+  if (!dbIngredient) return { ingredient_id: '', name: 'Unknown', cooking_notes: null, storage_location: null };
   
   return {
     ingredient_id: dbIngredient.ingredient_id,
-    name: dbIngredient.name
+    name: dbIngredient.name,
+    cooking_notes: dbIngredient.cooking_notes,
+    storage_location: dbIngredient.storage_location,
   };
 }
 
 /**
- * Transform a unit from database format to UI format
+ * Transform a unit from the fetched data structure
  */
-export function transformUnit(dbUnit: DbUnit): Unit {
-  if (!dbUnit) return { unit_id: '', unit_name: '', system: '', abbreviation: '' };
+export function transformUnit(dbUnit: DbUnit | null | undefined): Unit { // Allow undefined
+  if (!dbUnit) return { unit_id: '', unit_name: 'N/A', system: null, abbreviation: '' };
   
   return {
     unit_id: dbUnit.unit_id,
@@ -190,10 +185,10 @@ export function transformUnit(dbUnit: DbUnit): Unit {
 }
 
 /**
- * Transform a menu section from database format to UI format
+ * Transform a menu section from the fetched data structure
  */
-export function transformMenuSection(dbMenuSection: DbMenuSection): MenuSection {
-  if (!dbMenuSection) return { menu_section_id: '', name: '' };
+export function transformMenuSection(dbMenuSection: DbMenuSection | null): MenuSection { // Input is simpler now
+  if (!dbMenuSection) return { menu_section_id: '', name: 'Uncategorized' };
   
   return {
     menu_section_id: dbMenuSection.menu_section_id,
@@ -202,26 +197,28 @@ export function transformMenuSection(dbMenuSection: DbMenuSection): MenuSection 
 }
 
 /**
- * Transform a recipe from database format to UI format
+ * Transform a dish from the fetched data structure
  */
-export function transformRecipe(
-  dbRecipe: DbRecipe,
-  dbMenuSection: DbMenuSection,
-  dbRecipeIngredients: DbRecipeIngredientWithRelations[],
-  dbRecipePreparations: DbRecipePreparationWithRelations[]
-): Recipe {
+export function transformDish(dbDish: FetchedDishData | null): Dish {
+ if (!dbDish) {
+    // ... (keep error and default return)
+    return { dish_id: '', dish_name: 'Unknown Dish', menu_section: transformMenuSection(null), directions: null, total_time: null, serving_size: null, serving_unit: null, components: [], cooking_notes: null };
+ }
+  
+  // Safely access potentially null related data
+  const menuSection = dbDish.menu_section ? transformMenuSection(dbDish.menu_section) : transformMenuSection(null);
+  const servingUnit = dbDish.serving_unit ? transformUnit(dbDish.serving_unit) : transformUnit(null);
+
   return {
-    recipe_id: dbRecipe.recipe_id,
-    recipe_name: dbRecipe.recipe_name,
-    menu_section_id: dbRecipe.menu_section_id,
-    directions: dbRecipe.directions,
-    prep_time: parseInt(dbRecipe.prep_time) || 0,
-    total_time: parseInt(dbRecipe.total_time) || 0,
-    rest_time: parseInt(dbRecipe.rest_time) || 0,
-    servings: dbRecipe.servings,
-    cooking_notes: dbRecipe.cooking_notes,
-    ingredients: dbRecipeIngredients.map(transformRecipeIngredient),
-    preparations: dbRecipePreparations.map(transformRecipePreparation),
-    isDeleted: false
+    dish_id: dbDish.dish_id,
+    dish_name: dbDish.dish_name,
+    menu_section: menuSection,
+    directions: dbDish.directions,
+    // Handle total_time (interval type from DB) - needs specific handling if not string
+    total_time: typeof dbDish.total_time === 'string' ? dbDish.total_time : null, // Basic check
+    serving_size: dbDish.serving_size,
+    serving_unit: servingUnit,
+    components: [], // Components are handled by the hook
+    cooking_notes: dbDish.cooking_notes
   };
 } 
