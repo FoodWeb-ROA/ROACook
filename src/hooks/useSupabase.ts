@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../data/supabaseClient';
 import { Dish, DishComponent, Ingredient, Unit, MenuSection, Preparation, PreparationIngredient } from '../types';
 import { transformDish, transformDishComponent, transformPreparation, transformMenuSection, transformPreparationIngredient, transformUnit, transformIngredient, FetchedDishData, DbMenuSection, FetchedBaseComponent, FetchedIngredientDetail, FetchedPreparationDetail, FetchedPreparationIngredient, AssembledComponentData, DbDishComponent, DbUnit } from '../utils/transforms';
+import { DUMMY_DISHES, DUMMY_SECTIONS, DUMMY_KITCHENS } from '../constants/dummyData';
+
+const USE_DUMMY_DATA = process.env.EXPO_PUBLIC_USE_DUMMY_DATA === 'true';
 
 /**
  * Hook to fetch all dishes with optional filter by menu section
@@ -12,6 +15,16 @@ export function useDishes(menuSectionId?: string) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (USE_DUMMY_DATA) {
+      console.log('Using DUMMY_DISHES');
+      const filteredDishes = menuSectionId 
+        ? DUMMY_DISHES.filter(d => d.menu_section?.menu_section_id === menuSectionId)
+        : DUMMY_DISHES;
+      setDishes(filteredDishes);
+      setLoading(false);
+      setError(null);
+      return; // Exit early
+    }
     async function fetchDishes() {
       try {
         setLoading(true);
@@ -25,7 +38,7 @@ export function useDishes(menuSectionId?: string) {
             serving_size,
             cooking_notes,
             serving_item,
-            total_yield,
+            num_servings,
             directions,
             menu_section:recipe_menu_section_id_fkey (*),
             serving_unit:dishes_serving_unit_fkey (*)
@@ -115,6 +128,14 @@ export function useDishDetail(dishId: string | undefined) {
   const [error, setError] = useState<Error | null>(null);
 
   const refresh = useCallback(async () => {
+    if (USE_DUMMY_DATA) {
+      console.log(`Using DUMMY_DISHES for detail: ${dishId}`);
+      const foundDish = DUMMY_DISHES.find(d => d.dish_id === dishId);
+      setDish(foundDish ? (foundDish as DishWithDetails) : null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     if (!dishId) {
         setLoading(false);
       setDish(null);
@@ -271,6 +292,13 @@ export function useMenuSections() {
   };
 
   useEffect(() => {
+    if (USE_DUMMY_DATA) {
+      console.log('Using DUMMY_SECTIONS');
+      setMenuSections(DUMMY_SECTIONS);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     async function fetchMenuSections() {
       try {
         setLoading(true);
@@ -440,6 +468,12 @@ export function usePreparations() {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (USE_DUMMY_DATA) {
+      // Create dummy preps if needed, or return empty array
+      setPreparations([]); 
+      setLoading(false);
+      return;
+    }
     async function fetchPreparations() {
       try {
         setLoading(true);
@@ -590,7 +624,7 @@ export function useIngredients(identifyPreparations: boolean = false) {
                 ...transformIngredient(ing), // Transform base ingredient
                 // Add isPreparation flag based on the set of IDs
                 isPreparation: preparationIds.has(ing.ingredient_id), 
-                // Include base unit details if needed by the consumer (CreateDishScreen modal)
+                // Include base unit details if needed by the consumer (CreateRecipeScreen modal)
                 base_unit: transformUnit(ing.base_unit)
             }));
             

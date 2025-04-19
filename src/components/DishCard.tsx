@@ -51,8 +51,8 @@ const DishCard: React.FC<DishCardProps> = ({ dish, onPress }) => {
             <Text style={styles.detailText}>{formatTime(dish.total_time)}</Text>
           </View>
           <View style={styles.detail}>
-            <MaterialCommunityIcons name="food-variant" size={16} color={COLORS.textLight} />
-            <Text style={styles.detailText}>{dish.serving_size || 'N/A'} {dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name || 'servings'}</Text>
+            <MaterialCommunityIcons name="account-multiple" size={16} color={COLORS.textLight} />
+            <Text style={styles.detailText}>{dish.num_servings ?? 'N/A'} servings</Text>
           </View>
         </View>
         

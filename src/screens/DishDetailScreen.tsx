@@ -134,6 +134,14 @@ const DishDetailScreen = () => {
     navigation.navigate('PreparationDetails', { preparationId });
   };
 
+  // Handler for edit button press
+  const handleEditPress = () => {
+    if (!dishId) return;
+    // Navigate to CreateRecipeScreen with dishId for editing
+    navigation.navigate('CreateRecipe', { dishId });
+    // console.log("Edit pressed for dish:", dishId); // Log for now
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
@@ -184,6 +192,11 @@ const DishDetailScreen = () => {
       <AppHeader
         title={dish.dish_name}
         showBackButton={true}
+        rightComponent={
+          <TouchableOpacity onPress={handleEditPress} style={styles.editButton}>
+            <MaterialCommunityIcons name="pencil" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+        }
       />
       <ScrollView 
         style={styles.scrollView}
@@ -197,6 +210,17 @@ const DishDetailScreen = () => {
         <View style={styles.contentContainer}>
           <View style={styles.headerContainer}>            
             <View style={styles.infoContainer}>
+              {/* Display Total Servings */}
+              {typeof dish.num_servings === 'number' && (
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons name="account-multiple" size={18} color={COLORS.textLight} />
+                  <Text style={styles.infoText}>
+                    Servings: {dish.num_servings}
+                  </Text>
+                </View>
+              )}
+
+              {/* Existing Info Items: Time and Servings */}
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
@@ -207,7 +231,8 @@ const DishDetailScreen = () => {
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="silverware-fork-knife" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
-                  {dish.serving_size || 'N/A'} {dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name || 'servings'}
+                  {/* Show base serving size */}
+                  Base: {dish.serving_size || 'N/A'} {dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name || 'servings'}
                 </Text>
               </View>
             </View>
@@ -229,7 +254,8 @@ const DishDetailScreen = () => {
               </TouchableOpacity>
               
               <Text style={styles.servingsValue}>
-                {`${servingScale}x (${Math.round((dish.serving_size || 1) * servingScale)} servings)`}
+                {/* Show scaled serving size */}
+                {`${servingScale}x (${Math.round((dish.serving_size || 1) * servingScale)} ${dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name || 'servings'})`}
               </Text>
               
               <TouchableOpacity 
@@ -492,6 +518,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SIZES.padding,
     fontStyle: 'italic',
+  },
+  editButton: {
+    padding: SIZES.base,
   },
 });
 

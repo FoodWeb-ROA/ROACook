@@ -227,8 +227,19 @@ export function transformMenuSection(dbMenuSection: DbMenuSection | null): MenuS
  */
 export function transformDish(dbDish: FetchedDishData | null): Dish {
  if (!dbDish) {
-    // ... (keep error and default return)
-    return { dish_id: '', dish_name: 'Unknown Dish', menu_section: transformMenuSection(null), directions: null, total_time: null, serving_size: null, serving_unit: null, components: [], cooking_notes: null };
+    console.error("transformDish received null input");
+    return {
+      dish_id: '',
+      dish_name: 'Unknown Dish',
+      menu_section: transformMenuSection(null),
+      directions: null,
+      total_time: null,
+      serving_size: null,
+      serving_unit: null,
+      num_servings: null,
+      components: [],
+      cooking_notes: null,
+    };
  }
   
   // Safely access potentially null related data
@@ -245,6 +256,7 @@ export function transformDish(dbDish: FetchedDishData | null): Dish {
     serving_size: dbDish.serving_size,
     serving_unit: servingUnit,
     components: [], // Components are handled by the hook
-    cooking_notes: dbDish.cooking_notes
+    cooking_notes: dbDish.cooking_notes,
+    num_servings: (dbDish as any).num_servings ?? null,
   };
 } 

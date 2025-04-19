@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Button, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Button, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { ParsedRecipe } from '../types'; // Import the type
+import { ParsedIngredient } from '../types'; // Import ParsedIngredient type explicitly if needed for handler
 import { COLORS, SIZES, FONTS } from '../constants/theme';
-import AppHeader from '../components/AppHeader'; // Optional: Use AppHeader if needed
+import AppHeader from '../components/AppHeader'; // Ensure AppHeader is imported
+import ParsedPreparationCard from '../components/ParsedPreparationCard'; // Import the new component
 
 type ConfirmRouteProp = RouteProp<RootStackParamList, 'ConfirmParsedRecipe'>;
 type ConfirmNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -38,6 +41,11 @@ const ConfirmParsedRecipeScreen = () => {
     }
   }, [parsedRecipes, navigation]); // Depend on parsedRecipes
 
+  // Placeholder handler for preparation press
+  const handlePreparationPress = (preparation: ParsedIngredient) => {
+    navigation.navigate('ConfirmPreparation', { preparation });
+  };
+
   // TODO: Implement handleConfirmSave logic
   // TODO: Implement handleDiscard logic
 
@@ -56,32 +64,44 @@ const ConfirmParsedRecipeScreen = () => {
       );
   }
 
-  // Render the editable recipe details (using placeholder UI for now)
+  // Render the editable recipe details
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* <AppHeader title="Confirm Recipe" showBackButton={true} /> // Use navigator header */}
+      <AppHeader 
+        title="Confirm Recipe" 
+        showBackButton={true} 
+      />
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.title}>Confirm Parsed Recipe</Text>
-        
-        {/* Display data from state */}
+    
         <View>
-          <Text style={styles.recipeName}>{editableRecipe.name || 'Unnamed Recipe'}</Text>
-          <Text style={styles.sectionHeader}>Components:</Text>
-          {editableRecipe.components?.map((comp, index) => (
-            <Text key={index} style={styles.itemText}>
-              - {comp.quantity} {comp.unit} {comp.name}
-            </Text>
+          <Text style={[styles.recipeName, { textAlign: 'center' }]}>{editableRecipe.recipe_name || 'Unnamed Recipe'}</Text>
+          <Text style={styles.sectionHeader}>Ingredients:</Text>
+          {editableRecipe.ingredients?.map((ingredient, index) => (
+            ingredient.ingredient_type === 'Preparation' ? (
+                <ParsedPreparationCard 
+                    key={index} 
+                    preparation={ingredient} 
+                    onPress={() => handlePreparationPress(ingredient)}
+                />
+            ) : (
+                <Text key={index} style={styles.itemText}>
+                  - {ingredient.amount ?? 'N/A'} {ingredient.unit ?? 'N/A'} {ingredient.name ?? 'Unknown'}
+                  {ingredient.state ? ` (${ingredient.state})` : ''}
+                </Text>
+            )
           ))}
-           <Text style={styles.sectionHeader}>Directions:</Text>
-          {editableRecipe.directions?.map((dir, index) => (
-            <Text key={index} style={styles.itemText}>{index + 1}. {dir}</Text>
+           <Text style={styles.sectionHeader}>Instructions:</Text>
+          {editableRecipe.instructions?.map((instruction, index) => (
+            <Text key={index} style={styles.itemText}>{index + 1}. {instruction}</Text>
           ))}
+          {typeof editableRecipe.num_servings === 'number' && (
+            <Text style={[styles.itemText, { textAlign: 'center', marginBottom: SIZES.padding }]}>Servings: {editableRecipe.num_servings}</Text>
+          )}
         </View>
 
         <View style={styles.buttonContainer}>
             <Button title="Discard" onPress={() => navigation.goBack()} color={COLORS.error} />
-            {/* TODO: Replace with actual save logic */}
-            <Button title="Confirm & Save" onPress={() => Alert.alert('Save', 'Save logic not implemented yet.')} color={COLORS.primary} />
+            <Button title="Confirm & Save" onPress={() => navigation.navigate('CreateRecipe', { parsedRecipe: editableRecipe })} color={COLORS.primary} />
         </View>
 
       </ScrollView>
@@ -142,6 +162,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  addStepButtonText: {
+    color: COLORS.primary,
+    ...FONTS.body3,
+    fontWeight: '600',
+  },
+  preparationText: { // Style for preparations to make them stand out - NO LONGER USED HERE
+    // fontWeight: 'bold',
+    // color: COLORS.primary,
+  }
 });
 
 export default ConfirmParsedRecipeScreen; 

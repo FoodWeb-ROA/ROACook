@@ -57,10 +57,10 @@ export type Dish = {
     total_time: string | null; // Keep as string for now (interval type)
     serving_size: number | null;
     serving_unit: Unit | null; // Transformed unit
+    num_servings: number | null; // New field replacing total_yield
     components: DishComponent[]; // Array of components
     cooking_notes: string | null;
     imageUrl?: string; // Optional image URL
-    // Add other relevant fields
 };
 
 // Re-export Category if it's just MenuSection
@@ -104,37 +104,37 @@ export type UserType = {
   name: string;
 };
 
+// --- Recipe Kind ---
+export type RecipeKind = 'dish' | 'preparation';
+
 // --- Types related to Recipe Parser Output ---
 
 // Interface for a component returned by the parser (can be raw or prep)
 // Note: Units are strings initially, need mapping/validation later.
-export interface ParsedComponent {
+// Updated to reflect the actual parser output: 'ingredients'
+export interface ParsedIngredient {
+  type: string; // e.g., 'raw_ingredient' - Note: This seems unused based on sysprompt, maybe remove?
   name: string;
-  quantity?: number | null;
-  unit?: string | null;
-  notes?: string | null;
-  // Fields specific to Preparations identified by the parser
-  isPreparation?: boolean; // Flag to distinguish
-  ingredients?: ParsedComponent[]; // Nested components if it's a prep
-  directions?: string[]; // Directions if it's a prep
-  yield_quantity?: number | null;
-  yield_unit?: string | null;
-  total_time_minutes?: number | null; // Prep-specific time
+  amount: number | null;
+  unit: string | null;
+  state?: string | null; // e.g., 'chopped' - Note: This isn't in the sysprompt examples, maybe remove?
+  ingredient_type?: "RawIngredient" | "Preparation";
+  ingredients?: ParsedIngredient[]; // ADDED: For nested preparations
+  instructions?: string[]; // ADDED: For preparation-specific instructions
 }
 
 // Interface for the overall Recipe structure returned by the parser
+// Updated to match the actual parser output keys more closely
 export interface ParsedRecipe {
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  components: ParsedComponent[]; // List of raw ingredients or preparations
-  directions: string[];
-  prep_time_minutes?: number | null;
-  cook_time_minutes?: number | null;
-  total_time_minutes?: number | null; // Might be redundant if prep/cook exist
-  servings?: number | null;
-  serving_unit?: string | null;
-  notes?: string | null;
+  recipe_name: string; 
+  ingredients: ParsedIngredient[]; 
+  instructions: string[]; 
+  total_time?: number | null; 
+  num_servings?: number | null;       // Total portions produced
+  serving_size?: number | null;       // Size per portion
+  serving_unit?: string | null;       // Unit for serving_size
+  serving_item?: string | null;       // Optional descriptor when unit is "x"
+  cook_notes?: string | null; 
 }
 
 // --- End Recipe Parser Types --- 

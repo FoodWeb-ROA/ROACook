@@ -103,6 +103,13 @@ const PreparationDetailScreen = () => {
     });
   };
 
+  const handleEditPress = () => {
+    if (!preparationId) return;
+    // Navigate to CreateRecipeScreen with preparationId for editing
+    navigation.navigate('CreateRecipe', { preparationId }); 
+    // console.log("Edit pressed for preparation:", preparationId); // Log for now
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
@@ -137,6 +144,11 @@ const PreparationDetailScreen = () => {
       <AppHeader
         title={preparation.name || 'Preparation'}
         showBackButton={true}
+        rightComponent={
+          <TouchableOpacity onPress={handleEditPress} style={styles.editButton}>
+            <MaterialCommunityIcons name="pencil" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+        }
       />
       <ScrollView 
         style={styles.scrollView}
@@ -168,9 +180,12 @@ const PreparationDetailScreen = () => {
             </View>
           </View>
           
-          {typeof baseYieldAmount === 'number' && baseYieldAmount > 0 && (
+          {/* Adjust Amount Section - Modified to show Base Yield clearly */}
+          {typeof preparation.yield_amount === 'number' && preparation.yield_amount > 0 && preparation.yield_unit && (
             <View style={styles.amountAdjustContainer}>
-              <Text style={styles.sectionTitle}>Adjust Amount</Text>
+              <Text style={styles.sectionTitle}>
+                Base Yield: {preparation.yield_amount} {preparation.yield_unit.abbreviation || preparation.yield_unit.unit_name}
+              </Text>
               <View style={styles.amountAdjustControls}>
                 <TouchableOpacity 
                   style={styles.amountButton}
@@ -190,7 +205,8 @@ const PreparationDetailScreen = () => {
                   </Text>
                   {typeof currentYieldAmount === 'number' && (
                      <Text style={styles.amountTotal}>
-                       ({currentYieldAmount.toFixed(currentYieldAmount % 1 === 0 ? 0 : 1)} {yieldUnitAbbreviation})
+                       {/* Show scaled yield amount */}
+                       (Scaled: {currentYieldAmount.toFixed(currentYieldAmount % 1 === 0 ? 0 : 1)} {yieldUnitAbbreviation})
                      </Text>
                    )}
                 </View>
@@ -424,6 +440,9 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
     ...SHADOWS.small,
+  },
+  editButton: {
+    padding: SIZES.base,
   },
 });
 

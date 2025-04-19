@@ -231,7 +231,7 @@ const HomeScreen = () => {
         try {
             if (selectedIndex === 0) {
                 let result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    mediaTypes: "images",
                     quality: 0.8,
                 });
 
@@ -281,7 +281,8 @@ const HomeScreen = () => {
                     const parsedRecipes = await uploadRecipeImages(imageUris);
                     console.log('Parsed Recipes:', parsedRecipes);
                     if (parsedRecipes && parsedRecipes.length > 0) {
-                        navigation.navigate('ConfirmParsedRecipe', { parsedRecipes });
+                        // Navigate to CreateRecipeScreen with the first parsed recipe
+                        navigation.navigate('CreateRecipe', { parsedRecipe: parsedRecipes[0] });
                     } else {
                         Alert.alert('Parsing Failed', 'Could not extract recipes from the provided image(s).');
                     }
@@ -425,11 +426,11 @@ const HomeScreen = () => {
       <View style={styles.fixedFabContainer}>
         <TouchableOpacity 
           style={[styles.floatingButton, styles.createButton]}
-          onPress={() => navigation.navigate('CreateDish')}
+          onPress={() => navigation.navigate('CreateRecipe')}
           activeOpacity={0.8}
         >
           <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
-          <Text style={styles.floatingButtonText}>Create Dish</Text>
+          <Text style={styles.floatingButtonText}>Add Recipe</Text>
         </TouchableOpacity>
       </View>
       {/* End fixedFabContainer View */} 

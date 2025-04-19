@@ -16,8 +16,11 @@ import PrepListScreen from '../screens/PrepListScreen';
 import DishDetailScreen from '../screens/DishDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
-import CreateDishScreen from '../screens/CreateDishScreen';
+import CreateRecipeScreen from '../screens/CreateRecipeScreen';
 import ConfirmParsedRecipeScreen from '../screens/ConfirmParsedRecipeScreen';
+// @ts-ignore next-line
+import InventoryScreen from '../screens/InventoryScreen';
+import ConfirmPreparationScreen from '../screens/ConfirmPreparationScreen';
 
 // Types
 import { RootStackParamList } from './types';
@@ -31,6 +34,7 @@ export type DrawerParamList = {
   Preferences: undefined;
   Support: undefined;
   PrepList: undefined;
+  Inventory: undefined;
 };
 
 // Define the navigation prop type for the Drawer
@@ -49,16 +53,25 @@ const DrawerNavigator = () => {
           backgroundColor: COLORS.background,
           width: 240,
         },
-        drawerActiveTintColor: COLORS.primary,
+        drawerActiveTintColor: COLORS.white,
         drawerInactiveTintColor: COLORS.textLight,
         drawerLabelStyle: {
           fontFamily: 'Poppins',
           fontSize: SIZES.font,
-          marginLeft: -SIZES.padding,
+          marginLeft: SIZES.padding,
+          zIndex: 1,
+        },
+        drawerActiveBackgroundColor: 'rgba(76, 175, 80, 0.15)',
+        drawerItemStyle: {
+          borderRadius: SIZES.radius * 2,
+          marginHorizontal: 12,
+          paddingVertical: 5,
+          marginLeft: 8,
         },
       }}
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
+      <Drawer.Screen name="Inventory" component={InventoryScreen} />
       <Drawer.Screen name="Account" component={AccountScreen} />
       <Drawer.Screen name="Preferences" component={PreferencesScreen} />
       <Drawer.Screen name="Support" component={SupportScreen} />
@@ -109,8 +122,8 @@ const AppNavigator = () => {
               options={{ headerShown: false, title: 'Category Recipes' }}
             />
             <Stack.Screen
-              name="CreateDish"
-              component={CreateDishScreen}
+              name="CreateRecipe"
+              component={CreateRecipeScreen}
               options={({ navigation }: { navigation: StackNavigationProp<RootStackParamList> }) => ({
                 headerShown: true,
                 headerStyle: {
@@ -138,9 +151,13 @@ const AppNavigator = () => {
               name="ConfirmParsedRecipe"
               component={ConfirmParsedRecipeScreen}
               options={{ 
-                headerShown: true,
-                title: 'Confirm Recipe' 
+                headerShown: false,
               }}
+            />
+            <Stack.Screen
+              name="ConfirmPreparation"
+              component={ConfirmPreparationScreen}
+              options={{ headerShown: false }}
             />
           </>
         ) : (
