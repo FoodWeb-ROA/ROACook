@@ -7,6 +7,7 @@ export type Unit = Database['public']['Tables']['units']['Row'];
 export type Ingredient = Database['public']['Tables']['ingredients']['Row'] & {
     isPreparation?: boolean; // Added by useIngredients hook
     base_unit?: Unit | null; // Potentially added by useIngredients hook
+    item?: string | null; // Added: Item description for counts
 };
 
 export type MenuSection = Database['public']['Tables']['menu_section']['Row'];
@@ -16,12 +17,12 @@ export type Preparation = {
     preparation_id: string;
     name: string;
     directions: string | null;
-    total_time: number | null;
+    total_time: number | null; // Re-added
     yield_unit: Unit | null;
     yield_amount: number | null; // Add yield amount
+    reference_ingredient: string | null; // New field for reference ingredient
     ingredients: PreparationIngredient[];
     cooking_notes: string | null;
-    // Add other relevant fields if needed
 };
 
 // Define PreparationIngredient based on transformed structure
@@ -44,7 +45,7 @@ export type DishComponent = {
     isPreparation: boolean;
     // Include details based on whether it's a raw ingredient or a preparation
     preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;
-    rawIngredientDetails: (Ingredient & { base_unit: Unit | null }) | null;
+    rawIngredientDetails: (Ingredient & { base_unit: Unit | null; item?: string | null }) | null;
     // Add imageUrl or other specific fields?
 };
 
@@ -57,6 +58,7 @@ export type Dish = {
     total_time: string | null; // Keep as string for now (interval type)
     serving_size: number | null;
     serving_unit: Unit | null; // Transformed unit
+    serving_item?: string | null; // Added: Item description for serving unit 'x' (e.g., "bowl", "portion")
     num_servings: number | null; // New field replacing total_yield
     components: DishComponent[]; // Array of components
     cooking_notes: string | null;
@@ -111,30 +113,44 @@ export type RecipeKind = 'dish' | 'preparation';
 
 // Interface for a component returned by the parser (can be raw or prep)
 // Note: Units are strings initially, need mapping/validation later.
-// Updated to reflect the actual parser output: 'ingredients'
+// Updated to reflect the actual parser output: 'components'
 export interface ParsedIngredient {
-  type: string; // e.g., 'raw_ingredient' - Note: This seems unused based on sysprompt, maybe remove?
   name: string;
   amount: number | null;
   unit: string | null;
-  state?: string | null; // e.g., 'chopped' - Note: This isn't in the sysprompt examples, maybe remove?
+  item?: string | null; // ADDED: Item description for counts (e.g., "cloves" for unit "x")
   ingredient_type?: "RawIngredient" | "Preparation";
-  ingredients?: ParsedIngredient[]; // ADDED: For nested preparations
-  instructions?: string[]; // ADDED: For preparation-specific instructions
+  components?: ParsedIngredient[]; // For nested preparations
+  instructions?: string[]; // For preparation-specific instructions
+  reference_ingredient?: string | null; // For preparations based on sysprompt
 }
 
 // Interface for the overall Recipe structure returned by the parser
 // Updated to match the actual parser output keys more closely
 export interface ParsedRecipe {
   recipe_name: string; 
-  ingredients: ParsedIngredient[]; 
+  language?: string; // ADDED: To match sysprompt requirement
+  components: ParsedIngredient[]; 
   instructions: string[]; 
   total_time?: number | null; 
-  num_servings?: number | null;       // Total portions produced
+  num_servings: number;       // Total portions produced (Required now for scaling)
   serving_size?: number | null;       // Size per portion
   serving_unit?: string | null;       // Unit for serving_size
   serving_item?: string | null;       // Optional descriptor when unit is "x"
   cook_notes?: string | null; 
 }
 
-// --- End Recipe Parser Types --- 
+// --- End Recipe Parser Types ---
+
+export type ComponentInput = {
+    key: string; // Unique key for FlatList/mapping
+    ingredient_id: string;
+    name: string; // Store name for display convenience
+    amount: string; // Keep as string for input field
+    unit_id: string | null;
+    isPreparation: boolean;
+    originalPrep?: ParsedIngredient; // keep full parsed preparation when confirming
+    subIngredients?: ParsedIngredient[] | null; // Store parsed sub-ingredients
+    item?: string | null; // ADDED: To store item description (e.g., "cloves")
+    reference_ingredient?: string | null; // Store reference ingredient for preparations
+}; 

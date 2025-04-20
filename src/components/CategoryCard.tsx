@@ -29,7 +29,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius * 1.5,
+    borderRadius: SIZES.radius * 3,
     paddingVertical: SIZES.padding * 1.5,
     paddingHorizontal: SIZES.padding,
     alignItems: 'center',
@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.white,
     textAlign: 'center',
+    width: '100%',
     marginTop: SIZES.base,
   },
 });

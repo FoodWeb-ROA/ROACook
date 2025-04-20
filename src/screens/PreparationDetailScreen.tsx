@@ -7,6 +7,8 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -15,9 +17,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { Preparation, PreparationIngredient, MeasurementUnit } from '../types';
+import { Preparation, PreparationIngredient } from '../types';
 import AppHeader from '../components/AppHeader';
 import { usePreparationDetail } from '../hooks/useSupabase';
+import { formatQuantityAuto } from '../utils/textFormatters';
+import ScaleSliderInput from '../components/ScaleSliderInput';
 
 type PreparationDetailRouteProp = RouteProp<RootStackParamList, 'PreparationDetails'>;
 type PreparationDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -180,44 +184,29 @@ const PreparationDetailScreen = () => {
             </View>
           </View>
           
-          {/* Adjust Amount Section - Modified to show Base Yield clearly */}
-          {typeof preparation.yield_amount === 'number' && preparation.yield_amount > 0 && preparation.yield_unit && (
-            <View style={styles.amountAdjustContainer}>
-              <Text style={styles.sectionTitle}>
-                Base Yield: {preparation.yield_amount} {preparation.yield_unit.abbreviation || preparation.yield_unit.unit_name}
-              </Text>
-              <View style={styles.amountAdjustControls}>
-                <TouchableOpacity 
-                  style={styles.amountButton}
-                  onPress={() => setAmountScale(prev => Math.max(0.5, prev - 0.5))}
-                  disabled={amountScale <= 0.5}
-                >
-                  <MaterialCommunityIcons 
-                    name="minus" 
-                    size={20} 
-                    color={amountScale <= 0.5 ? COLORS.disabled : COLORS.primary} 
-                  />
-                </TouchableOpacity>
-                
-                <View style={styles.amountValueContainer}>
-                  <Text style={styles.amountValue}>
-                    {`${amountScale.toFixed(1)}x`}
-                  </Text>
-                  {typeof currentYieldAmount === 'number' && (
-                     <Text style={styles.amountTotal}>
-                       {/* Show scaled yield amount */}
-                       (Scaled: {currentYieldAmount.toFixed(currentYieldAmount % 1 === 0 ? 0 : 1)} {yieldUnitAbbreviation})
-                     </Text>
-                   )}
-                </View>
-                
-                <TouchableOpacity 
-                  style={styles.amountButton}
-                  onPress={() => setAmountScale(prev => prev + 0.5)}
-                >
-                  <MaterialCommunityIcons name="plus" size={20} color={COLORS.primary} />
-                </TouchableOpacity>
-              </View>
+          {/* Scale Adjust Section */}
+          {typeof baseYieldAmount === 'number' && baseYieldAmount > 0 && preparation.yield_unit && (
+            <View style={styles.scaleAdjustContainer}>
+              <ScaleSliderInput
+                label={`Adjust Scale (Base Yield: ${formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).amount} ${formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).unit})`}
+                minValue={0.1}
+                maxValue={10}
+                step={0.5}
+                currentValue={amountScale}
+                displayValue={amountScale.toFixed(1)}
+                displaySuffix="x scale"
+                onValueChange={setAmountScale}
+                onSlidingComplete={(value) => setAmountScale(Math.round(value * 2) / 2)}
+                onTextInputChange={(text) => {
+                  const newScale = parseFloat(text);
+                  if (!isNaN(newScale) && newScale > 0) {
+                    const clampedScale = Math.max(0.1, Math.min(10, newScale));
+                    setAmountScale(clampedScale);
+                  } else if (text === '') {
+                    setAmountScale(1);
+                  }
+                }}
+              />
             </View>
           )}
           
@@ -443,6 +432,15 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: SIZES.base,
+  },
+  scaleAdjustContainer: {
+    marginVertical: SIZES.padding,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+  },
+  sectionContainer: {
+    marginVertical: SIZES.padding,
   },
 });
 

@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../data/supabaseClient';
 import { Dish, DishComponent, Ingredient, Unit, MenuSection, Preparation, PreparationIngredient } from '../types';
 import { transformDish, transformDishComponent, transformPreparation, transformMenuSection, transformPreparationIngredient, transformUnit, transformIngredient, FetchedDishData, DbMenuSection, FetchedBaseComponent, FetchedIngredientDetail, FetchedPreparationDetail, FetchedPreparationIngredient, AssembledComponentData, DbDishComponent, DbUnit } from '../utils/transforms';
-import { DUMMY_DISHES, DUMMY_SECTIONS, DUMMY_KITCHENS } from '../constants/dummyData';
 
-const USE_DUMMY_DATA = process.env.EXPO_PUBLIC_USE_DUMMY_DATA === 'true';
+
 
 /**
  * Hook to fetch all dishes with optional filter by menu section
@@ -15,16 +14,6 @@ export function useDishes(menuSectionId?: string) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (USE_DUMMY_DATA) {
-      console.log('Using DUMMY_DISHES');
-      const filteredDishes = menuSectionId 
-        ? DUMMY_DISHES.filter(d => d.menu_section?.menu_section_id === menuSectionId)
-        : DUMMY_DISHES;
-      setDishes(filteredDishes);
-      setLoading(false);
-      setError(null);
-      return; // Exit early
-    }
     async function fetchDishes() {
       try {
         setLoading(true);
@@ -41,7 +30,7 @@ export function useDishes(menuSectionId?: string) {
             num_servings,
             directions,
             menu_section:recipe_menu_section_id_fkey (*),
-            serving_unit:dishes_serving_unit_fkey (*)
+            serving_unit:units!dishes_serving_unit_fkey (*)
           `);
         
         if (menuSectionId) {
@@ -128,14 +117,6 @@ export function useDishDetail(dishId: string | undefined) {
   const [error, setError] = useState<Error | null>(null);
 
   const refresh = useCallback(async () => {
-    if (USE_DUMMY_DATA) {
-      console.log(`Using DUMMY_DISHES for detail: ${dishId}`);
-      const foundDish = DUMMY_DISHES.find(d => d.dish_id === dishId);
-      setDish(foundDish ? (foundDish as DishWithDetails) : null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
     if (!dishId) {
         setLoading(false);
       setDish(null);
@@ -152,12 +133,17 @@ export function useDishDetail(dishId: string | undefined) {
         .from('dishes')
           .select(`
             *,
-          serving_unit:dishes_serving_unit_fkey (*)
-        `)
+            menu_section:menu_section_id(*),
+            serving_unit:units!dishes_serving_unit_fkey(*),
+            serving_item
+          `)
         .eq('dish_id', dishId)
         .single() as { data: FetchedDishData | null, error: any };
 
-      if (dishError) throw dishError;
+      if (dishError) {
+        console.error('Error fetching dish details:', dishError);
+        throw dishError;
+      }
       if (!dishData) throw new Error('Dish not found');
 
       const { data: baseComponents, error: baseCompError } = await supabase
@@ -189,7 +175,7 @@ export function useDishDetail(dishId: string | undefined) {
 
           const { data: preparationDetails, error: prepError } = await supabase
             .from('preparations')
-            .select('*, yield_unit:preparations_yield_unit_id_fkey(*)')
+            .select('*, yield_unit:preparations_amount_unit_id_fkey(*)')
             .in('preparation_id', ingredientIds) as { data: FetchedPreparationDetail[] | null, error: any };
           if (prepError) throw prepError;
           const typedPreparationDetails = preparationDetails as FetchedPreparationDetail[] | null;
@@ -292,13 +278,6 @@ export function useMenuSections() {
   };
 
   useEffect(() => {
-    if (USE_DUMMY_DATA) {
-      console.log('Using DUMMY_SECTIONS');
-      setMenuSections(DUMMY_SECTIONS);
-      setLoading(false);
-      setError(null);
-      return;
-    }
     async function fetchMenuSections() {
       try {
         setLoading(true);
@@ -358,7 +337,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
           .select(`
             directions,
             total_time,
-            yield_unit:units!preparations_yield_unit_id_fkey ( * )
+            yield_unit:units!preparations_amount_unit_id_fkey ( * )
           `)
           .eq('preparation_id', preparationId)
           .single();
@@ -468,12 +447,6 @@ export function usePreparations() {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (USE_DUMMY_DATA) {
-      // Create dummy preps if needed, or return empty array
-      setPreparations([]); 
-      setLoading(false);
-      return;
-    }
     async function fetchPreparations() {
       try {
         setLoading(true);
@@ -486,7 +459,7 @@ export function usePreparations() {
             preparation_id, 
             directions,
             total_time,
-            yield_unit:units!preparations_yield_unit_id_fkey ( * ),
+            yield_unit:units!preparations_amount_unit_id_fkey ( * ),
             ingredient:ingredients!preparations_preparation_id_fkey ( 
               ingredient_id,
               name, 

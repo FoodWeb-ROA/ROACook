@@ -23,7 +23,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.arnavagarwal.RecipeManagementApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"

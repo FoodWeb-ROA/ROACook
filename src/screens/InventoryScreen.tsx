@@ -11,6 +11,7 @@ import AppHeader from '../components/AppHeader';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { capitalizeWords } from '../utils/textFormatters';
 
 const InventoryScreen = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -55,7 +56,7 @@ const InventoryScreen = () => {
           style={[styles.itemRow, isExpanded && styles.itemRowExpanded]}
           onPress={handlePress}
         >
-          <Text style={styles.itemText}>{item.name}</Text>
+          <Text style={styles.itemText}>{capitalizeWords(item.name)}</Text>
           {activeTab === 'ingredients' && (
             <MaterialCommunityIcons
               name={isExpanded ? 'chevron-up' : 'chevron-down'}

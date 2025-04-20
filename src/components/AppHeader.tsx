@@ -66,8 +66,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       <View style={styles.centerContainer}>
         <Text 
           style={styles.titleText}
-          numberOfLines={1}
-          ellipsizeMode='tail'
         >
           {title}
         </Text>

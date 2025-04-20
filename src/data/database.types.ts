@@ -336,7 +336,6 @@ export type Database = {
           directions: string
           preparation_id: string
           total_time: number | null
-          yield_unit_id: string | null
         }
         Insert: {
           directions: string

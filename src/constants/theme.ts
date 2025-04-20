@@ -3,8 +3,8 @@ import { DefaultTheme, configureFonts } from 'react-native-paper';
 // App color palette
 export const COLORS = {
   primary: '#5B6B5C',      // Sections on top of the screen (now lighter green)
-  secondary: '#243B24',    // Subsections (now medium green)
-  tertiary: '#4A8F4A',     // Accent color
+  secondary: 'rgba(35, 57, 29, 0.9)',    // Subsections (now medium green)
+  tertiary: 'rgba(82, 151, 85, 0.48)',     // Accent color
   background: '#091A05',   // Main background
   surface: '#243B24',      // Surface elements
   cardBackground: '#182D12', // Card background color

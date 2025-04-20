@@ -38,8 +38,8 @@ const CategoriesScreen = () => {
   const handleAddSection = async (sectionName: string) => {
     try {
       // TODO: Replace placeholder with actual logic to get kitchen_id
-      const placeholderKitchenId = 'YOUR_DEFAULT_KITCHEN_ID_HERE'; 
-      if (placeholderKitchenId === 'YOUR_DEFAULT_KITCHEN_ID_HERE') {
+      const placeholderKitchenId = process.env.DEFAULT_KITCHEN_ID; 
+      if (placeholderKitchenId === process.env.DEFAULT_KITCHEN_ID) {
           console.warn('Using placeholder kitchen ID in handleAddSection (CategoriesScreen)');
       }
 

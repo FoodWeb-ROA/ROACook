@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,8 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -15,19 +17,12 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { Dish, DishComponent, Unit } from '../types';
+import { Dish, DishComponent } from '../types';
 import AppHeader from '../components/AppHeader';
 import PreparationCard from '../components/PreparationCard';
 import { useDishDetail } from '../hooks/useSupabase';
-
-type MeasurementUnit = 
-  | 'g' | 'kg' 
-  | 'ml' | 'l' 
-  | 'tsp' | 'tbsp' 
-  | 'oz' | 'lb' 
-  | 'cup'
-  | 'count'
-  | 'pinch';
+import { formatQuantityAuto } from '../utils/textFormatters';
+import ScaleSliderInput from '../components/ScaleSliderInput';
 
 type DishDetailRouteProp = RouteProp<RootStackParamList, 'DishDetails'>;
 type DishDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -43,87 +38,30 @@ const DishDetailScreen = () => {
     error 
   } = useDishDetail(dishId);
 
-  const [servingScale, setServingScale] = useState(1);
-  const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
+  const [originalServings, setOriginalServings] = useState(1);
+  const [targetServings, setTargetServings] = useState(1);
+  const servingScale = useMemo(() => (
+    originalServings > 0 ? targetServings / originalServings : 1
+  ), [targetServings, originalServings]);
 
-  const unitOptions: Record<MeasurementUnit, MeasurementUnit[]> = {
-    g: ['g', 'kg'],
-    kg: ['g', 'kg'],
-    ml: ['ml', 'l'],
-    l: ['ml', 'l'],
-    tbsp: ['tbsp', 'tsp'],
-    tsp: ['tsp', 'tbsp'],
-    cup: ['cup'],
-    oz: ['oz', 'lb'],
-    lb: ['oz', 'lb'],
-    count: ['count'],
-    pinch: ['pinch'],
-  };
-
-  const convertUnit = (value: number, fromUnit: string, toUnit: string): number => {
-    const conversions: Record<string, Record<string, number>> = {
-      g: { kg: 0.001 }, kg: { g: 1000 },
-      ml: { l: 0.001 }, l: { ml: 1000 },
-      tsp: { tbsp: 1/3 }, tbsp: { tsp: 3 },
-      oz: { lb: 0.0625 }, lb: { oz: 16 },
-    };
-    if (fromUnit === toUnit) return value;
-    const conversionFactor = conversions[fromUnit]?.[toUnit];
-    const inverseConversionFactor = conversions[toUnit]?.[fromUnit];
-    if (conversionFactor !== undefined) {
-      return value * conversionFactor;
-    } else if (inverseConversionFactor !== undefined) {
-      return value / inverseConversionFactor;
-    }
-    console.warn(`Conversion not found for ${fromUnit} to ${toUnit}`);
-    return value;
-  };
-
-  const getDisplayValue = (component: DishComponent) => {
-    if (!component || typeof component.amount !== 'number' || !component.unit) {
-        return 'N/A';
-    }
-    const { amount, unit, ingredient_id } = component;
-    const scaledQuantity = amount * servingScale;
-    const baseUnitAbbr = unit.abbreviation || unit.unit_name;
-    const currentUnitAbbr = selectedUnit[ingredient_id] || baseUnitAbbr;
-    let displayValue: number;
-    
-    if (currentUnitAbbr !== baseUnitAbbr) {
-      displayValue = convertUnit(scaledQuantity, baseUnitAbbr, currentUnitAbbr);
-    } else {
-      displayValue = scaledQuantity;
-    }
-    
-    return displayValue % 1 === 0 ? 
-      displayValue.toString() : 
-      displayValue.toFixed(1);
-  };
-
-  const toggleUnit = (component: DishComponent) => {
-    if (!component.unit) return;
-    const { ingredient_id, unit } = component;
-    const baseUnitKey = (unit.abbreviation || unit.unit_name) as MeasurementUnit;
-    const currentOptions = unitOptions[baseUnitKey] || [baseUnitKey];
-    const currentSelected = (selectedUnit[ingredient_id] || baseUnitKey) as MeasurementUnit;
-    const currentIndex = currentOptions.indexOf(currentSelected);
-    const nextIndex = (currentIndex + 1) % currentOptions.length;
-    
-    setSelectedUnit({
-      ...selectedUnit,
-      [ingredient_id]: currentOptions[nextIndex],
-    });
-  };
-
-  // Separate components into preparations and assembly ingredients
+  // Separate components into preparations ingredients
   const preparationComponents = useMemo(() => 
     dish?.components?.filter(c => c.isPreparation) || [], 
     [dish?.components]
   );
-  const assemblyComponents = useMemo(() => 
+  const RawIngredients = useMemo(() => 
     dish?.components?.filter(c => !c.isPreparation) || [], 
     [dish?.components]
   );
+
+  // Effect to initialize servings state when dish data loads
+  useEffect(() => {
+    if (dish?.num_servings) {
+      const initialServings = dish.num_servings > 0 ? dish.num_servings : 1;
+      setOriginalServings(initialServings);
+      setTargetServings(initialServings);
+    }
+  }, [dish?.num_servings]);
 
   // Navigation handler for preparation press
   const handlePreparationPress = (preparationId: string) => {
@@ -131,7 +69,7 @@ const DishDetailScreen = () => {
       console.warn('Attempted to navigate to preparation with invalid ID');
       return;
     }
-    navigation.navigate('PreparationDetails', { preparationId });
+    navigation.navigate('PreparationDetails', { preparationId, recipeServingScale: servingScale });
   };
 
   // Handler for edit button press
@@ -231,41 +169,47 @@ const DishDetailScreen = () => {
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="silverware-fork-knife" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
-                  {/* Show base serving size */}
-                  Base: {dish.serving_size || 'N/A'} {dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name || 'servings'}
+                  Serving Size: {formatQuantityAuto(dish.serving_size, dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name).amount} {formatQuantityAuto(dish.serving_size, dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name).unit}
                 </Text>
               </View>
             </View>
           </View>
           
-          <View style={styles.servingsAdjustContainer}>
-            <Text style={styles.sectionTitle}>Adjust Servings</Text>
-            <View style={styles.servingsAdjustControls}>
-              <TouchableOpacity 
-                style={styles.servingsButton}
-                onPress={() => setServingScale(prev => Math.max(0.5, prev - 0.5))}
-                disabled={servingScale <= 0.5}
-              >
-                <MaterialCommunityIcons 
-                  name="minus" 
-                  size={20} 
-                  color={servingScale <= 0.5 ? COLORS.disabled : COLORS.primary} 
-                />
-              </TouchableOpacity>
-              
-              <Text style={styles.servingsValue}>
-                {/* Show scaled serving size */}
-                {`${servingScale}x (${Math.round((dish.serving_size || 1) * servingScale)} ${dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name || 'servings'})`}
+          {/* Scale Adjust Section - Now controls Target Servings */}
+          {typeof dish.num_servings === 'number' && dish.num_servings > 0 && (
+            <View style={styles.servingsAdjustContainer}>
+              <Text style={styles.sectionSubTitle}> 
+                Adjust Target Servings (Base: {originalServings})
               </Text>
-              
-              <TouchableOpacity 
-                style={styles.servingsButton}
-                onPress={() => setServingScale(prev => prev + 0.5)}
-              >
-                <MaterialCommunityIcons name="plus" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
+              <ScaleSliderInput
+                label=""
+                minValue={1}
+                maxValue={Math.max(10, Math.ceil(originalServings * 5))}
+                step={1}
+                currentValue={targetServings}
+                displayValue={String(targetServings)}
+                displaySuffix="Servings"
+                onValueChange={(newTarget) => {
+                  setTargetServings(Math.round(newTarget));
+                }}
+                onSlidingComplete={(finalTarget) => {
+                  setTargetServings(Math.round(finalTarget));
+                }}
+                onTextInputChange={(text) => {
+                  const newTargetServings = parseInt(text, 10);
+                  if (!isNaN(newTargetServings) && newTargetServings >= 1) {
+                    const maxSliderValue = Math.max(10, Math.ceil(originalServings * 5));
+                    setTargetServings(Math.min(newTargetServings, maxSliderValue));
+                  } else if (text === '') {
+                    setTargetServings(originalServings);
+                  }
+                }}
+                yieldBase={dish.serving_size ?? undefined}
+                yieldUnitAbbr={(dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name) ?? undefined}
+                yieldItem={dish.serving_item ?? undefined}
+              />
             </View>
-          </View>
+          )}
           
           {/* --- Preparations Section --- */}
           {preparationComponents.length > 0 && (
@@ -275,40 +219,31 @@ const DishDetailScreen = () => {
                 <PreparationCard 
                   key={component.ingredient_id} 
                   component={component}
+                  scaleMultiplier={servingScale}
                   onPress={() => handlePreparationPress(component.ingredient_id)}
                 />
               ))}
             </View>
           )}
 
-          {/* --- Assembly Ingredients Section --- */}
-          {assemblyComponents.length > 0 && (
+          {/* --- Ingredients Section --- */}
+          {RawIngredients.length > 0 && (
             <View style={styles.sectionContainer}> 
-              <Text style={styles.sectionTitle}>Assembly Ingredients</Text>
-              {assemblyComponents.map((component) => {
-                const unitKey = (component.unit?.abbreviation || component.unit?.unit_name) as MeasurementUnit;
-                const isToggleable = component.unit && (unitOptions[unitKey]?.length || 0) > 1;
-                const displayUnit = (selectedUnit[component.ingredient_id] || component.unit?.abbreviation || component.unit?.unit_name) as MeasurementUnit;
-                
+              <Text style={styles.sectionTitle}>Raw Ingredients</Text>
+              {RawIngredients.map((component) => {
+                // Calculate scaled amount and format
+                const scaledAmount = component.amount ? component.amount * servingScale : null;
+                const unitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
+                const formattedComponent = formatQuantityAuto(scaledAmount, unitAbbr);
+
                 return (
                   <View key={component.ingredient_id} style={styles.ingredientItem}>
                     <Text style={styles.ingredientName}>{component.name || 'Unknown Ingredient'}</Text>
-                    <TouchableOpacity 
-                      style={styles.ingredientQuantity}
-                      onPress={() => toggleUnit(component)}
-                      disabled={!isToggleable}
-                    >
+                    <View style={styles.ingredientQuantity}>
                       <Text style={styles.ingredientQuantityText}>
-                        {getDisplayValue(component)} {displayUnit}
+                        {formattedComponent.amount} {formattedComponent.unit}
                       </Text>
-                      {isToggleable && (
-                        <MaterialCommunityIcons 
-                          name="swap-horizontal" 
-                          size={16} 
-                          color={COLORS.primary} 
-                        />
-                      )}
-                    </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })}
@@ -316,7 +251,7 @@ const DishDetailScreen = () => {
           )}
 
           {/* Show message if NO components exist at all */}
-          {preparationComponents.length === 0 && assemblyComponents.length === 0 && (
+          {preparationComponents.length === 0 && RawIngredients.length === 0 && (
              <View style={styles.sectionContainer}> 
                 <Text style={styles.noIngredientsText}>No components listed for this dish.</Text>
              </View>
@@ -422,20 +357,11 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
     ...SHADOWS.small,
   },
-  servingsAdjustControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: SIZES.padding / 2,
-  },
-  servingsButton: {
-    padding: 8,
-    borderRadius: SIZES.radius,
-    backgroundColor: COLORS.background,
-  },
-  servingsValue: {
-    ...FONTS.body2,
-    color: COLORS.white,
+  calculatedYieldText: {
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    marginLeft: SIZES.base,
+    flexShrink: 1,
   },
   sectionContainer: {
     marginVertical: SIZES.padding,
@@ -444,37 +370,41 @@ const styles = StyleSheet.create({
     ...FONTS.h2,
     color: COLORS.white,
     marginBottom: SIZES.padding,
+    paddingBottom: SIZES.base,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  sectionSubTitle: {
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    marginBottom: SIZES.base,
   },
   ingredientItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SIZES.padding,
+    paddingVertical: SIZES.padding * 0.75,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.tertiary,
+    borderBottomColor: COLORS.border,
     paddingHorizontal: SIZES.padding,
   },
   ingredientName: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     flex: 1,
     marginRight: SIZES.base,
   },
   ingredientQuantity: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.secondary,
-    paddingHorizontal: SIZES.padding,
-    paddingVertical: SIZES.base,
-    borderRadius: SIZES.radius,
   },
   ingredientQuantityText: {
     ...FONTS.body3,
-    color: COLORS.white,
-    marginRight: 4,
+    color: COLORS.textLight,
   },
   instructionsContainer: {
     marginVertical: SIZES.padding,
+    paddingHorizontal: SIZES.padding,
   },
   instructionItem: {
     flexDirection: 'row',
@@ -489,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SIZES.padding,
+    marginRight: SIZES.padding * 0.75,
     marginTop: 2,
   },
   instructionNumberText: {
@@ -499,13 +429,13 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     flex: 1,
     lineHeight: FONTS.body2.fontSize * 1.5,
   },
   notesText: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,

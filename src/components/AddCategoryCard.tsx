@@ -56,7 +56,7 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
         testID="add-category-card" // Add test ID for easy identification
       >
         <View style={styles.iconContainer}>
-          <MaterialCommunityIcons name="plus" size={30} color={COLORS.white} />
+          <MaterialCommunityIcons name="plus" size={25} color={COLORS.white} />
         </View>
         <Text style={styles.title}>New Section</Text>
       </TouchableOpacity>
@@ -107,9 +107,11 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'transparent',
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
+    borderRadius: SIZES.radius * 3,
+    paddingVertical: SIZES.padding * 1,
+    paddingHorizontal: SIZES.padding,
     alignItems: 'center',
+    justifyContent: 'center',
     ...SHADOWS.small,
     borderWidth: 2,
     borderStyle: 'dashed',
@@ -117,19 +119,21 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   iconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: SIZES.base * 4,
+    height: SIZES.base * 4,
+    borderRadius: 30,
     backgroundColor: COLORS.primary, // Match CategoryCard
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SIZES.base,
   },
   title: {
-    fontSize: 16,
+    fontSize: SIZES.medium,
     fontWeight: '600',
     color: COLORS.white,
     textAlign: 'center',
+    width: '100%',
+    marginTop: SIZES.base,
   },
   modalOverlay: {
     flex: 1,

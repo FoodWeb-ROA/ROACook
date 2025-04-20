@@ -53,17 +53,21 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // --- Category Grid Constants ---
 const CATEGORIES_PER_PAGE = 4;
 const CATEGORY_NUM_COLUMNS = 2;
-const CAT_PADDING = SIZES.padding * 2; // Padding inside category pages
-const CAT_ITEM_SPACING = SIZES.padding; 
+// Make category padding match recipe padding for consistency
+const CAT_PADDING = SIZES.padding;
+const CAT_ITEM_SPACING = SIZES.padding*0.8;
 const catAvailableWidthInPage = screenWidth - CAT_PADDING * 2;
 const categoryItemWidth = (catAvailableWidthInPage - CAT_ITEM_SPACING * (CATEGORY_NUM_COLUMNS - 1)) / CATEGORY_NUM_COLUMNS;
 const CAT_PAGE_WIDTH = screenWidth;
 
-// --- Recipe Grid Constants (2x4 Paging) ---
-const RECIPES_PER_PAGE = 8; // 2 columns * 4 rows
+// --- Recipe Grid Constants for 4 rows --- 
 const RECIPE_NUM_COLUMNS = 2;
-const RECIPE_PADDING = SIZES.padding; // Padding inside recipe pages
-const RECIPE_ITEM_SPACING = SIZES.padding; // Spacing between items
+const RECIPE_NUM_ROWS = 4; // Changed from 3 to 4
+const RECIPES_PER_PAGE = RECIPE_NUM_ROWS * RECIPE_NUM_COLUMNS; // 2 columns * 4 rows
+const RECIPE_PADDING = SIZES.padding;
+// Reduce spacing between recipe items
+const RECIPE_ITEM_SPACING = SIZES.padding;
+
 // Recalculate width available inside recipe page padding
 const recipeAvailableWidthInPage = screenWidth - RECIPE_PADDING * 2;
 // Recalculate width for each recipe item (2 columns)
@@ -80,6 +84,15 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
   DrawerNavigationProp<DrawerParamList, 'Home'>, // Specify 'Home' as the current screen in the drawer
   StackNavigationProp<RootStackParamList> // Include stack navigation capabilities
 >;
+
+// Define height calculations for fixed screen layout
+const HEADER_HEIGHT = 60; // Approximate height of AppHeader
+const SECTION_HEADER_HEIGHT = 40; // Approximate height of section headers
+const PAGINATION_HEIGHT = 30; // Approximate height of pagination dots
+const FAB_CONTAINER_HEIGHT = 70; // Approximate height of the floating action button container
+
+// Calculate available space for content sections
+// ... existing code ...
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -106,12 +119,24 @@ const HomeScreen = () => {
   const handleAddSection = async (sectionName: string) => {
     try {
       // TODO: Replace placeholder with actual logic to get kitchen_id
-      const placeholderKitchenId = 'YOUR_DEFAULT_KITCHEN_ID_HERE'; 
-      if (placeholderKitchenId === 'YOUR_DEFAULT_KITCHEN_ID_HERE') {
+      const placeholderKitchenId = process.env.EXPO_PUBLIC_DEFAULT_KITCHEN_ID; 
+      console.log('>>> Read Kitchen ID from env:', placeholderKitchenId); // Add diagnostic log
+      if (placeholderKitchenId === process.env.EXPO_PUBLIC_DEFAULT_KITCHEN_ID) {
           console.warn('Using placeholder kitchen ID in handleAddSection');
           // Optionally Alert the user or prevent adding if no real ID is available
           // Alert.alert("Setup Needed", "Kitchen selection not implemented yet.");
           // return;
+      }
+
+      // Ensure kitchen ID is available before proceeding
+      if (!placeholderKitchenId) {
+        Alert.alert(
+          "Error",
+          "Kitchen ID is not configured. Cannot add section.",
+          [{ text: "OK" }]
+        );
+        console.error('Error adding section: kitchen_id is undefined. Check environment variables or configuration.');
+        return; // Stop execution if kitchen ID is missing
       }
 
       const { data, error } = await supabase
@@ -156,57 +181,97 @@ const HomeScreen = () => {
   const renderCategoryPage = ({ item: pageItems, index: pageIndex }: { item: any[], index: number }) => {
     return (
       <View style={[styles.pageContainer, { width: CAT_PAGE_WIDTH }]}>
-        {pageItems.map((item, itemIndex) => {
-          const isLastInRow = (itemIndex + 1) % CATEGORY_NUM_COLUMNS === 0;
-          return (
-            <View 
-              key={item.isAddCard ? `add-${pageIndex}-${itemIndex}` : item.menu_section_id} 
-              style={[
-                styles.categoryItemContainer,
-                { width: categoryItemWidth }, 
-                isLastInRow ? { marginRight: 0 } : { marginRight: CAT_ITEM_SPACING } 
-              ]}
-            >
-              {item.isAddCard ? (
-                <AddCategoryCard onAdd={handleAddSection} />
-              ) : (
-                <CategoryCard
-                  category={item}
-                  onPress={() => handleCategoryPress(item)}
-                />
-              )}
-            </View>
-          );
-        })}
+        {chunk(pageItems, CATEGORY_NUM_COLUMNS).map((rowItems, rowIndex) => (
+          <View key={`cat-row-${pageIndex}-${rowIndex}`} style={styles.categoryRow}>
+            {rowItems.map((item, colIndex) => {
+              const isLastInRow = colIndex === CATEGORY_NUM_COLUMNS - 1;
+              return (
+                <View 
+                  key={item.isAddCard ? `add-${pageIndex}-${colIndex}` : item.menu_section_id} 
+                  style={[
+                    styles.categoryItemContainer,
+                    { 
+                      width: categoryItemWidth,
+                      marginRight: isLastInRow ? 0 : CAT_ITEM_SPACING
+                    }
+                  ]}
+                >
+                  {item.isAddCard ? (
+                    <AddCategoryCard onAdd={handleAddSection} />
+                  ) : (
+                    <CategoryCard
+                      category={item}
+                      onPress={() => handleCategoryPress(item)}
+                    />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        ))}
       </View>
     );
   };
+
+  // Add ref and state for recipe pagination
+  const recipeFlatListRef = useRef<FlatList | null>(null);
+  const [currentRecipePage, setCurrentRecipePage] = useState(0);
+
+  // Add viewability change handler for recipes
+  const onRecipeViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setCurrentRecipePage(viewableItems[0].index);
+    }
+  }, []);
+  const recipeViewabilityConfig = { itemVisiblePercentThreshold: 50 };
 
   // Filter and sort dishes for the 'Recent Dishes' section
   const recentDishes = useMemo(() => {
     if (!dishes) return [];
     // Example sorting: by creation date if available, otherwise just slice
     // Assuming dishes array might have a created_at or similar field eventually
-    // For now, just take the first 8 as they come from the hook
-    return dishes.slice(0, 8);
+    // For now, just take the first dishes as they come from the hook
+    return dishes.slice(0, 32); // Increased slice to allow for more pages (e.g., 4 pages of 8)
   }, [dishes]);
+
+  // Chunk the dishes into pages
+  const recipePages = useMemo(() => {
+    return chunk(recentDishes, RECIPES_PER_PAGE);
+  }, [recentDishes]);
+  
+  const totalRecipePages = recipePages.length;
 
   const isLoading = loadingCategories || loadingDishes;
   const hasError = categoriesError || dishesError;
   
-  // Render dish items in a vertical grid
-  const renderDishItem = ({ item }: { item: Dish }) => {
+  // Render a page of dishes (horizontal paging)
+  const renderRecipePage = ({ item: pageItems, index: pageIndex }: { item: Dish[], index: number }) => {
     return (
-      <View 
-        style={[
-          styles.recipeItemContainer,
-          { width: recipeItemWidth }
-        ]}
-      >
-        <DishGridItem
-          dish={item}
-          onPress={() => handleDishPress(item)}
-        />
+      <View style={[styles.recipePage, { width: RECIPE_PAGE_WIDTH }]}>
+        {chunk(pageItems, RECIPE_NUM_COLUMNS).map((rowItems, rowIndex) => (
+          <View key={`row-${pageIndex}-${rowIndex}`} style={styles.recipeRow}>
+            {rowItems.map((dish, colIndex) => {
+              const isLastInRow = colIndex === RECIPE_NUM_COLUMNS - 1;
+              return (
+                <View 
+                  key={dish.dish_id} 
+                  style={[
+                    styles.recipeItemContainer,
+                    { 
+                      width: recipeItemWidth,
+                      marginRight: isLastInRow ? 0 : RECIPE_ITEM_SPACING
+                    }
+                  ]}
+                >
+                  <DishGridItem
+                    dish={dish}
+                    onPress={() => handleDishPress(dish)}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        ))}
       </View>
     );
   };
@@ -315,7 +380,7 @@ const HomeScreen = () => {
     <TouchableOpacity onPress={handleUploadRecipePress} style={styles.uploadButton} disabled={isParsing}>
       {isParsing ? 
         <ActivityIndicator size="small" color={COLORS.primary} /> : 
-        <MaterialCommunityIcons name="upload" size={28} color={COLORS.primary} />
+        <MaterialCommunityIcons name="upload" size={28} color={COLORS.text} />
       }
     </TouchableOpacity>
   );
@@ -324,17 +389,14 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <AppHeader 
-        title="FoodWeb"
+        title="ROACook"
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
         rightComponent={renderHeaderRight()}
       />
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Main ScrollView to enable scrolling the whole page */}
+      {/* Replace ScrollView with fixed View */}
+      <View style={styles.container}>
         <View style={styles.contentArea}>
           {/* --- Categories Section --- */}
           <View style={styles.categoriesSection}>
@@ -346,95 +408,103 @@ const HomeScreen = () => {
               <View style={styles.loadingContainer} />
             ) : categoriesError ? (
               <Text style={styles.errorText}>Error loading categories</Text>
+            ) : categoryPages.length === 0 ? (
+              <Text style={styles.noDataText}>No categories found</Text>
             ) : (
-              <View style={styles.sectionContentContainer}> 
+              <View style={styles.sectionContentContainer}>
                 <FlatList
                   ref={categoryFlatListRef}
-                  data={categoryPages} 
+                  data={categoryPages}
                   renderItem={renderCategoryPage}
-                  keyExtractor={(item, index) => `catPage-${index}`}
+                  keyExtractor={(_, index) => `category-page-${index}`}
                   horizontal
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
-                  onViewableItemsChanged={onCategoryViewableItemsChanged} 
+                  onViewableItemsChanged={onCategoryViewableItemsChanged}
                   viewabilityConfig={categoryViewabilityConfig}
-                  style={styles.flatListStyle} 
+                  style={styles.flatListStyle}
                   contentContainerStyle={styles.flatListContentContainer}
-                  nestedScrollEnabled={true}
                 />
-                {/* Category Pagination Dots */} 
-                {totalCategoryPages > 1 && (
-                  <View style={styles.paginationContainer}>
-                    {Array.from({ length: totalCategoryPages }).map((_, index) => (
-                      <View
-                        key={`catDot-${index}`}
-                        style={[
-                          styles.paginationDot,
-                          currentCategoryPage === index ? styles.paginationDotActive : null,
-                        ]}
-                      />
-                    ))}
-                  </View>
-                )}
               </View>
             )}
           </View>
+          
+          {/* --- Dots between Categories and Recent Dishes --- */}
+          {totalCategoryPages > 1 && (
+            <View style={styles.dotSeparatorContainer}> 
+              {Array.from({length: totalCategoryPages}).map((_, index) => (
+                <View
+                  key={`cat-dot-${index}`}
+                  style={[
+                    styles.paginationDot,
+                    currentCategoryPage === index && styles.paginationDotActive
+                  ]}
+                />
+              ))}
+            </View>
+          )}
 
           {/* --- Recent Dishes Section --- */}
-          <View style={styles.recentRecipesSection}>
+          <View style={styles.recentDishesSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Dishes</Text>
-              {/* View All Button */}
-              <TouchableOpacity onPress={() => console.log('View all dishes')}> 
-                <Text style={styles.viewAllText}>View All</Text>
+              <Text style={[styles.sectionTitle, { fontSize: SIZES.medium }]}>Recent Dishes</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Inventory')}> 
+                <Text style={[styles.viewAllText, { fontSize: SIZES.small }]}>View All</Text>
               </TouchableOpacity> 
             </View>
             
             {isLoading ? (
               <View style={styles.loadingContainer} />
-             ) : hasError ? (
-               <Text style={styles.errorText}>Error loading dishes</Text>
-             ) : recentDishes.length === 0 ? (
-               <Text style={styles.noDataText}>No dishes found</Text>
-             ) : (
-              // Dish Grid
-              <View style={styles.recipesGrid}>
-                {recentDishes.map((dish) => (
-                  <View 
-                    key={dish.dish_id}
-                    style={[
-                      styles.recipeItemContainer,
-                      { width: recipeItemWidth, 
-                        marginRight: (recentDishes.indexOf(dish) % 2 === 0) ? RECIPE_ITEM_SPACING : 0 
-                      }
-                    ]}
-                  >
-                    <DishGridItem
-                      dish={dish}
-                      onPress={() => handleDishPress(dish)}
-                    />
-                  </View>
-                ))}
-              </View>
+            ) : hasError ? (
+              <Text style={[styles.errorText, { fontSize: SIZES.small }]}>Error loading dishes</Text>
+            ) : recentDishes.length === 0 ? (
+              <Text style={[styles.noDataText, { fontSize: SIZES.small }]}>No dishes found</Text>
+            ) : (
+              <>
+                <View style={styles.recipeSectionContainer}>
+                  <FlatList
+                    ref={recipeFlatListRef}
+                    data={recipePages}
+                    renderItem={renderRecipePage}
+                    keyExtractor={(_, index) => `recipe-page-${index}`}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onViewableItemsChanged={onRecipeViewableItemsChanged}
+                    viewabilityConfig={recipeViewabilityConfig}
+                    style={styles.flatListStyle}
+                    contentContainerStyle={[styles.flatListContentContainer, { paddingBottom: SIZES.padding * 0.5 }]}
+                  />
+                  {totalRecipePages > 1 && (
+                    <View style={styles.paginationContainer}> 
+                      {Array.from({length: totalRecipePages}).map((_, index) => (
+                        <View
+                          key={`recipe-dot-${index}`}
+                          style={[
+                            styles.paginationDot,
+                            currentRecipePage === index && styles.paginationDotActive
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </>
             )}
           </View>
         </View>
-      </ScrollView>
-      {/* End ScrollView */}
-
-      {/* This View wraps the fixed buttons */}
-      <View style={styles.fixedFabContainer}>
-        <TouchableOpacity 
-          style={[styles.floatingButton, styles.createButton]}
-          onPress={() => navigation.navigate('CreateRecipe')}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
-          <Text style={styles.floatingButtonText}>Add Recipe</Text>
-        </TouchableOpacity>
       </View>
-      {/* End fixedFabContainer View */} 
 
+      <View style={styles.bottomContainer}>
+          <TouchableOpacity 
+            style={[styles.floatingButton, styles.createButton]}
+            onPress={() => navigation.navigate('CreateRecipe')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
+            <Text style={styles.floatingButtonText}>Add Recipe</Text>
+          </TouchableOpacity>
+        </View>
     </SafeAreaView>
   );
 };
@@ -443,25 +513,28 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+    paddingBottom: SIZES.padding, // Add padding at the very bottom
   },
   container: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: SIZES.padding * 2,
-  },
   contentArea: {
     flexDirection: 'column',
+    flex: 1,
+    paddingTop: SIZES.padding*0.5, 
   },
   categoriesSection: {
-    paddingVertical: SIZES.padding / 2, 
+    flex: 0.5, // Adjust flex proportion
+    paddingBottom: 0,
+    marginBottom: SIZES.padding * 0.8, // Increase space below categories section slightly more
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SIZES.padding / 2, // Reduce margin
-    paddingHorizontal: RECIPE_PADDING, 
+    marginBottom: SIZES.padding / 2, // Standard margin below header
+    paddingHorizontal: RECIPE_PADDING, // Use consistent padding
+    verticalAlign: 'middle',
   },
   sectionTitle: {
     ...FONTS.h3,
@@ -471,31 +544,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: RECIPE_PADDING,
-    paddingBottom: SIZES.padding,
   },
-  recentRecipesSection: {
-    paddingVertical: SIZES.padding / 2,
+  recentDishesSection: {
+    flex: 0.5, // Adjust flex proportion
+    paddingTop: 0,
+    // Removed paddingBottom to reduce space below recipes before dots
+    // Removed marginTop: 0 as it's default
   },
   viewAllText: {
     ...FONTS.body3,
     color: COLORS.primary,
   },
   fixedFabContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: SIZES.padding, 
-    paddingBottom: SIZES.padding * 2, 
-    backgroundColor: COLORS.background, 
+    paddingHorizontal: SIZES.padding * 2.0,
   },
   floatingButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: SIZES.padding * 0.75,
-    paddingHorizontal: SIZES.padding * 1.5,
+    paddingHorizontal: SIZES.padding,
     borderRadius: 25, // Pill shape
     margin: 8,
+    width: '60%',
     ...SHADOWS.medium,
   },
   createButton: {
@@ -508,7 +579,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   loadingContainer: { // Re-add loading container style
-    height: 150, // Adjust height as needed
+    height: 200, // Adjust height as needed
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -525,51 +596,85 @@ const styles = StyleSheet.create({
      paddingHorizontal: RECIPE_PADDING, // Add padding to align with grid
   },
   flatListStyle: {
-    // No horizontal padding, FlatList spans screen width for paging
+    // flex: 1, // REMOVED
   },
   flatListContentContainer: {
-    // No padding needed here
+    // No padding needed here initially
   },
   // --- Category Styles --- 
-  pageContainer: { // Renamed from pageContainer to avoid conflict if styles differ
-    width: CAT_PAGE_WIDTH, 
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
+  pageContainer: { // Style for category pages
+    width: CAT_PAGE_WIDTH,
     paddingHorizontal: CAT_PADDING,
+    flex: 1, // Allow page container to fill space
   },
   categoryItemContainer: {
-    marginBottom: CAT_ITEM_SPACING,
-    // width and marginRight applied dynamically
+    marginBottom: CAT_ITEM_SPACING, // Consistent spacing
   },
   // --- Pagination Styles (Shared) --- 
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: SIZES.padding, 
-    paddingBottom: SIZES.padding, 
+    // marginTop: -SIZES.padding * 10, // Negative margin to pull dots up - REMOVED
+    // paddingVertical: SIZES.padding * 0.25, // Add small vertical padding to ensure dots aren't cut off
   },
   paginationDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.textLight,
+    backgroundColor: COLORS.primary,
     marginHorizontal: 4,
   },
   paginationDotActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.textLight,
   },
   recipeItemContainer: {
-    marginBottom: RECIPE_ITEM_SPACING,
+     // Removed marginBottom here, handled by recipeRow
   },
-  sectionContentContainer: { // Style for category FlatList container
-    height: CATEGORY_SECTION_HEIGHT,
-    // Add other styles if needed, e.g., backgroundColor for debugging
-    // backgroundColor: 'rgba(0, 255, 0, 0.1)', // Example background
+  sectionContentContainer: {
+    flex: 1,
+    height: undefined, 
   },
   uploadButton: {
     padding: SIZES.base,
+  },
+  recipeSectionContainer: {
+    flex: 1, // Restore flex: 1 to ensure it fills parent space
+    height: undefined,
+  },
+  
+  recipePage: { // Style for recipe pages
+    paddingHorizontal: RECIPE_PADDING,
+    justifyContent: 'flex-start', // Align rows to the top
+    width: RECIPE_PAGE_WIDTH,
+    flex: 1, // Allow page container to fill space
+  },
+
+  bottomContainer: {
+    flex: 0,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  
+  recipeRow: {
+    flexDirection: 'row',
+    marginBottom: RECIPE_ITEM_SPACING, // Use standard item spacing
+    justifyContent: 'space-between', // Ensure items spread
+  },
+  
+  categoryRow: {
+    flexDirection: 'row',
+    marginBottom: CAT_ITEM_SPACING, // Use standard item spacing
+    justifyContent: 'space-between', // Ensure items spread
+  },
+  // New style for the dot separator containers
+  dotSeparatorContainer: {
+    height: 5, // Restore height to create space
+    // Removed paddingVertical to center dots in the new margin space
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Remove paddingVertical if added by user
   },
 });
 

@@ -5,6 +5,7 @@ import {
   Text,
   FlatList,
   ActivityIndicator,
+  TouchableOpacity
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -12,7 +13,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { Dish } from '../types';
+import { Dish, DishComponent } from '../types';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
 import { useDishes } from '../hooks/useSupabase';
@@ -32,6 +34,34 @@ const CategoryRecipesScreen = () => {
     navigation.navigate('DishDetails', { dishId: dish.dish_id });
   };
   
+  const handlePreparationPress = (preparationId: string) => {
+    navigation.navigate('PreparationDetails', { preparationId });
+  };
+  
+  // Helper function to render preparations for a dish
+  const renderPreparations = (dish: Dish) => {
+    const preparations = dish.components?.filter(comp => comp.isPreparation) || [];
+    
+    if (preparations.length === 0) return null;
+    
+    return (
+      <View style={styles.preparationsContainer}>
+        <Text style={styles.preparationsTitle}>Preparations:</Text>
+        {preparations.map((prep: DishComponent) => (
+          <TouchableOpacity 
+            key={prep.ingredient_id}
+            style={styles.preparationItem}
+            onPress={() => handlePreparationPress(prep.ingredient_id)}
+          >
+            <MaterialCommunityIcons name="chef-hat" size={16} color={COLORS.primary} />
+            <Text style={styles.preparationName}>{prep.name}</Text>
+            <MaterialCommunityIcons name="chevron-right" size={16} color={COLORS.textLight} />
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
   if (loadingDishes) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
@@ -63,10 +93,13 @@ const CategoryRecipesScreen = () => {
         <FlatList
           data={dishes}
           renderItem={({ item }) => (
-            <DishCard
-              dish={item}
-              onPress={handleDishPress}
-            />
+            <View style={styles.dishContainer}>
+              <DishCard
+                dish={item}
+                onPress={handleDishPress}
+              />
+              {renderPreparations(item)}
+            </View>
           )}
           keyExtractor={(item) => item.dish_id}
           contentContainerStyle={styles.listContent}
@@ -126,6 +159,35 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     textAlign: 'center',
     padding: SIZES.padding * 2,
+  },
+  dishContainer: {
+    marginBottom: SIZES.padding * 2,
+  },
+  preparationsContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    marginTop: -SIZES.padding, // Overlap with the card slightly
+    marginBottom: SIZES.padding,
+    marginHorizontal: SIZES.padding / 2,
+  },
+  preparationsTitle: {
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    marginBottom: SIZES.base,
+  },
+  preparationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SIZES.base,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  preparationName: {
+    ...FONTS.body3,
+    color: COLORS.white,
+    flex: 1,
+    marginLeft: SIZES.base,
   },
 });
 

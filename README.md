@@ -121,3 +121,31 @@ npm run android
 npm run ios
 npm run web
 ```
+
+# UI Updates
+
+CreateRecipeScreen now renders added preparations using the read-only `PreparationCard` component instead of the standard editable row.
+
+The preparation card in `CreateRecipeScreen` now displays the preparation's amount with the label "Amount:" instead of "Yield:". Sub-ingredients are not displayed as they are not stored in the component list at this stage.
+
+Preparations added via the parser/upload flow will now display their sub-ingredients on the `PreparationCard` in `CreateRecipeScreen`. Manually added preparations currently do not fetch/display sub-ingredients.
+
+CreateRecipeScreen now includes a scale slider (`ScaleSliderInput`) allowing users to adjust the target **number of servings**. Displayed component amounts update dynamically based on the ratio of target servings to original servings, and the scaled amounts are saved to the database along with the target number of servings.
+
+The `ScaleSliderInput` component layout has been adjusted to provide more width for the slider.
+`CreateRecipeScreen` now displays the calculated total yield below the servings slider, similar to `DishDetailScreen`.
+
+The title for `CreateRecipeScreen` when confirming a parsed recipe is now "Confirm Parsed Recipe".
+Reduced vertical spacing around the header and the servings slider/yield display in `CreateRecipeScreen`.
+
+`CreateRecipeScreen` now includes a `TextInput` for the `serving_item`, allowing users to specify a description (e.g., "slice", "bowl") for count-based serving units.
+This input is only visible when a count-based unit (like 'piece' or 'x') is selected for the serving unit.
+Added a button next to the `serving_item` input to open a modal allowing selection of an existing recipe component (ingredient/preparation) to populate the field.
+
+Quantities (ingredient amounts, yields) are now displayed rounded to one decimal place throughout the UI.
+
+Count units (e.g., unit 'x' with an item like 'leek') now use the item name as the unit and attempt simple pluralization (adding 's') if the quantity is not 1.
+
+Items ending in 'ss' (like 'glass') are pluralized by adding 'es'.
+
+Fixed sub-ingredient names not being capitalized when displayed within `PreparationCard` components in the confirmation screens.

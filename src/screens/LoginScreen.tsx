@@ -19,7 +19,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { KITCHENS } from '../constants/dummyData';
 import { useAuth } from '../context/AuthContext';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 

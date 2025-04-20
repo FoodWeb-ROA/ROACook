@@ -75,7 +75,7 @@ export async function fetchDishesWithRelatedData() { // Renamed function
       .select(`
         *,
         menu_section:dishes_menu_section_id_fkey (*),
-        serving_unit:dishes_serving_unit_id_fkey (*)
+        serving_unit:units!dishes_serving_unit_fkey (*)
       `);
     
     if (dishesError) throw dishesError;

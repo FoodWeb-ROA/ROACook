@@ -1,10 +1,11 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
+import { createStackNavigator, StackNavigationProp, CardStyleInterpolators } from '@react-navigation/stack';
 import { createDrawerNavigator, DrawerNavigationProp } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, View, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation, NavigationProp, RouteProp } from '@react-navigation/native';
+import Sidebar from '../components/Sidebar';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -17,10 +18,10 @@ import DishDetailScreen from '../screens/DishDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
 import CreateRecipeScreen from '../screens/CreateRecipeScreen';
-import ConfirmParsedRecipeScreen from '../screens/ConfirmParsedRecipeScreen';
+import CreatePreparationScreen from '../screens/CreatePreparationScreen';
 // @ts-ignore next-line
 import InventoryScreen from '../screens/InventoryScreen';
-import ConfirmPreparationScreen from '../screens/ConfirmPreparationScreen';
+import AllRecipesScreen from '../screens/AllRecipesScreen';
 
 // Types
 import { RootStackParamList } from './types';
@@ -30,6 +31,7 @@ import { useAuth } from '../context/AuthContext';
 // Define DrawerParamList type
 export type DrawerParamList = {
   Home: undefined;
+  AllRecipes: undefined;
   Account: undefined;
   Preferences: undefined;
   Support: undefined;
@@ -44,14 +46,19 @@ const Stack = createStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
 const DrawerNavigator = () => {
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
   return (
     <Drawer.Navigator
       initialRouteName="Home"
+      drawerContent={(props) => <Sidebar {...props} />}
       screenOptions={{
         headerShown: false,
+        drawerType: 'front',
+        overlayColor: 'rgba(0,0,0,0.5)',
         drawerStyle: {
-          backgroundColor: COLORS.background,
-          width: 240,
+          backgroundColor: 'transparent',
+          width: SCREEN_WIDTH,
         },
         drawerActiveTintColor: COLORS.white,
         drawerInactiveTintColor: COLORS.textLight,
@@ -71,6 +78,11 @@ const DrawerNavigator = () => {
       }}
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
+      <Drawer.Screen 
+        name="AllRecipes" 
+        component={AllRecipesScreen} 
+        options={{ title: 'All Recipes' }}
+      />
       <Drawer.Screen name="Inventory" component={InventoryScreen} />
       <Drawer.Screen name="Account" component={AccountScreen} />
       <Drawer.Screen name="Preferences" component={PreferencesScreen} />
@@ -82,6 +94,7 @@ const DrawerNavigator = () => {
 
 const AppNavigator = () => {
   const { user, loading } = useAuth();
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
   if (loading) {
     return (
@@ -98,6 +111,7 @@ const AppNavigator = () => {
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: COLORS.background },
+          cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         }}
       >
         {user ? (
@@ -105,6 +119,12 @@ const AppNavigator = () => {
             <Stack.Screen
               name="MainDrawer"
               component={DrawerNavigator}
+              options={{ cardStyleInterpolator: CardStyleInterpolators.forNoAnimation }}
+            />
+            <Stack.Screen
+              name="Inventory"
+              component={InventoryScreen}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="DishDetails"
@@ -124,39 +144,13 @@ const AppNavigator = () => {
             <Stack.Screen
               name="CreateRecipe"
               component={CreateRecipeScreen}
-              options={({ navigation }: { navigation: StackNavigationProp<RootStackParamList> }) => ({
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: COLORS.background,
-                  shadowOpacity: 0,
-                  elevation: 0,
-                },
-                headerTitle: '',
-                headerBackTitle: ' ',
-                headerTintColor: COLORS.white,
-                headerLeft: () => (
-                  <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={{ 
-                      marginLeft: SIZES.padding * 2,
-                      marginTop: SIZES.padding * 4
-                     }}
-                  >
-                    <Ionicons name="arrow-back" size={28} color={COLORS.white} />
-                  </TouchableOpacity>
-                ),
-              })}
-            />
-            <Stack.Screen
-              name="ConfirmParsedRecipe"
-              component={ConfirmParsedRecipeScreen}
-              options={{ 
+              options={{
                 headerShown: false,
               }}
             />
             <Stack.Screen
-              name="ConfirmPreparation"
-              component={ConfirmPreparationScreen}
+              name="CreatePreparation"
+              component={CreatePreparationScreen}
               options={{ headerShown: false }}
             />
           </>

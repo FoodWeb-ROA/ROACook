@@ -3,13 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DishComponent, PreparationIngredient } from '../types';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
+import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
 
 interface PreparationCardProps {
   component: DishComponent;
   onPress: () => void;
+  scaleMultiplier?: number;
+  amountLabel?: string;
 }
 
-const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress }) => {
+const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, scaleMultiplier = 1, amountLabel = 'Yield' }) => {
   const preparation = component.preparationDetails;
 
   if (!preparation) {
@@ -31,36 +34,52 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress })
       return `${minutes} min`;
   };
 
+  // Calculate scaled yield
+  const scaledYieldAmount = preparation.yield_amount ? preparation.yield_amount * scaleMultiplier : null;
+  const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
+  const formattedYield = formatQuantityAuto(scaledYieldAmount, yieldUnitAbbr);
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.title}>{preparation.name || component.name}</Text>
 
       <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <MaterialCommunityIcons name="clock-outline" size={16} color={COLORS.textLight} />
-          <Text style={styles.infoText}>{formatTime(preparation.total_time)}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <MaterialCommunityIcons name="weight" size={16} color={COLORS.textLight} />
-          <Text style={styles.infoText}>
-            Yield: {preparation.yield_amount || 'N/A'} {preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || ''}
-          </Text>
-        </View>
+        {preparation.total_time !== null && preparation.total_time !== undefined && (
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="clock-outline" size={16} color={COLORS.textLight} />
+            <Text style={styles.infoText}>{formatTime(preparation.total_time)}</Text>
+          </View>
+        )}
+        {/* Only show Yield/Amount if available and time is also shown OR if time is not shown */}
+        {formattedYield.amount !== 'N/A' && (
+           <View style={styles.infoItem}> 
+            <MaterialCommunityIcons name="scale-balance" size={16} color={COLORS.textLight} />
+            <Text style={styles.infoText}>
+              {amountLabel}: {formattedYield.amount} {formattedYield.unit}
+            </Text>
+           </View>
+        )}
       </View>
 
       <Text style={styles.subTitle}>Ingredients:</Text>
       {preparation.ingredients && preparation.ingredients.length > 0 ? (
-        preparation.ingredients.map((ing: PreparationIngredient) => (
-          <View key={ing.ingredient_id} style={styles.ingredientItem}>
-            <Text style={styles.ingredientName}>• {ing.name}</Text>
-            <Text style={styles.ingredientQuantity}>
-              {(ing.amount ?? 0) % 1 === 0 ? (ing.amount ?? 0).toString() : (ing.amount ?? 0).toFixed(1)} {ing.unit?.abbreviation || ing.unit?.unit_name || ''}
-            </Text>
-          </View>
-        ))
+        preparation.ingredients.slice(0, 3).map((ing: PreparationIngredient) => {
+          const scaledIngAmount = ing.amount ? ing.amount * scaleMultiplier : null;
+          const ingUnitAbbr = ing.unit?.abbreviation || ing.unit?.unit_name || '';
+          const formattedIng = formatQuantityAuto(scaledIngAmount, ingUnitAbbr);
+          return (
+            <View key={ing.ingredient_id} style={styles.ingredientItem}>
+              <Text style={styles.ingredientName}>• {capitalizeWords(ing.name)}</Text>
+              <Text style={styles.ingredientQuantity}>
+                {formattedIng.amount} {formattedIng.unit}
+              </Text>
+            </View>
+          );
+        })
       ) : (
         <Text style={styles.noIngredientsText}>No ingredients listed.</Text>
       )}
+      {preparation.ingredients && preparation.ingredients.length > 3 && <Text style={styles.ellipsisText}>...</Text>}
     </TouchableOpacity>
   );
 };
@@ -122,6 +141,12 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     fontStyle: 'italic',
     marginLeft: SIZES.base,
+  },
+  ellipsisText: {
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    marginLeft: SIZES.base,
+    textAlign: 'left',
   },
   errorText: {
     ...FONTS.body3,
