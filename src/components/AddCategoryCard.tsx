@@ -89,13 +89,13 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
                     setModalVisible(false);
                   }}
                 >
-                  <Text style={styles.cancelButtonText}>{t('components.addCategoryCard.cancel')}</Text>
+                  <Text style={styles.cancelButtonText}>{t('components.addCategoryCard.cancelButton')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.addButton}
                   onPress={handleAddSection}
                 >
-                  <Text style={styles.addButtonText}>{t('components.addCategoryCard.add')}</Text>
+                  <Text style={styles.addButtonText}>{t('components.addCategoryCard.addButton')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     paddingVertical: SIZES.padding,
-    paddingHorizontal: SIZES.padding * 2,
+    paddingHorizontal: SIZES.padding,
     borderRadius: SIZES.radius,
     backgroundColor: COLORS.background,
     flex: 1,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   addButton: {
     paddingVertical: SIZES.padding,
-    paddingHorizontal: SIZES.padding * 2,
+    paddingHorizontal: SIZES.padding,
     borderRadius: SIZES.radius,
     backgroundColor: COLORS.tertiary,
     flex: 1,
