@@ -18,6 +18,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
 import { useDishes } from '../hooks/useSupabase';
+import { useTranslation } from 'react-i18next';
 
 type CategoryRecipesRouteProp = RouteProp<RootStackParamList, 'CategoryRecipes'>;
 type CategoryRecipesNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -26,6 +27,7 @@ const CategoryRecipesScreen = () => {
   const navigation = useNavigation<CategoryRecipesNavigationProp>();
   const route = useRoute<CategoryRecipesRouteProp>();
   const { categoryId, categoryName } = route.params;
+  const { t } = useTranslation();
 
   // Fetch dishes filtered by menu section id (assuming useDishes supports this)
   const { dishes, loading: loadingDishes, error: dishesError } = useDishes(categoryId);
@@ -46,7 +48,7 @@ const CategoryRecipesScreen = () => {
     
     return (
       <View style={styles.preparationsContainer}>
-        <Text style={styles.preparationsTitle}>Preparations:</Text>
+        <Text style={styles.preparationsTitle}>{t('screens.categoryRecipes.preparationsTitle')}</Text>
         {preparations.map((prep: DishComponent) => (
           <TouchableOpacity 
             key={prep.ingredient_id}
@@ -66,7 +68,7 @@ const CategoryRecipesScreen = () => {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />
-        <AppHeader title={`Loading ${categoryName}...`} showBackButton={true} />
+        <AppHeader title={t('screens.categoryRecipes.loading', { categoryName })} showBackButton={true} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -76,7 +78,7 @@ const CategoryRecipesScreen = () => {
     return (
       <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Error" showBackButton={true} />
+        <AppHeader title={t('common.error')} showBackButton={true} />
         <Text style={styles.errorText}>{dishesError.message}</Text>
       </SafeAreaView>
     );
@@ -86,7 +88,7 @@ const CategoryRecipesScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <AppHeader 
-        title={categoryName || 'Category Dishes'}
+        title={categoryName || t('screens.categoryRecipes.titleFallback', 'Category Dishes')}
         showBackButton={true} 
       />
       <View style={styles.container}>
@@ -105,7 +107,7 @@ const CategoryRecipesScreen = () => {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No dishes found in this category</Text>
+              <Text style={styles.emptyText}>{t('screens.categoryRecipes.noDishesInCategory')}</Text>
             </View>
           }
         />

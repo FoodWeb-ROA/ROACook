@@ -19,6 +19,7 @@ import { RootStackParamList } from '../navigation/types';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 // Define composite navigation prop type
 type AccountScreenNavigationProp = CompositeNavigationProp<
@@ -29,6 +30,7 @@ type AccountScreenNavigationProp = CompositeNavigationProp<
 const AccountScreen = () => {
   const navigation = useNavigation<AccountScreenNavigationProp>();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
@@ -82,7 +84,7 @@ const AccountScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <AppHeader
-        title="Account"
+        title={t('screens.account.title')}
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
       />
@@ -99,7 +101,7 @@ const AccountScreen = () => {
           onPress={handleLogout}
         >
           <MaterialCommunityIcons name="logout" size={20} color={COLORS.error} />
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('screens.account.logout')}</Text>
         </TouchableOpacity>
 
       </ScrollView>

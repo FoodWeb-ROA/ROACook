@@ -23,6 +23,7 @@ import PreparationCard from '../components/PreparationCard';
 import { useDishDetail } from '../hooks/useSupabase';
 import { formatQuantityAuto } from '../utils/textFormatters';
 import ScaleSliderInput from '../components/ScaleSliderInput';
+import { useTranslation } from 'react-i18next';
 
 type DishDetailRouteProp = RouteProp<RootStackParamList, 'DishDetails'>;
 type DishDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -31,6 +32,7 @@ const DishDetailScreen = () => {
   const navigation = useNavigation<DishDetailNavigationProp>();
   const route = useRoute<DishDetailRouteProp>();
   const { dishId } = route.params;
+  const { t } = useTranslation();
   
   const { 
     dish, 
@@ -84,7 +86,7 @@ const DishDetailScreen = () => {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Loading Dish..." showBackButton={true} />
+        <AppHeader title={t('screens.dishDetail.loading')} showBackButton={true} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -94,9 +96,9 @@ const DishDetailScreen = () => {
     return (
       <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Error" showBackButton={true} />
+        <AppHeader title={t('common.error')} showBackButton={true} />
         <Text style={styles.errorText}>
-          {error ? error.message : "Dish not found"}
+          {error ? error.message : t('screens.dishDetail.notFound', 'Dish not found')}
         </Text>
       </SafeAreaView>
     );
@@ -153,7 +155,7 @@ const DishDetailScreen = () => {
                 <View style={styles.infoItem}>
                   <MaterialCommunityIcons name="account-multiple" size={18} color={COLORS.textLight} />
                   <Text style={styles.infoText}>
-                    Servings: {dish.num_servings}
+                    {t('screens.dishDetail.servingsLabel', 'Servings:')} {dish.num_servings}
                   </Text>
                 </View>
               )}
@@ -169,7 +171,7 @@ const DishDetailScreen = () => {
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="silverware-fork-knife" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
-                  Serving Size: {formatQuantityAuto(dish.serving_size, dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name).amount} {formatQuantityAuto(dish.serving_size, dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name).unit}
+                  {t('screens.dishDetail.servingSizeLabel', 'Serving Size:')} {formatQuantityAuto(dish.serving_size, dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name).amount} {formatQuantityAuto(dish.serving_size, dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name).unit}
                 </Text>
               </View>
             </View>
@@ -179,7 +181,7 @@ const DishDetailScreen = () => {
           {typeof dish.num_servings === 'number' && dish.num_servings > 0 && (
             <View style={styles.servingsAdjustContainer}>
               <Text style={styles.sectionSubTitle}> 
-                Adjust Target Servings (Base: {originalServings})
+                {t('screens.dishDetail.adjustServingsLabel', 'Adjust Target Servings (Base: {{baseServings}})', { baseServings: originalServings })}
               </Text>
               <ScaleSliderInput
                 label=""
@@ -188,7 +190,7 @@ const DishDetailScreen = () => {
                 step={1}
                 currentValue={targetServings}
                 displayValue={String(targetServings)}
-                displaySuffix="Servings"
+                displaySuffix={t('screens.dishDetail.servingsSuffix', 'Servings')}
                 onValueChange={(newTarget) => {
                   setTargetServings(Math.round(newTarget));
                 }}
@@ -214,7 +216,7 @@ const DishDetailScreen = () => {
           {/* --- Preparations Section --- */}
           {preparationComponents.length > 0 && (
             <View style={styles.sectionContainer}> 
-              <Text style={styles.sectionTitle}>Preparations</Text>
+              <Text style={styles.sectionTitle}>{t('screens.dishDetail.preparationsTitle')}</Text>
               {preparationComponents.map((component) => (
                 <PreparationCard 
                   key={component.ingredient_id} 
@@ -229,7 +231,7 @@ const DishDetailScreen = () => {
           {/* --- Ingredients Section --- */}
           {RawIngredients.length > 0 && (
             <View style={styles.sectionContainer}> 
-              <Text style={styles.sectionTitle}>Raw Ingredients</Text>
+              <Text style={styles.sectionTitle}>{t('screens.dishDetail.rawIngredientsTitle')}</Text>
               {RawIngredients.map((component) => {
                 // Calculate scaled amount and format
                 const scaledAmount = component.amount ? component.amount * servingScale : null;
@@ -253,16 +255,16 @@ const DishDetailScreen = () => {
           {/* Show message if NO components exist at all */}
           {preparationComponents.length === 0 && RawIngredients.length === 0 && (
              <View style={styles.sectionContainer}> 
-                <Text style={styles.noIngredientsText}>No components listed for this dish.</Text>
+                <Text style={styles.noIngredientsText}>{t('screens.dishDetail.noComponents')}</Text>
              </View>
           )}
           
           {/* --- Directions Section --- */}
           {directions.length > 0 && (
             <View style={styles.instructionsContainer}> 
-              <Text style={styles.sectionTitle}>Directions</Text>
+              <Text style={styles.sectionTitle}>{t('screens.dishDetail.directionsTitle')}</Text>
               {directions.map((step: string, index: number) => (
-                <View key={index} style={styles.instructionItem}>
+                <View key={`direction-${index}`} style={styles.instructionItem}>
                   <View style={styles.instructionNumber}>
                      <Text style={styles.instructionNumberText}>{index + 1}</Text>
                   </View>
@@ -275,7 +277,7 @@ const DishDetailScreen = () => {
           {/* --- Notes Section --- */}
           {dish.cooking_notes && (
             <View style={styles.sectionContainer}> 
-              <Text style={styles.sectionTitle}>Notes</Text>
+              <Text style={styles.sectionTitle}>{t('screens.dishDetail.notesTitle')}</Text>
               <Text style={styles.notesText}>
                 {dish.cooking_notes}
               </Text>

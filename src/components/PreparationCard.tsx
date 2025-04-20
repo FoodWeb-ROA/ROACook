@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DishComponent, PreparationIngredient } from '../types';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
+import { useTranslation } from 'react-i18next';
 
 interface PreparationCardProps {
   component: DishComponent;
@@ -12,14 +13,18 @@ interface PreparationCardProps {
   amountLabel?: string;
 }
 
-const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, scaleMultiplier = 1, amountLabel = 'Yield' }) => {
+const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, scaleMultiplier = 1, amountLabel }) => {
   const preparation = component.preparationDetails;
+  const { t } = useTranslation();
+
+  // Use translated default for amountLabel
+  const displayLabel = amountLabel || t('common.yield');
 
   if (!preparation) {
     // Should ideally not happen if component.isPreparation is true, but handle defensively
     return (
       <View style={styles.card}>
-        <Text style={styles.errorText}>Preparation details missing.</Text>
+        <Text style={styles.errorText}>{t('components.preparationCard.errorText')}</Text>
       </View>
     );
   }
@@ -55,13 +60,13 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
            <View style={styles.infoItem}> 
             <MaterialCommunityIcons name="scale-balance" size={16} color={COLORS.textLight} />
             <Text style={styles.infoText}>
-              {amountLabel}: {formattedYield.amount} {formattedYield.unit}
+              {displayLabel}: {formattedYield.amount} {formattedYield.unit}
             </Text>
            </View>
         )}
       </View>
 
-      <Text style={styles.subTitle}>Ingredients:</Text>
+      <Text style={styles.subTitle}>{t('components.preparationCard.subTitle')}</Text>
       {preparation.ingredients && preparation.ingredients.length > 0 ? (
         preparation.ingredients.slice(0, 3).map((ing: PreparationIngredient) => {
           const scaledIngAmount = ing.amount ? ing.amount * scaleMultiplier : null;
@@ -77,7 +82,7 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
           );
         })
       ) : (
-        <Text style={styles.noIngredientsText}>No ingredients listed.</Text>
+        <Text style={styles.noIngredientsText}>{t('components.preparationCard.noIngredientsText')}</Text>
       )}
       {preparation.ingredients && preparation.ingredients.length > 3 && <Text style={styles.ellipsisText}>...</Text>}
     </TouchableOpacity>

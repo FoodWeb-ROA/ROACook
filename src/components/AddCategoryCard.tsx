@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
+import { useTranslation } from 'react-i18next';
 
 interface AddCategoryCardProps {
   onAdd: (sectionName: string) => void;
@@ -21,6 +22,7 @@ interface AddCategoryCardProps {
 const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [sectionName, setSectionName] = useState('');
+  const { t } = useTranslation();
 
   const handleAddSection = () => {
     if (sectionName.trim()) {
@@ -58,7 +60,7 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
         <View style={styles.iconContainer}>
           <MaterialCommunityIcons name="plus" size={25} color={COLORS.white} />
         </View>
-        <Text style={styles.title}>New Section</Text>
+        <Text style={styles.title}>{t('components.addCategoryCard.newSection')}</Text>
       </TouchableOpacity>
 
       <Modal
@@ -70,10 +72,10 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add New Section</Text>
+              <Text style={styles.modalTitle}>{t('components.addCategoryCard.addNewSection')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Section Name"
+                placeholder={t('components.addCategoryCard.sectionName')}
                 placeholderTextColor={COLORS.placeholder}
                 value={sectionName}
                 onChangeText={setSectionName}
@@ -87,13 +89,13 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
                     setModalVisible(false);
                   }}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Text style={styles.cancelButtonText}>{t('components.addCategoryCard.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.addButton}
                   onPress={handleAddSection}
                 >
-                  <Text style={styles.addButtonText}>Add</Text>
+                  <Text style={styles.addButtonText}>{t('components.addCategoryCard.add')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

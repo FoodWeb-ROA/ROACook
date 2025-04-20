@@ -3,12 +3,14 @@ import { View, StyleSheet, Dimensions, TouchableOpacity, TouchableWithoutFeedbac
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Sidebar component rendering drawer items in a floating rounded card
 const Sidebar: React.FC<DrawerContentComponentProps> = (props) => {
   const { navigation } = props;
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -29,7 +31,7 @@ const Sidebar: React.FC<DrawerContentComponentProps> = (props) => {
 
         {/* Logo header */}
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>FoodWeb</Text>
+          <Text style={styles.logoText}>{t('components.sidebar.logoText')}</Text>
         </View>
 
         {/* Non-scrollable menu content */}

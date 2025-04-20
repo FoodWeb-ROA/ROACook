@@ -12,11 +12,13 @@ import AppHeader from '../components/AppHeader';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { capitalizeWords } from '../utils/textFormatters';
+import { useTranslation } from 'react-i18next';
 
 const AllRecipesScreen = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const drawerNav = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const { dishes, loading, error } = useDishes();
+  const { t } = useTranslation();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'newest'>('name');
@@ -62,7 +64,7 @@ const AllRecipesScreen = () => {
       <View style={styles.dishContent}>
         <Text style={styles.dishName}>{capitalizeWords(item.dish_name)}</Text>
         <Text style={styles.servingInfo}>
-          {item.num_servings} {item.serving_unit ? 'servings' : 'servings'}
+          {item.num_servings} {item.serving_unit ? t('screens.allRecipes.servings', 'servings') : t('screens.allRecipes.servings', 'servings')}
         </Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.primary} />
@@ -71,12 +73,12 @@ const AllRecipesScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="All Recipes" showMenuButton={true} onMenuPress={openDrawerMenu} />
+      <AppHeader title={t('screens.allRecipes.title', 'All Recipes')} showMenuButton={true} onMenuPress={openDrawerMenu} />
       
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search recipes..."
+          placeholder={t('screens.allRecipes.searchPlaceholder')}
           placeholderTextColor={COLORS.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -84,18 +86,18 @@ const AllRecipesScreen = () => {
       </View>
       
       <View style={styles.sortContainer}>
-        <Text style={styles.sortLabel}>Sort by:</Text>
+        <Text style={styles.sortLabel}>{t('screens.allRecipes.sortByLabel')}</Text>
         <TouchableOpacity 
           style={[styles.sortButton, sortBy === 'name' && styles.sortButtonActive]}
           onPress={() => setSortBy('name')}
         >
-          <Text style={[styles.sortButtonText, sortBy === 'name' && styles.sortButtonTextActive]}>Name</Text>
+          <Text style={[styles.sortButtonText, sortBy === 'name' && styles.sortButtonTextActive]}>{t('screens.allRecipes.sortByName')}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.sortButton, sortBy === 'newest' && styles.sortButtonActive]}
           onPress={() => setSortBy('newest')}
         >
-          <Text style={[styles.sortButtonText, sortBy === 'newest' && styles.sortButtonTextActive]}>Newest</Text>
+          <Text style={[styles.sortButtonText, sortBy === 'newest' && styles.sortButtonTextActive]}>{t('screens.allRecipes.sortByNewest')}</Text>
         </TouchableOpacity>
       </View>
       
@@ -105,7 +107,7 @@ const AllRecipesScreen = () => {
         <View style={styles.centerContent}>
           <Text style={styles.errorText}>{error.message}</Text>
           <TouchableOpacity style={styles.retryButton}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>{t('screens.allRecipes.retry', 'Retry')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -116,7 +118,7 @@ const AllRecipesScreen = () => {
           contentContainerStyle={filteredDishes.length === 0 ? styles.centerContent : styles.listContent}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              {searchQuery ? 'No recipes match your search' : 'No recipes found'}
+              {searchQuery ? t('screens.allRecipes.noSearchResults', 'No recipes match your search') : t('screens.allRecipes.noRecipesFound', 'No recipes found')}
             </Text>
           }
         />

@@ -22,9 +22,13 @@ import AppHeader from '../components/AppHeader';
 import { usePreparationDetail } from '../hooks/useSupabase';
 import { formatQuantityAuto } from '../utils/textFormatters';
 import ScaleSliderInput from '../components/ScaleSliderInput';
+import { useTranslation } from 'react-i18next';
+import { capitalizeWords } from '../utils/textFormatters';
 
 type PreparationDetailRouteProp = RouteProp<RootStackParamList, 'PreparationDetails'>;
 type PreparationDetailNavigationProp = StackNavigationProp<RootStackParamList>;
+
+type MeasurementUnit = 'g' | 'kg' | 'ml' | 'l' | 'tbsp' | 'tsp' | 'cup' | 'oz' | 'lb' | 'count' | 'pinch';
 
 const PreparationDetailScreen = () => {
   const navigation = useNavigation<PreparationDetailNavigationProp>();
@@ -114,11 +118,13 @@ const PreparationDetailScreen = () => {
     // console.log("Edit pressed for preparation:", preparationId); // Log for now
   };
 
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Loading Preparation..." showBackButton={true} />
+        <AppHeader title={t('screens.preparationDetail.loading')} showBackButton={true} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -128,9 +134,9 @@ const PreparationDetailScreen = () => {
     return (
       <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Error" showBackButton={true} />
+        <AppHeader title={t('screens.preparationDetail.error')} showBackButton={true} />
         <Text style={styles.errorText}>
-          {error ? error.message : "Preparation not found"}
+          {error ? error.message : t('screens.preparationDetail.errorNotFound')}
         </Text>
       </SafeAreaView>
     );
@@ -146,7 +152,7 @@ const PreparationDetailScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <AppHeader
-        title={preparation.name || 'Preparation'}
+        title={preparation.name || t('screens.preparationDetail.titleFallback')}
         showBackButton={true}
         rightComponent={
           <TouchableOpacity onPress={handleEditPress} style={styles.editButton}>
@@ -169,7 +175,7 @@ const PreparationDetailScreen = () => {
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
-                  {preparation.total_time} min
+                  {preparation.total_time} {t('screens.preparationDetail.minutesSuffix')}
                 </Text>
               </View>
               
@@ -188,13 +194,16 @@ const PreparationDetailScreen = () => {
           {typeof baseYieldAmount === 'number' && baseYieldAmount > 0 && preparation.yield_unit && (
             <View style={styles.scaleAdjustContainer}>
               <ScaleSliderInput
-                label={`Adjust Scale (Base Yield: ${formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).amount} ${formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).unit})`}
+                label={t('screens.preparationDetail.adjustScaleLabel', { 
+                  amount: formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).amount, 
+                  unit: formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).unit 
+                })}
                 minValue={0.1}
                 maxValue={10}
                 step={0.5}
                 currentValue={amountScale}
                 displayValue={amountScale.toFixed(1)}
-                displaySuffix="x scale"
+                displaySuffix={t('screens.preparationDetail.scaleSuffix')}
                 onValueChange={setAmountScale}
                 onSlidingComplete={(value) => setAmountScale(Math.round(value * 2) / 2)}
                 onTextInputChange={(text) => {
@@ -211,7 +220,7 @@ const PreparationDetailScreen = () => {
           )}
           
           <View style={styles.ingredientsContainer}>
-            <Text style={styles.sectionTitle}>Ingredients</Text>
+            <Text style={styles.sectionTitle}>{t('screens.preparationDetail.ingredientsTitle')}</Text>
             {ingredients.map((ingredient) => {
               const unitKey = (ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
               const isToggleable = ingredient.unit && (unitOptions[unitKey]?.length || 0) > 1;
@@ -219,7 +228,7 @@ const PreparationDetailScreen = () => {
 
               return (
                 <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
-                  <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                  <Text style={styles.ingredientName}>{capitalizeWords(ingredient.name)}</Text>
                   <TouchableOpacity 
                     style={styles.ingredientQuantity}
                     onPress={() => toggleUnit(ingredient.ingredient_id, ingredient.unit)}
@@ -242,7 +251,7 @@ const PreparationDetailScreen = () => {
           </View>
           
           <View style={styles.instructionsContainer}>
-            <Text style={styles.sectionTitle}>Instructions</Text>
+            <Text style={styles.sectionTitle}>{t('screens.preparationDetail.instructionsTitle')}</Text>
             {directions.map((instruction: string, index: number) => (
               <View key={`instruction-${index}`} style={styles.instructionItem}>
                 <View style={styles.instructionNumber}>
@@ -255,7 +264,7 @@ const PreparationDetailScreen = () => {
           
           {preparation.cooking_notes && (
             <View style={styles.notesContainer}>
-              <Text style={styles.sectionTitle}>Cooking Notes</Text>
+              <Text style={styles.sectionTitle}>{t('screens.preparationDetail.cookingNotesTitle')}</Text>
               <Text style={styles.notesText}>
                 {preparation.cooking_notes}
               </Text>

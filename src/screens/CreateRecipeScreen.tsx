@@ -30,6 +30,7 @@ import PreparationCard from '../components/PreparationCard';
 import { DishComponent } from '../types';
 import ScaleSliderInput from '../components/ScaleSliderInput';
 import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
+import { useTranslation } from 'react-i18next';
 
 type CreateRecipeNavigationProp = StackNavigationProp<RootStackParamList>;
 // Define RouteProp type for this screen
@@ -40,6 +41,7 @@ const CreateRecipeScreen = () => {
   const navigation = useNavigation<CreateRecipeNavigationProp>();
   // Get route params
   const route = useRoute<CreateRecipeRouteProp>();
+  const { t } = useTranslation(); // MOVED HOOK CALL HERE
   const dishIdToEdit = route.params?.dishId;
   const preparationIdToEdit = route.params?.preparationId;
   const isEditing = !!dishIdToEdit || !!preparationIdToEdit;
@@ -328,7 +330,7 @@ const CreateRecipeScreen = () => {
     
     if (!name.trim()) {
       console.error('Cannot add component: Missing name', selectedIngredient);
-      Alert.alert('Error', 'Could not add component: Missing name');
+      Alert.alert(t('common.error'), t('alerts.errorAddComponentMissingName')); // Use translated key
       return;
     }
 
@@ -338,11 +340,11 @@ const CreateRecipeScreen = () => {
         const nameExists = await checkIngredientNameExists(name.trim());
         if (nameExists) {
           Alert.alert(
-            'Duplicate Ingredient', 
-            `An ingredient named "${name.trim()}" already exists. Please search and select the existing ingredient instead of creating a duplicate.`,
+            t('alerts.duplicateIngredientTitle'), // Use translated key
+            t('alerts.duplicateIngredientMessage', { name: name.trim() }), // Use translated key with interpolation
             [
               { 
-                text: 'OK', 
+                text: t('common.ok'), 
                 onPress: () => {
                   // Reset search to help them find the existing ingredient
                   setComponentSearchQuery(name.trim());
@@ -448,7 +450,7 @@ const CreateRecipeScreen = () => {
   const handleSaveDish = async () => {
     // --- 1. Validation --- 
     if (!dishName.trim()) {
-      Alert.alert('Missing Information', 'Please enter a recipe name.');
+      Alert.alert(t('alerts.missingInfoTitle'), t('alerts.enterRecipeName')); // Use translated keys
       return;
     }
     
@@ -459,8 +461,8 @@ const CreateRecipeScreen = () => {
           const nameExists = await checkDishNameExists(dishName.trim());
           if (nameExists) {
             Alert.alert(
-              'Duplicate Name', 
-              `A dish named "${dishName.trim()}" already exists. Please choose a different name.`
+              t('alerts.duplicateNameTitle'), // Use translated key
+              t('alerts.duplicateDishMessage', { name: dishName.trim() }) // Use translated key
             );
             return;
           }
@@ -468,8 +470,8 @@ const CreateRecipeScreen = () => {
           const nameExists = await checkPreparationNameExists(dishName.trim());
           if (nameExists) {
             Alert.alert(
-              'Duplicate Name', 
-              `A preparation or ingredient named "${dishName.trim()}" already exists. Please choose a different name.`
+              t('alerts.duplicateNameTitle'), // Use translated key
+              t('alerts.duplicatePrepMessage', { name: dishName.trim() }) // Use translated key
             );
             return;
           }
@@ -487,8 +489,8 @@ const CreateRecipeScreen = () => {
           const nameExists = await checkIngredientNameExists(component.name.trim());
           if (nameExists) {
             Alert.alert(
-              'Duplicate Ingredient', 
-              `An ingredient named "${component.name.trim()}" already exists. Please use the existing ingredient instead of creating a duplicate.`
+              t('alerts.duplicateIngredientTitle'), // Use translated key
+              t('alerts.duplicateIngredientMessage', { name: component.name.trim() }) // Use translated key
             );
             return;
           }
@@ -499,7 +501,7 @@ const CreateRecipeScreen = () => {
     }
     
     if (!servingUnitId) {
-      Alert.alert('Missing Information', 'Please select a serving unit.');
+      Alert.alert(t('alerts.missingInfoTitle'), t('alerts.selectServingUnit')); // Use translated keys
       return;
     }
     // Validate components
@@ -507,23 +509,23 @@ const CreateRecipeScreen = () => {
         !c.amount.trim() || isNaN(parseFloat(c.amount)) || parseFloat(c.amount) <= 0 || !c.unit_id
     );
     if (invalidComponent) {
-        Alert.alert('Invalid Component', `Please enter a valid positive amount and select a unit for "${invalidComponent.name}".`);
+        Alert.alert(t('alerts.invalidComponentTitle'), t('alerts.invalidComponentMessage', { name: invalidComponent.name })); // Use translated keys
         return;
     }
     if (components.length === 0) {
-        Alert.alert('Missing Components', 'Please add at least one component to the dish.');
+        Alert.alert(t('alerts.missingComponentsTitle'), t('alerts.addOneComponent')); // Use translated keys
         return;
     }
     // Validate time inputs
     const hours = parseInt(totalTimeHours); 
     const minutes = parseInt(totalTimeMinutes);
     if (isNaN(hours) || hours < 0 || isNaN(minutes) || minutes < 0 || minutes >= 60) {
-        Alert.alert('Invalid Time', 'Please enter valid numbers for hours (0+) and minutes (0-59).');
+        Alert.alert(t('alerts.invalidTimeTitle'), t('alerts.invalidTimeMessage')); // Use translated keys
         return;
     }
     // Validate numServings (now a number state)
     if (isNaN(numServings) || numServings <= 0) {
-        Alert.alert('Invalid Servings', 'Please enter a valid positive number of servings.');
+        Alert.alert(t('alerts.invalidServingsTitle'), t('alerts.invalidServingsMessage')); // Use translated keys
         return;
     }
 
@@ -654,7 +656,7 @@ const CreateRecipeScreen = () => {
               .insert(componentsWithDishId);
             if (componentsInsertError) throw componentsInsertError;
           }
-          Alert.alert('Success', 'Dish updated successfully!');
+          Alert.alert(t('common.success'), t('alerts.dishUpdateSuccess')); // Use translated keys
 
         } else if (preparationIdToEdit) {
           console.log("Updating preparation:", preparationIdToEdit);
@@ -706,7 +708,7 @@ const CreateRecipeScreen = () => {
               .insert(prepComponentsWithId);
             if (prepComponentsInsertError) throw prepComponentsInsertError;
           }
-          Alert.alert('Success', 'Preparation updated successfully!');
+          Alert.alert(t('common.success'), t('alerts.prepUpdateSuccess')); // Use translated keys
 
           // Navigation after update (go back to detail or list?)
           if (navigation.canGoBack()) {
@@ -782,10 +784,10 @@ const CreateRecipeScreen = () => {
                     } catch (componentsError) {
                         console.error("Error inserting components:", componentsError);
                         // Don't rethrow - the dish was created, components can be added later
-                        Alert.alert('Warning', 'Dish was created but some components may not have been added properly.');
+                        Alert.alert(t('common.warning'), t('alerts.dishCreateWarnComponents')); // Use translated keys
                     }
                 }
-                Alert.alert('Success', 'Dish created successfully!');
+                Alert.alert(t('common.success'), t('alerts.dishCreateSuccess')); // Use translated keys
         } else if (recipeKind === 'preparation') {
             // --- Creating a PREPARATION ---
             console.log("Attempting to insert new preparation...");
@@ -850,7 +852,7 @@ const CreateRecipeScreen = () => {
                         throw prepComponentsError;
                     }
                 }
-                Alert.alert('Success', 'Preparation created successfully!');
+                Alert.alert(t('common.success'), t('alerts.prepCreateSuccess')); // Use translated keys
             }
             
             // Common navigation for successful creation
@@ -859,7 +861,7 @@ const CreateRecipeScreen = () => {
 
     } catch (error: any) {
         console.error("Error saving recipe:", error);
-        Alert.alert('Error Saving Recipe', error.message || 'An unexpected error occurred. Please try again.');
+        Alert.alert(t('alerts.errorSavingRecipeTitle'), error.message || t('alerts.errorSavingRecipeDefault')); // Use translated keys
     } finally {
         setSubmitting(false);
     }
@@ -1051,7 +1053,7 @@ const CreateRecipeScreen = () => {
       <StatusBar style="light" />
       {/* Update Header Title Dynamically */}
       <AppHeader 
-        title={isEditing ? (dishIdToEdit ? 'Edit Dish' : 'Edit Preparation') : (isConfirming ? 'Confirm Parsed Recipe' : 'Create New Recipe')} 
+        title={t(isEditing ? (dishIdToEdit ? 'screens.createRecipe.editDishTitle' : 'screens.createRecipe.editPreparationTitle') : (isConfirming ? 'screens.createRecipe.confirmParsedTitle' : 'screens.createRecipe.createTitle'))} 
         showBackButton={true} 
       />
       <KeyboardAvoidingView
@@ -1064,10 +1066,10 @@ const CreateRecipeScreen = () => {
           keyboardShouldPersistTaps="handled" // Closes keyboard when tapping outside inputs
         >
           {/* Recipe Name Input */}
-          <Text style={styles.label}>Recipe Name *</Text>
+          <Text style={styles.label}>{t('screens.createRecipe.nameLabel')}</Text>
           <TextInput 
               style={styles.input}
-              placeholder="Enter recipe name"
+              placeholder={t('screens.createRecipe.namePlaceholder')}
               placeholderTextColor={COLORS.placeholder}
               value={dishName}
               onChangeText={setDishName}
@@ -1077,13 +1079,13 @@ const CreateRecipeScreen = () => {
           {originalServings > 0 && ( // Only show slider if original servings are known
           <View style={styles.scalingSection}>
             <ScaleSliderInput
-              label={`Adjust Servings (Only for Proportions)`}
+              label={t('screens.createRecipe.adjustServingsLabelProportions')} // Use translated key
               minValue={1} // Minimum 1 serving
               maxValue={Math.max(10, Math.ceil(originalServings * 5))} // Sensible max
               step={1} // Step by whole servings
               currentValue={numServings} // Use target servings state
               displayValue={String(numServings)} // Display target servings
-              displaySuffix="Servings"
+              displaySuffix={t('common.servings')} // Use translated key
               onValueChange={(value) => setNumServings(Math.round(value))} // Update target servings (rounded)
               onSlidingComplete={(value) => setNumServings(Math.round(value))} // Final update (rounded)
               onTextInputChange={(text) => { // Handle direct text input for servings
@@ -1123,10 +1125,10 @@ const CreateRecipeScreen = () => {
           {/* Serving Size & Unit Inputs Row */}
           <View style={[styles.rowContainer, styles.inputGroup]}>
               <View style={styles.columnFlex}>
-                  <Text style={styles.label}>Serving Size</Text>
+                  <Text style={styles.label}>{t('screens.createRecipe.servingSizeLabel')}</Text>
                   <TextInput 
                       style={styles.input}
-                      placeholder="e.g., 4"
+                      placeholder={t('screens.createRecipe.servingSizePlaceholder')}
                       placeholderTextColor={COLORS.placeholder}
                       value={servingSize}
                       onChangeText={setServingSize}
@@ -1134,7 +1136,7 @@ const CreateRecipeScreen = () => {
                   />
               </View>
               <View style={styles.columnFlex}>
-                  <Text style={styles.label}>Serving Unit *</Text>
+                  <Text style={styles.label}>{t('screens.createRecipe.servingUnitLabel')}</Text>
                   <TouchableOpacity style={styles.pickerTrigger} onPress={openServingUnitSelector}>
                       <Text style={[styles.pickerText, !servingUnitId && styles.placeholderText]}>
                            {selectedServingUnitName}
@@ -1147,11 +1149,11 @@ const CreateRecipeScreen = () => {
           {/* Serving Item Input (Conditionally Rendered) */}
           {servingUnitId === pieceUnitId && (
             <View style={styles.inputGroup}> 
-              <Text style={styles.label}>Serving Ingredient (e.g., "breast", "rolls", "sausage")</Text>
+              <Text style={styles.label}>{t('screens.createRecipe.servingIngredientLabel')}</Text>
               <View style={styles.servingItemRow}>
                 <TextInput 
                     style={styles.servingItemInput} // Use new style for flex layout
-                    placeholder="Manual description or select..."
+                    placeholder={t('screens.createRecipe.servingIngredientPlaceholder')}
                     placeholderTextColor={COLORS.placeholder}
                     value={servingItem}
                     onChangeText={setServingItem}
@@ -1169,9 +1171,9 @@ const CreateRecipeScreen = () => {
           {/* --- Components Section (Moved) --- */}
           <View style={styles.componentsSection}>
             {/* Ingredients List */}
-            <Text style={styles.sectionTitle}>Ingredients</Text>
+            <Text style={styles.sectionTitle}>{t('screens.createRecipe.ingredientsTitle')}</Text>
             {ingredientsList.length === 0 ? (
-                <Text style={styles.emptyListText}>No raw ingredients added yet.</Text>
+                <Text style={styles.emptyListText}>{t('screens.createRecipe.noRawIngredients')}</Text>
             ) : (
                 ingredientsList.map((item) => (
                     // --- Render Scaled Raw Ingredient --- 
@@ -1215,9 +1217,9 @@ const CreateRecipeScreen = () => {
             )}
 
             {/* Preparations List */}
-            <Text style={styles.sectionTitle}>Preparations</Text>
+            <Text style={styles.sectionTitle}>{t('screens.createRecipe.preparationsTitle')}</Text>
             {preparationsList.length === 0 ? (
-                <Text style={styles.emptyListText}>No preparations added yet.</Text>
+                <Text style={styles.emptyListText}>{t('screens.createRecipe.noPreparations')}</Text>
             ) : (
                 preparationsList.map((item) => (
                     // --- Render PreparationCard --- 
@@ -1278,7 +1280,7 @@ const CreateRecipeScreen = () => {
                         return (
                            <View key={item.key} style={styles.preparationCardContainer}>
                                <PreparationCard
-                                   amountLabel="Amount"
+                                   amountLabel={t('common.amount')} // Use translated key
                                    component={componentForCard}
                                    onPress={() => {
                                        if(isConfirming && item.originalPrep) {
@@ -1304,12 +1306,12 @@ const CreateRecipeScreen = () => {
                 style={styles.addButton}
                 onPress={() => setComponentSearchModalVisible(true)}
             >
-                <Text style={styles.addButtonText}>+ Add Ingredient / Preparation</Text>
+                <Text style={styles.addButtonText}>{t('screens.createRecipe.addIngredientPreparationButton')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Recipe Type Toggle */}
-          <Text style={styles.label}>Recipe Type *</Text>
+          <Text style={styles.label}>{t('screens.createRecipe.recipeTypeLabel')}</Text>
           <View style={[styles.rowContainer, styles.inputGroup]}>
               {(['dish','preparation'] as RecipeKind[]).map((k, index) => (
                 <TouchableOpacity
@@ -1325,7 +1327,7 @@ const CreateRecipeScreen = () => {
           </View>
 
           {/* Category Picker Trigger */}
-          <Text style={styles.label}>Category</Text>
+          <Text style={styles.label}>{t('screens.createRecipe.categoryLabel')}</Text>
           <TouchableOpacity style={[styles.pickerTrigger, styles.inputGroup]} onPress={openCategorySelector}>
               <Text style={[styles.pickerText, !menuSectionId && styles.placeholderText]}>
                   {selectedCategoryName}
@@ -1336,7 +1338,7 @@ const CreateRecipeScreen = () => {
           {/* Total Time Inputs Row */}
            <View style={[styles.rowContainer, styles.inputGroup]}>
               <View style={styles.columnFlex}>
-                  <Text style={styles.label}>Total Time (Hrs)</Text>
+                  <Text style={styles.label}>{t('screens.createRecipe.timeHoursLabel')}</Text>
                   <TextInput 
                       style={styles.input}
                       placeholder="0"
@@ -1348,7 +1350,7 @@ const CreateRecipeScreen = () => {
                   />
               </View>
               <View style={styles.columnFlex}>
-                  <Text style={styles.label}>Total Time (Min)</Text>
+                  <Text style={styles.label}>{t('screens.createRecipe.timeMinutesLabel')}</Text>
                   <TextInput 
                       style={styles.input}
                       placeholder="30"
@@ -1362,7 +1364,7 @@ const CreateRecipeScreen = () => {
           </View>
 
           {/* Directions Input */}
-          <Text style={styles.label}>Directions</Text>
+          <Text style={styles.label}>{t('screens.createRecipe.directionsLabel')}</Text>
           <View style={styles.inputGroup}> 
             {directions.map((step, index) => (
               <View key={index} style={styles.directionStepContainer}>
@@ -1382,15 +1384,15 @@ const CreateRecipeScreen = () => {
               </View>
             ))}
             <TouchableOpacity onPress={handleAddDirectionStep} style={styles.addStepButton}>
-              <Text style={styles.addStepButtonText}>+ Add Step</Text>
+              <Text style={styles.addStepButtonText}>{t('screens.createRecipe.addStepButton')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Cooking Notes Input */}
-          <Text style={styles.label}>Cooking Notes</Text>
+          <Text style={styles.label}>{t('screens.createRecipe.notesLabel')}</Text>
           <TextInput 
               style={[styles.input, styles.textArea, { minHeight: 60 }, styles.inputGroup]} // Shorter text area
-              placeholder="Optional notes, tips, variations"
+              placeholder={t('screens.createRecipe.notesPlaceholder')}
               placeholderTextColor={COLORS.placeholder}
               value={cookingNotes}
               onChangeText={setCookingNotes}
@@ -1403,7 +1405,7 @@ const CreateRecipeScreen = () => {
               onPress={handleSaveDish} 
               disabled={submitting || isScreenLoading}
           >
-              {submitting ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.buttonText}>{isEditing ? 'Update Recipe' : (isConfirming ? 'Confirm & Save' : 'Save Recipe')}</Text>}
+              {submitting ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.buttonText}>{t(isEditing ? 'screens.createRecipe.updateRecipeButton' : (isConfirming ? 'screens.createRecipe.confirmSaveButton' : 'screens.createRecipe.saveRecipeButton'))}</Text>}
           </TouchableOpacity>
 
         </ScrollView>
@@ -1420,10 +1422,10 @@ const CreateRecipeScreen = () => {
         >
            <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Select Component</Text>
+                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectComponentModalTitle')}</Text>
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search ingredients or preparations..."
+                        placeholder={t('screens.createRecipe.searchComponentPlaceholder')}
                         value={componentSearchQuery}
                         onChangeText={setComponentSearchQuery}
                     />
@@ -1439,7 +1441,7 @@ const CreateRecipeScreen = () => {
                                     onPress={() => handleAddComponent(item)} 
                                 >
                                     <Text style={styles.modalItemText}>
-                                        {item.name} {item.isPreparation ? '(Prep)' : ''}
+                                        {item.name} {item.isPreparation ? t('screens.createRecipe.prepSuffix') : ''} // Use translated key
                                     </Text> 
                                 </TouchableOpacity>
                             )}
@@ -1447,7 +1449,7 @@ const CreateRecipeScreen = () => {
                                 componentSearchQuery.trim() !== '' ? (
                                     <View>
                                         <Text style={styles.emptyListText}>
-                                            No matching components found.
+                                            {t('screens.createRecipe.searchNoResults')} // Use translated key
                                         </Text>
                                         <TouchableOpacity 
                                             style={[styles.createNewButton, { marginTop: SIZES.padding }]}
@@ -1457,13 +1459,13 @@ const CreateRecipeScreen = () => {
                                             })}
                                         >
                                             <Text style={styles.createNewButtonText}>
-                                                + Create "{componentSearchQuery.trim()}"
+                                                {t('screens.createRecipe.createButtonLabel', { query: componentSearchQuery.trim() })} // Use translated key with interpolation
                                             </Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
                                     <Text style={styles.emptyListText}>
-                                        Type to search for ingredients or preparations
+                                        {t('screens.createRecipe.searchPlaceholderComponents')} // Use translated key
                                     </Text>
                                 )
                             }
@@ -1473,7 +1475,7 @@ const CreateRecipeScreen = () => {
                         style={styles.closeButton}
                         onPress={() => setComponentSearchModalVisible(false)}
                     >
-                        <Text style={styles.closeButtonText}>Close</Text>
+                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1488,7 +1490,7 @@ const CreateRecipeScreen = () => {
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Select Category</Text>
+                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectCategoryModalTitle')}</Text>
                     <FlatList
                         data={menuSections}
                         keyExtractor={(item) => item.menu_section_id}
@@ -1500,13 +1502,13 @@ const CreateRecipeScreen = () => {
                                 <Text style={styles.modalItemText}>{item.name}</Text>
                             </TouchableOpacity>
                         )}
-                        ListEmptyComponent={<Text style={styles.emptyListText}>No categories found.</Text>}
+                        ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noCategoriesFound')}</Text>}
                     />
                      <TouchableOpacity 
                         style={styles.closeButton}
                         onPress={() => setCategoryModalVisible(false)}
                     >
-                        <Text style={styles.closeButtonText}>Close</Text>
+                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1521,7 +1523,7 @@ const CreateRecipeScreen = () => {
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Select Serving Unit</Text>
+                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectServingUnitModalTitle')}</Text>
                     <FlatList
                         data={units}
                         keyExtractor={(item) => item.unit_id}
@@ -1533,13 +1535,13 @@ const CreateRecipeScreen = () => {
                                 <Text style={styles.modalItemText}>{item.unit_name} ({item.abbreviation || 'N/A'})</Text>
                             </TouchableOpacity>
                         )}
-                        ListEmptyComponent={<Text style={styles.emptyListText}>No units found.</Text>}
+                        ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noUnitsFound')}</Text>}
                     />
                     <TouchableOpacity 
                         style={styles.closeButton}
                         onPress={() => setServingUnitModalVisible(false)}
                     >
-                        <Text style={styles.closeButtonText}>Close</Text>
+                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1554,7 +1556,7 @@ const CreateRecipeScreen = () => {
         >
            <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Select Unit for Component</Text>
+                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectComponentUnitModalTitle')}</Text>
                     <FlatList
                         data={units}
                         keyExtractor={(item) => item.unit_id}
@@ -1566,13 +1568,13 @@ const CreateRecipeScreen = () => {
                                 <Text style={styles.modalItemText}>{item.unit_name} ({item.abbreviation || 'N/A'})</Text>
                             </TouchableOpacity>
                         )}
-                        ListEmptyComponent={<Text style={styles.emptyListText}>No units found.</Text>}
+                        ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noUnitsFound')}</Text>}
                     />
                      <TouchableOpacity 
                         style={styles.closeButton}
                         onPress={() => setComponentUnitModalVisible(false)}
                     >
-                        <Text style={styles.closeButtonText}>Close</Text>
+                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1587,7 +1589,7 @@ const CreateRecipeScreen = () => {
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Select Serving Ingredient</Text>
+                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectServingIngredientModalTitle')}</Text>
                     <FlatList
                         data={components} // Use the current components list
                         keyExtractor={(item) => item.key}
@@ -1599,16 +1601,16 @@ const CreateRecipeScreen = () => {
                                     setServingItemPickerVisible(false); // Close modal
                                 }}
                             >
-                                <Text style={styles.modalItemText}>{item.name} {item.isPreparation ? '(Prep)' : ''}</Text>
+                                <Text style={styles.modalItemText}>{item.name} {item.isPreparation ? t('screens.createRecipe.prepSuffix') : ''}</Text> // Use translated key
                             </TouchableOpacity>
                         )}
-                        ListEmptyComponent={<Text style={styles.emptyListText}>No components added to recipe yet.</Text>}
+                        ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noComponentsInRecipe')}</Text>}
                     />
                     <TouchableOpacity 
                         style={styles.closeButton}
                         onPress={() => setServingItemPickerVisible(false)}
                     >
-                        <Text style={styles.closeButtonText}>Cancel</Text>
+                        <Text style={styles.closeButtonText}>{t('cancel')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>

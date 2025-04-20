@@ -3,9 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, StackNavigationProp, CardStyleInterpolators } from '@react-navigation/stack';
 import { createDrawerNavigator, DrawerNavigationProp } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, View, TouchableOpacity, Dimensions } from 'react-native';
+import { ActivityIndicator, View, TouchableOpacity, Dimensions, Text } from 'react-native';
 import { useNavigation, NavigationProp, RouteProp } from '@react-navigation/native';
 import Sidebar from '../components/Sidebar';
+import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -26,7 +28,6 @@ import AllRecipesScreen from '../screens/AllRecipesScreen';
 // Types
 import { RootStackParamList } from './types';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
-import { useAuth } from '../context/AuthContext';
 
 // Define DrawerParamList type
 export type DrawerParamList = {
@@ -47,6 +48,7 @@ const Drawer = createDrawerNavigator<DrawerParamList>();
 
 const DrawerNavigator = () => {
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const { t } = useTranslation();
 
   return (
     <Drawer.Navigator
@@ -77,17 +79,69 @@ const DrawerNavigator = () => {
         },
       }}
     >
-      <Drawer.Screen name="Home" component={HomeScreen} />
+      <Drawer.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{
+          drawerLabel: ({ focused, color }) => (
+            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.home')}</Text>
+          )
+        }}
+      />
       <Drawer.Screen 
         name="AllRecipes" 
         component={AllRecipesScreen} 
-        options={{ title: 'All Recipes' }}
+        options={{
+          drawerLabel: ({ focused, color }) => (
+            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.allRecipes')}</Text>
+          )
+        }}
       />
-      <Drawer.Screen name="Inventory" component={InventoryScreen} />
-      <Drawer.Screen name="Account" component={AccountScreen} />
-      <Drawer.Screen name="Preferences" component={PreferencesScreen} />
-      <Drawer.Screen name="Support" component={SupportScreen} />
-      <Drawer.Screen name="PrepList" component={PrepListScreen} options={{ title: 'Prep List' }}/>
+      <Drawer.Screen 
+        name="Inventory" 
+        component={InventoryScreen} 
+        options={{
+          drawerLabel: ({ focused, color }) => (
+            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.inventory')}</Text>
+          )
+        }}
+      />
+      <Drawer.Screen 
+        name="Account" 
+        component={AccountScreen} 
+        options={{
+          drawerLabel: ({ focused, color }) => (
+            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.account')}</Text>
+          )
+        }}
+      />
+      <Drawer.Screen 
+        name="Preferences" 
+        component={PreferencesScreen} 
+        options={{
+          drawerLabel: ({ focused, color }) => (
+            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.preferences')}</Text>
+          )
+        }}
+      />
+      <Drawer.Screen 
+        name="Support" 
+        component={SupportScreen} 
+        options={{
+          drawerLabel: ({ focused, color }) => (
+            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.support')}</Text>
+          )
+        }}
+      />
+      <Drawer.Screen 
+        name="PrepList" 
+        component={PrepListScreen} 
+        options={{
+          drawerLabel: ({ focused, color }) => (
+            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.preparationsList')}</Text>
+          )
+        }}
+      />
     </Drawer.Navigator>
   );
 };

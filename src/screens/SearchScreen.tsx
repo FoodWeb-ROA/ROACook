@@ -20,6 +20,7 @@ import { useDishes, useMenuSections } from '../hooks/useSupabase';
 import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -30,6 +31,8 @@ const SearchScreen = () => {
 
   const { dishes, loading: loadingDishes, error: errorDishes } = useDishes();
   const { menuSections, loading: loadingSections, error: errorSections } = useMenuSections();
+
+  const { t } = useTranslation();
 
   const handleDishPress = (dish: Dish) => {
     navigation.navigate('DishDetails', { dishId: dish.dish_id });
@@ -66,7 +69,7 @@ const SearchScreen = () => {
             <MaterialCommunityIcons name="magnify" size={24} color={COLORS.textLight} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by dish name"
+              placeholder={t('screens.search.placeholder')}
               placeholderTextColor={COLORS.placeholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -117,7 +120,7 @@ const SearchScreen = () => {
           </View>
         ) : hasError ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.errorText}>Error loading data. Please try again.</Text>
+            <Text style={styles.errorText}>{t('screens.search.errorLoadingData')}</Text>
           </View>
         ) : filteredDishes.length > 0 ? (
           <FlatList

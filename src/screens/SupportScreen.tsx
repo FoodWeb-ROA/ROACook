@@ -15,12 +15,14 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
 import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 // Define navigation prop type
 type SupportScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Support'>;
 
 const SupportScreen = () => {
   const navigation = useNavigation<SupportScreenNavigationProp>();
+  const { t } = useTranslation();
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
@@ -52,7 +54,7 @@ const SupportScreen = () => {
     <SafeAreaViewRN style={styles.safeArea}>
       <StatusBar style="dark" />
       <AppHeader
-        title="Support"
+        title={t('screens.support.title')}
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
       />

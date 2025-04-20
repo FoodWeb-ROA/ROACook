@@ -1,3 +1,4 @@
+import './src/i18n'; // Initialize i18next
 import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';

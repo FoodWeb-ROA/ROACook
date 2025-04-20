@@ -15,12 +15,16 @@ import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
+import { useTranslation } from 'react-i18next';
+import { useActionSheet } from '@expo/react-native-action-sheet';
 
 // Define navigation prop type
 type PreferencesScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Preferences'>;
 
 const PreferencesScreen = () => {
   const navigation = useNavigation<PreferencesScreenNavigationProp>();
+  const { t, i18n } = useTranslation();
+  const { showActionSheetWithOptions } = useActionSheet();
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
@@ -28,6 +32,34 @@ const PreferencesScreen = () => {
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
+  };
+
+  const availableLanguages = [
+    { code: 'en', name: t('english') },
+    { code: 'es', name: t('spanish') },
+    { code: 'fr', name: t('french') },
+    { code: 'it', name: t('italian') },
+  ];
+  const currentLanguageCode = i18n.language;
+  const currentLanguageName = availableLanguages.find(l => l.code === currentLanguageCode)?.name || currentLanguageCode;
+
+  const showLanguageSelector = () => {
+    const options = [...availableLanguages.map(l => l.name), t('cancel')];
+    const cancelButtonIndex = options.length - 1;
+
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        title: t('selectLanguage'),
+      },
+      (selectedIndex?: number) => {
+        if (selectedIndex !== undefined && selectedIndex !== cancelButtonIndex) {
+          const selectedLanguage = availableLanguages[selectedIndex];
+          i18n.changeLanguage(selectedLanguage.code);
+        }
+      }
+    );
   };
 
   const renderSettingItem = (
@@ -40,7 +72,7 @@ const PreferencesScreen = () => {
       <View style={styles.settingItem}> 
         <View style={styles.settingItemLeft}>
           <MaterialCommunityIcons name={icon as any} size={24} color={COLORS.primary} />
-          <Text style={styles.settingItemText}>{title}</Text>
+          <Text style={styles.settingItemText}>{t(title)}</Text>
         </View>
         <Switch
           value={value}
@@ -53,21 +85,42 @@ const PreferencesScreen = () => {
     );
   };
 
+  const renderActionItem = (
+    icon: string,
+    title: string,
+    currentValue: string,
+    onPress: () => void,
+  ) => {
+    return (
+      <TouchableOpacity style={styles.settingItem} onPress={onPress}>
+        <View style={styles.settingItemLeft}>
+          <MaterialCommunityIcons name={icon as any} size={24} color={COLORS.primary} />
+          <Text style={styles.settingItemText}>{t(title)}</Text>
+        </View>
+        <View style={styles.settingItemRight}>
+           <Text style={styles.settingValueText}>{currentValue}</Text>
+           <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textLight} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <AppHeader
-        title="Preferences"
+        title={t('preferencesTitle')}
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
       />
       
       <ScrollView style={styles.container}>
         <View style={styles.section}>
-          {renderSettingItem('theme-light-dark', 'Dark Mode', darkMode, setDarkMode)}
-          {renderSettingItem('bell-outline', 'Notifications', notifications, setNotifications)}
-          {renderSettingItem('sync', 'Auto-sync recipes', autoSync, setAutoSync)}
-          {renderSettingItem('ruler', 'Use metric units', metricUnits, setMetricUnits)}
+          {renderSettingItem('theme-light-dark', 'darkMode', darkMode, setDarkMode)}
+          {renderSettingItem('bell-outline', 'notifications', notifications, setNotifications)}
+          {renderSettingItem('sync', 'autoSync', autoSync, setAutoSync)}
+          {renderSettingItem('ruler', 'metricUnits', metricUnits, setMetricUnits)}
+          {renderActionItem('translate', 'language', currentLanguageName, showLanguageSelector)}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -96,6 +149,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
+    minHeight: 60,
   },
   settingItemLeft: {
     flexDirection: 'row',
@@ -105,6 +159,15 @@ const styles = StyleSheet.create({
     ...FONTS.body1,
     color: COLORS.text,
     marginLeft: SIZES.padding * 1.5,
+  },
+  settingItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingValueText: {
+    ...FONTS.body2, 
+    color: COLORS.textLight,
+    marginRight: SIZES.padding * 0.5,
   },
 });
 

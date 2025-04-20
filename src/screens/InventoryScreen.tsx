@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -12,6 +12,8 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { capitalizeWords } from '../utils/textFormatters';
+import { useTranslation } from 'react-i18next';
+import { DrawerActions } from '@react-navigation/native';
 
 const InventoryScreen = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -19,6 +21,7 @@ const InventoryScreen = () => {
   const { ingredients, loading: loadingIng, error: errorIng } = useIngredients(true);
   const { preparations, loading: loadingPrep, error: errorPrep } = usePreparations();
   const { dishes } = useDishes();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<'ingredients' | 'preparations'>('ingredients');
   const [expandedIngredient, setExpandedIngredient] = useState<string | null>(null);
@@ -68,7 +71,7 @@ const InventoryScreen = () => {
 
         {isExpanded && (
           <View style={styles.expandedContent}>
-            <Text style={styles.expandedTitle}>Used in:</Text>
+            <Text style={styles.expandedTitle}>{t('screens.inventory.usedInTitle')}</Text>
             {recipesUsingIngredient.length > 0 ? (
               recipesUsingIngredient.map(recipe => (
                 <Text key={recipe.dish_id} style={styles.recipeText}>
@@ -76,7 +79,7 @@ const InventoryScreen = () => {
                 </Text>
               ))
             ) : (
-              <Text style={styles.noRecipesText}>Not used in any recipes yet</Text>
+              <Text style={styles.noRecipesText}>{t('screens.inventory.notUsedInRecipes')}</Text>
             )}
           </View>
         )}
@@ -89,7 +92,7 @@ const InventoryScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Inventory" showMenuButton={true} onMenuPress={openDrawerMenu} />
+      <AppHeader title={t('screens.inventory.title')} showMenuButton={true} onMenuPress={openDrawerMenu} />
 
       <View style={styles.toggleContainer}>
         {(['ingredients', 'preparations'] as const).map(tab => (
@@ -99,7 +102,7 @@ const InventoryScreen = () => {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.toggleText, activeTab === tab && styles.toggleTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {t(tab === 'ingredients' ? 'common.ingredients' : 'common.preparation')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -115,7 +118,7 @@ const InventoryScreen = () => {
           keyExtractor={(item) => ('preparation_id' in item ? item.preparation_id : item.ingredient_id)}
           renderItem={renderItem}
           contentContainerStyle={displayData.length === 0 && { flex: 1, justifyContent: 'center', alignItems: 'center' }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No data found.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>{t('screens.inventory.noDataFound')}</Text>}
         />
       )}
     </SafeAreaView>
@@ -202,6 +205,8 @@ const styles = StyleSheet.create({
     ...FONTS.body3,
     color: COLORS.textLight,
     fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: SIZES.padding * 2,
   },
 });
 

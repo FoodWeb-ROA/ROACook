@@ -1,0 +1,301 @@
+{
+  "translation": {
+    "welcome": "Welcome to ROACook",
+    "settingsTitle": "Settings",
+    "languageLabel": "Language",
+    "changeToEnglish": "Change to English",
+    "changeToSpanish": "Change to Spanish",
+    "changeToFrench": "Change to French",
+    "changeToItalian": "Change to Italian",
+    "preferencesTitle": "Preferences",
+    "darkMode": "Dark Mode",
+    "notifications": "Notifications",
+    "autoSync": "Auto-sync recipes",
+    "metricUnits": "Use metric units",
+    "language": "Language",
+    "selectLanguage": "Select Language",
+    "cancel": "Cancel",
+    "english": "English",
+    "spanish": "Spanish",
+    "french": "French",
+    "italian": "Italian",
+    "common": {
+      "loading": "Loading...",
+      "error": "Error",
+      "retry": "Retry",
+      "close": "Close",
+      "back": "Back",
+      "add": "Add",
+      "save": "Save",
+      "edit": "Edit",
+      "delete": "Delete",
+      "name": "Name",
+      "amount": "Amount",
+      "unit": "Unit",
+      "units": "Units",
+      "notes": "Notes",
+      "search": "Search",
+      "ok": "OK",
+      "dish": "Dish",
+      "preparation": "Preparation",
+      "ingredients": "Ingredients",
+      "servings": "Servings",
+      "yield": "Yield",
+      "success": "Success",
+      "warning": "Warning"
+    },
+    "validation": {
+      "required": "{{field}} is required"
+    },
+    "navigation": {
+      "home": "Home",
+      "categories": "Categories",
+      "inventory": "Inventory",
+      "allRecipes": "All Recipes",
+      "preparationsList": "Preparations List",
+      "account": "Account",
+      "support": "Support",
+      "preferences": "Preferences",
+      "createEditPreparation": "Create/Edit Preparation",
+      "createEditRecipe": "Create/Edit Recipe"
+    },
+    "screens": {
+      "login": {
+        "title": "Chef's Recipes",
+        "subtitle": "Restaurant Recipe Management",
+        "findKitchenLabel": "Find Your Kitchen",
+        "searchKitchenPlaceholder": "Search kitchen by name or location",
+        "noKitchensFound": "No kitchens found",
+        "backToLogin": "Back to Login",
+        "usernamePlaceholder": "Username",
+        "emailPlaceholder": "Email",
+        "passwordPlaceholder": "Password",
+        "loginButton": "Login",
+        "signUpButton": "Sign Up",
+        "createAccountLabel": "Create Account",
+        "loginToKitchenLabel": "Login to your kitchen",
+        "alreadyHaveAccount": "Already have an account? Login",
+        "dontHaveAccount": "Don't have an account? Sign Up",
+        "loginFailedTitle": "Login Failed",
+        "loginFailedDefaultMessage": "Please check your credentials and try again",
+        "loginErrorTitle": "Login Error",
+        "signUpFailedTitle": "Sign Up Failed",
+        "signUpFailedDefaultMessage": "Unable to create account",
+        "signUpSuccessTitle": "Account Created",
+        "signUpSuccessMessage": "Your account has been created successfully! Check your email for verification.",
+        "signUpErrorTitle": "Sign Up Error",
+        "unexpectedError": "An unexpected error occurred",
+        "validation": {
+          "emailPasswordRequired": "Please enter both email and password",
+          "allFieldsRequired": "Please enter email, password, and username",
+          "passwordLength": "Password must be at least 6 characters long"
+        }
+      },
+      "home": {
+        "categoriesTitle": "Categories",
+        "errorLoadingCategories": "Error loading categories",
+        "noCategoriesFound": "No categories found",
+        "recentDishesTitle": "Recent Dishes",
+        "viewAll": "View All",
+        "errorLoadingDishes": "Error loading dishes",
+        "noDishesFound": "No dishes found",
+        "addRecipeButton": "Add Recipe",
+        "error": {
+          "missingKitchenId": "Kitchen ID is not configured. Cannot add section."
+        },
+        "addSectionSuccessTitle": "Success",
+        "addSectionSuccessMessage": "Section \"{{sectionName}}\" has been added successfully.",
+        "addSectionError": "Failed to add section \"{{sectionName}}\". Please try again. Error: {{error}}",
+        "uploadOptions": {
+          "document": "Upload File (.pdf, .doc, .docx)",
+          "photos": "Select Photos",
+          "title": "Import Recipe"
+        },
+        "parsingSuccessTitle": "Parsing Complete",
+        "parsingSuccessMessageDocument": "Document parsing simulated. Implement actual logic.",
+        "parsingSuccessMessagePhotos": "Photo parsing simulated. Implement actual logic.",
+        "permissionDeniedTitle": "Permission Denied",
+        "permissionDeniedMessage": "Media library permission is required to select photos.",
+        "error": {
+          "missingKitchenId": "Kitchen ID is not configured. Cannot add section.",
+          "documentPick": "Could not pick document.",
+          "imagePick": "Could not pick images."
+        },
+        "parsingIndicator": "Parsing Recipe..."
+      },
+      "categories": {
+        "loading": "Loading Categories...",
+        "newSection": "New Section",
+        "addSectionModalTitle": "Add New Section",
+        "addNewSection": "Add New Section",
+        "sectionName": "Section Name"
+      },
+      "categoryRecipes": {
+        "loading": "Loading {{categoryName}}...",
+        "titleFallback": "Category Dishes",
+        "preparationsTitle": "Preparations:",
+        "noDishesInCategory": "No dishes found in this category"
+      },
+      "allRecipes": {
+        "title": "All Recipes",
+        "searchPlaceholder": "Search recipes...",
+        "sortByLabel": "Sort by:",
+        "sortByName": "Name",
+        "sortByNewest": "Newest",
+        "retry": "Retry",
+        "servings": "servings",
+        "noSearchResults": "No recipes match your search",
+        "noRecipesFound": "No recipes found"
+      },
+      "search": {
+        "searchPlaceholder": "Search by dish name",
+        "errorLoading": "Error loading data. Please try again."
+      },
+      "prepList": {
+        "loading": "Loading Preparations...",
+        "errorLoading": "Error loading preparations",
+        "noPreparationsFound": "No preparations found."
+      },
+      "inventory": {
+        "title": "Inventory",
+        "usedInTitle": "Used In:",
+        "notUsedInRecipes": "Not used in any recipes yet",
+        "noDataFound": "No data found."
+      },
+      "account": {
+        "logout": "Logout"
+      },
+      "dishDetail": {
+        "loading": "Loading Dish...",
+        "notFound": "Dish not found",
+        "servingsLabel": "Servings:",
+        "servingSizeLabel": "Serving Size:",
+        "adjustServingsLabel": "Adjust Target Servings (Base: {{baseServings}})",
+        "servingsSuffix": "Servings",
+        "preparationsTitle": "Preparations",
+        "rawIngredientsTitle": "Raw Ingredients",
+        "noComponents": "No components listed for this dish.",
+        "directionsTitle": "Directions",
+        "notesTitle": "Notes"
+      },
+      "preparationDetail": {
+        "loading": "Loading Preparation...",
+        "ingredientsTitle": "Ingredients",
+        "instructionsTitle": "Instructions",
+        "cookingNotesTitle": "Cooking Notes",
+        "error": "Error Loading Preparation",
+        "errorNotFound": "Preparation not found",
+        "titleFallback": "Preparation",
+        "minutesSuffix": "min",
+        "adjustScaleLabel": "Adjust Scale (Base Yield: {{amount}} {{unit}})",
+        "scaleSuffix": "x scale"
+      },
+      "createRecipe": {
+        "nameLabel": "Recipe Name *",
+        "namePlaceholder": "Enter recipe name",
+        "servingSizeLabel": "Serving Size",
+        "servingSizePlaceholder": "e.g., 4",
+        "servingUnitLabel": "Serving Unit *",
+        "servingIngredientLabel": "Serving Ingredient (e.g., \\\"breast\\\", \\\"rolls\\\", \\\"sausage\\\")",
+        "servingIngredientPlaceholder": "Manual description or select...",
+        "ingredientsTitle": "Ingredients",
+        "noRawIngredients": "No raw ingredients added yet.",
+        "preparationsTitle": "Preparations",
+        "noPreparations": "No preparations added yet.",
+        "typeLabel": "Recipe Type *",
+        "categoryLabel": "Category",
+        "timeHoursLabel": "Total Time (Hrs)",
+        "timeMinutesLabel": "Total Time (Min)",
+        "directionsLabel": "Directions",
+        "notesLabel": "Cooking Notes",
+        "notesPlaceholder": "Optional notes, tips, variations",
+        "selectComponentModalTitle": "Select Component",
+        "searchComponentPlaceholder": "Search ingredients or preparations...",
+        "selectCategoryModalTitle": "Select Category",
+        "noCategoriesFound": "No categories found.",
+        "selectServingUnitModalTitle": "Select Serving Unit",
+        "noUnitsFound": "No units found.",
+        "selectComponentUnitModalTitle": "Select Unit for Component",
+        "selectServingIngredientModalTitle": "Select Serving Ingredient",
+        "noComponentsInRecipe": "No components added to recipe yet.",
+        "addIngredientPreparationButton": "+ Add Ingredient / Preparation",
+        "recipeTypeLabel": "Recipe Type *",
+        "addStepButton": "+ Add Step",
+        "editDishTitle": "Edit Dish",
+        "editPreparationTitle": "Edit Preparation",
+        "confirmParsedTitle": "Confirm Parsed Recipe",
+        "createTitle": "Create New Recipe",
+        "adjustServingsLabelProportions": "Adjust Servings (Only for Proportions)",
+        "updateRecipeButton": "Update Recipe",
+        "confirmSaveButton": "Confirm & Save",
+        "saveRecipeButton": "Save Recipe",
+        "searchNoResults": "No matching components found.",
+        "createButtonLabel": "+ Create \"{{query}}\"",
+        "searchPlaceholderComponents": "Type to search for ingredients or preparations",
+        "prepSuffix": "(Prep)"
+      },
+      "createPreparation": {
+        "loadingUnits": "Loading units...",
+        "refIngredientLabel": "Reference Ingredient:",
+        "scaledAmountLabel": "Amount Used in Recipe (Scaled):",
+        "ingredientsTitle": "Ingredients:",
+        "amountPlaceholder": "Amt",
+        "noSubIngredients": "No sub-ingredients listed.",
+        "instructionsTitle": "Instructions:",
+        "noInstructions": "No instructions provided.",
+        "selectUnitModalTitle": "Select Unit",
+        "selectPrepUnitModalTitle": "Select Preparation Unit"
+      }
+    },
+    "alerts": {
+      "errorAddComponentMissingName": "Could not add component: Missing name",
+      "duplicateIngredientTitle": "Duplicate Ingredient",
+      "duplicateIngredientMessage": "An ingredient named \"{{name}}\" already exists. Please search and select the existing ingredient instead of creating a duplicate.",
+      "missingInfoTitle": "Missing Information",
+      "enterRecipeName": "Please enter a recipe name.",
+      "duplicateNameTitle": "Duplicate Name",
+      "duplicateDishMessage": "A dish named \"{{name}}\" already exists. Please choose a different name.",
+      "duplicatePrepMessage": "A preparation or ingredient named \"{{name}}\" already exists. Please choose a different name.",
+      "selectServingUnit": "Please select a serving unit.",
+      "invalidComponentTitle": "Invalid Component",
+      "invalidComponentMessage": "Please enter a valid positive amount and select a unit for \"{{name}}\".",
+      "missingComponentsTitle": "Missing Components",
+      "addOneComponent": "Please add at least one component to the dish.",
+      "invalidTimeTitle": "Invalid Time",
+      "invalidTimeMessage": "Please enter valid numbers for hours (0+) and minutes (0-59).",
+      "invalidServingsTitle": "Invalid Servings",
+      "invalidServingsMessage": "Please enter a valid positive number of servings.",
+      "dishUpdateSuccess": "Dish updated successfully!",
+      "prepUpdateSuccess": "Preparation updated successfully!",
+      "dishCreateWarnComponents": "Dish was created but some components may not have been added properly.",
+      "dishCreateSuccess": "Dish created successfully!",
+      "prepCreateSuccess": "Preparation created successfully!",
+      "errorSavingRecipeTitle": "Error Saving Recipe",
+      "errorSavingRecipeDefault": "An unexpected error occurred. Please try again."
+    },
+    "components": {
+      "sidebar": {
+        "logoText": "FoodWeb"
+      },
+      "dishCard": {
+        "componentsTitle": "Components:",
+        "noComponents": "No components listed",
+        "servings_one": "{{count}} serving",
+        "servings_other": "{{count}} servings"
+      },
+      "preparationCard": {
+        "detailsMissingError": "Preparation details missing.",
+        "ingredientsTitle": "Ingredients:",
+        "noIngredients": "No ingredients listed.",
+        "subTitle": "Ingredients:"
+      },
+      "addCategoryCard": {
+        "addButton": "Add",
+        "cancelButton": "Cancel",
+        "newSection": "New Section",
+        "addNewSection": "Add New Section",
+        "sectionName": "Section Name"
+      }
+    }
+  }
+} 

@@ -21,12 +21,14 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const { signIn, signUp } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -38,7 +40,7 @@ const LoginScreen = () => {
   const handleLogin = async () => {
     // Validate input
     if (email.trim() === '' || password.trim() === '') {
-      Alert.alert('Error', 'Please enter both email and password');
+      Alert.alert(t('common.error'), t('screens.login.validation.emailPasswordRequired'));
       return;
     }
     
@@ -47,11 +49,11 @@ const LoginScreen = () => {
       const { error } = await signIn(email, password);
       
       if (error) {
-        Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
+        Alert.alert(t('screens.login.loginFailedTitle'), error.message || t('screens.login.loginFailedDefaultMessage'));
       }
       // No need to navigate - AppNavigator will handle this automatically when user state changes
     } catch (error) {
-      Alert.alert('Login Error', 'An unexpected error occurred');
+      Alert.alert(t('screens.login.loginErrorTitle'), t('screens.login.unexpectedError'));
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -61,13 +63,13 @@ const LoginScreen = () => {
   const handleSignUp = async () => {
     // Validate input for sign up
     if (email.trim() === '' || password.trim() === '' || username.trim() === '') {
-      Alert.alert('Error', 'Please enter email, password, and username');
+      Alert.alert(t('common.error'), t('screens.login.validation.allFieldsRequired'));
       return;
     }
     
     // Validate password length
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      Alert.alert(t('common.error'), t('screens.login.validation.passwordLength'));
       return;
     }
     
@@ -76,12 +78,12 @@ const LoginScreen = () => {
       const { error, user } = await signUp(email, password, username);
       
       if (error) {
-        Alert.alert('Sign Up Failed', error.message || 'Unable to create account');
+        Alert.alert(t('screens.login.signUpFailedTitle'), error.message || t('screens.login.signUpFailedDefaultMessage'));
       } else {
         Alert.alert(
-          'Account Created', 
-          'Your account has been created successfully! Check your email for verification.',
-          [{ text: 'OK', onPress: () => setIsSignUp(false) }]
+          t('screens.login.signUpSuccessTitle'), 
+          t('screens.login.signUpSuccessMessage'),
+          [{ text: t('common.ok', 'OK'), onPress: () => setIsSignUp(false) }]
         );
         // Clear form
         setUsername('');
@@ -89,7 +91,7 @@ const LoginScreen = () => {
         setPassword('');
       }
     } catch (error) {
-      Alert.alert('Sign Up Error', 'An unexpected error occurred');
+      Alert.alert(t('screens.login.signUpErrorTitle'), t('screens.login.unexpectedError'));
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -114,17 +116,17 @@ const LoginScreen = () => {
         >
           <View style={styles.header}>
             <MaterialCommunityIcons name="chef-hat" size={60} color={COLORS.white} />
-            <Text style={styles.title}>Chef's Recipes</Text>
-            <Text style={styles.subtitle}>Restaurant Recipe Management</Text>
+            <Text style={styles.title}>{t('screens.login.title')}</Text>
+            <Text style={styles.subtitle}>{t('screens.login.subtitle')}</Text>
           </View>
           
           <View style={styles.formContainer}>
             {showSearch ? (
               <View style={styles.searchContainer}>
-                <Text style={styles.formLabel}>Find Your Kitchen</Text>
+                <Text style={styles.formLabel}>{t('screens.login.findKitchenLabel')}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Search kitchen by name or location"
+                  placeholder={t('screens.login.searchKitchenPlaceholder')}
                   placeholderTextColor={COLORS.placeholder}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -147,7 +149,7 @@ const LoginScreen = () => {
                         </TouchableOpacity>
                       ))
                     ) : (
-                      <Text style={styles.noResults}>No kitchens found</Text>
+                      <Text style={styles.noResults}>{t('screens.login.noKitchensFound')}</Text>
                     )}
                   </View>
                 )}
@@ -156,19 +158,19 @@ const LoginScreen = () => {
                   style={styles.backButton}
                   onPress={() => setShowSearch(false)}
                 >
-                  <Text style={styles.backButtonText}>Back to Login</Text>
+                  <Text style={styles.backButtonText}>{t('screens.login.backToLogin')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
                 <Text style={styles.formLabel}>
-                  {isSignUp ? 'Create Account' : 'Login to your kitchen'}
+                  {isSignUp ? t('screens.login.createAccountLabel') : t('screens.login.loginToKitchenLabel')}
                 </Text>
                 
                 {isSignUp && (
                   <TextInput
                     style={styles.input}
-                    placeholder="Username"
+                    placeholder={t('screens.login.usernamePlaceholder')}
                     placeholderTextColor={COLORS.placeholder}
                     autoCapitalize="none"
                     value={username}
@@ -178,7 +180,7 @@ const LoginScreen = () => {
                 
                 <TextInput
                   style={styles.input}
-                  placeholder="Email"
+                  placeholder={t('screens.login.emailPlaceholder')}
                   placeholderTextColor={COLORS.placeholder}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -188,7 +190,7 @@ const LoginScreen = () => {
                 
                 <TextInput
                   style={styles.input}
-                  placeholder="Password"
+                  placeholder={t('screens.login.passwordPlaceholder')}
                   placeholderTextColor={COLORS.placeholder}
                   secureTextEntry
                   value={password}
@@ -201,38 +203,22 @@ const LoginScreen = () => {
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <ActivityIndicator size="small" color={COLORS.white} />
+                    <ActivityIndicator color={COLORS.white} />
                   ) : (
                     <Text style={styles.loginButtonText}>
-                      {isSignUp ? 'Sign Up' : 'Login'}
+                      {isSignUp ? t('screens.login.signUpButton') : t('screens.login.loginButton')}
                     </Text>
                   )}
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                  style={styles.toggleAuthButton}
-                  onPress={() => {
-                    setIsSignUp(!isSignUp);
-                    setEmail('');
-                    setPassword('');
-                    setUsername('');
-                  }}
-                  disabled={isLoading}
+                  style={styles.toggleButton}
+                  onPress={() => setIsSignUp(!isSignUp)}
                 >
-                  <Text style={styles.toggleAuthText}>
-                    {isSignUp ? 'Already have an account? Login' : 'Don\'t have an account? Sign Up'}
+                  <Text style={styles.toggleButtonText}>
+                    {isSignUp ? t('screens.login.alreadyHaveAccount') : t('screens.login.dontHaveAccount')}
                   </Text>
                 </TouchableOpacity>
-                
-                {!isSignUp && (
-                  <TouchableOpacity 
-                    style={styles.searchKitchenButton}
-                    onPress={() => setShowSearch(true)}
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.searchKitchenText}>Search for kitchen</Text>
-                  </TouchableOpacity>
-                )}
               </>
             )}
           </View>
@@ -242,6 +228,10 @@ const LoginScreen = () => {
   );
 };
 
+interface Kitchen {
+  name: string;
+  location: string;
+}
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -306,22 +296,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  toggleAuthButton: {
+  toggleButton: {
     padding: SIZES.padding,
     alignItems: 'center',
     marginTop: SIZES.padding / 2,
   },
-  toggleAuthText: {
-    color: COLORS.textLight,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  searchKitchenButton: {
-    padding: SIZES.padding,
-    alignItems: 'center',
-    marginTop: SIZES.padding / 2,
-  },
-  searchKitchenText: {
+  toggleButtonText: {
     color: COLORS.textLight,
     fontSize: 14,
     fontWeight: '500',

@@ -21,12 +21,14 @@ import AddCategoryCard from '../components/AddCategoryCard';
 import AppHeader from '../components/AppHeader';
 import { useMenuSections } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 type CategoriesScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const CategoriesScreen = () => {
   const navigation = useNavigation<CategoriesScreenNavigationProp>();
   const { menuSections, loading, error, refresh } = useMenuSections();
+  const { t } = useTranslation();
   
   const handleCategoryPress = (category: MenuSection) => {
     navigation.navigate('CategoryRecipes', {
@@ -37,8 +39,7 @@ const CategoriesScreen = () => {
 
   const handleAddSection = async (sectionName: string) => {
     try {
-      // TODO: Replace placeholder with actual logic to get kitchen_id
-      const placeholderKitchenId = process.env.DEFAULT_KITCHEN_ID; 
+      const placeholderKitchenId = process.env.DEFAULT_KITCHEN_ID || '';
       if (placeholderKitchenId === process.env.DEFAULT_KITCHEN_ID) {
           console.warn('Using placeholder kitchen ID in handleAddSection (CategoriesScreen)');
       }
@@ -86,7 +87,7 @@ const CategoriesScreen = () => {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Loading Categories..." showBackButton={true} />
+        <AppHeader title={t('screens.categories.loading')} showBackButton={true} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -96,7 +97,7 @@ const CategoriesScreen = () => {
     return (
       <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
-        <AppHeader title="Error" showBackButton={true} />
+        <AppHeader title={t('screens.categories.error')} showBackButton={true} />
         <Text style={styles.errorText}>{error.message}</Text>
       </SafeAreaView>
     );
@@ -106,7 +107,7 @@ const CategoriesScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <AppHeader 
-        title="Categories"
+        title={t('screens.categories.title')}
         showBackButton={true}
       />
       

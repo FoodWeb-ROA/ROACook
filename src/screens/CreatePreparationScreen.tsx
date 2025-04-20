@@ -11,6 +11,7 @@ import AppHeader from '../components/AppHeader';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { capitalizeWords, formatQuantity, formatQuantityAuto } from '../utils/textFormatters'; // Corrected import path assumption
 import PreparationCard from '../components/PreparationCard'; // Import PreparationCard
+import { useTranslation } from 'react-i18next';
 
 type CreatePrepRouteProp = RouteProp<RootStackParamList, 'CreatePreparation'>;
 type CreatePrepNavProp = StackNavigationProp<RootStackParamList, 'CreatePreparation'>;
@@ -28,6 +29,7 @@ const CreatePreparationScreen = () => {
   const navigation = useNavigation<CreatePrepNavProp>();
   const { preparation, scaleMultiplier = 1 } = route.params;
   const { units, loading: loadingUnits } = useUnits(); // Fetch units
+  const { t } = useTranslation();
 
   // --- State ---
   const [prepName, setPrepName] = useState(preparation.name || 'Preparation');
@@ -162,7 +164,7 @@ const CreatePreparationScreen = () => {
 
   // --- Render ---
   if (loadingUnits) {
-      return <SafeAreaView style={styles.safeArea}><View style={styles.centered}><Text>Loading units...</Text></View></SafeAreaView>
+      return <SafeAreaView style={styles.safeArea}><View style={styles.centered}><Text>{t('screens.createPreparation.loadingUnits')}</Text></View></SafeAreaView>
   }
 
   const prepUnitName = units.find(u => u.unit_id === prepUnitId)?.abbreviation || 'Unit';
@@ -170,7 +172,7 @@ const CreatePreparationScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <AppHeader title="Create/Edit Preparation" showBackButton={true} />
+      <AppHeader title={t('screens.createPreparation.title')} showBackButton={true} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -186,18 +188,18 @@ const CreatePreparationScreen = () => {
           {/* Reference Ingredient (Display only) */}
           {referenceIngredient && (
             <View style={styles.refIngredientContainer}>
-              <Text style={styles.label}>Reference Ingredient:</Text>
+              <Text style={styles.label}>{t('screens.createPreparation.refIngredientLabel')}:</Text>
               <Text style={styles.itemText}>{capitalizeWords(referenceIngredient)}</Text>
             </View>
           )}
 
           {/* Prep Amount & Unit (Editable - shows scaled amount) */}
           <View style={styles.section}>
-              <Text style={styles.label}>Amount Used in Recipe (Scaled):</Text>
+              <Text style={styles.label}>{t('screens.createPreparation.scaledAmountLabel')}:</Text>
               <View style={styles.componentControlsContainer}>
                    <TextInput
                        style={styles.componentInputAmount}
-                       placeholder="Amt"
+                       placeholder={t('screens.createPreparation.amountPlaceholder')}
                        value={displayPrepAmount}
                        onChangeText={setPrepAmount}
                        keyboardType="numeric"
@@ -218,7 +220,7 @@ const CreatePreparationScreen = () => {
 
           {/* Ingredients Section */}
           <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Ingredients:</Text>
+              <Text style={styles.sectionHeader}>{t('screens.createPreparation.ingredientsTitle')}:</Text>
               {editableIngredients.length > 0 ? (
                 editableIngredients.map((item) => {
                   // Calculate scaled amount for display
@@ -274,7 +276,7 @@ const CreatePreparationScreen = () => {
                           <View style={styles.componentControlsContainer}>
                             <TextInput
                               style={styles.componentInputAmount}
-                              placeholder="Amt"
+                              placeholder={t('screens.createPreparation.amountPlaceholder')}
                               placeholderTextColor={COLORS.placeholder}
                               value={formattedDisplay.amount}
                               onChangeText={(value) => handleIngredientUpdate(item.key, 'amountStr', value)}
@@ -297,13 +299,13 @@ const CreatePreparationScreen = () => {
                   );
                 })
               ) : (
-                <Text style={styles.itemText}>No sub-ingredients listed.</Text>
+                <Text style={styles.itemText}>{t('screens.createPreparation.noSubIngredients')}</Text>
               )}
            </View>
 
           {/* Instructions Section */}
           <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Instructions:</Text>
+              <Text style={styles.sectionHeader}>{t('screens.createPreparation.instructionsTitle')}:</Text>
               {instructions.length > 0 ? (
                 instructions.map((step, index) => (
                   <View key={index} style={styles.directionStepContainer}>
@@ -326,7 +328,7 @@ const CreatePreparationScreen = () => {
                   </View>
                 ))
               ) : (
-                <Text style={styles.itemText}>No instructions provided.</Text>
+                <Text style={styles.itemText}>{t('screens.createPreparation.noInstructions')}</Text>
               )}
               <TouchableOpacity 
                 onPress={handleAddInstructionStep} 
@@ -348,7 +350,7 @@ const CreatePreparationScreen = () => {
        >
            <View style={styles.modalContainer}>
                <View style={styles.modalContent}>
-                   <Text style={styles.modalTitle}>Select Unit</Text>
+                   <Text style={styles.modalTitle}>{t('screens.createPreparation.selectUnitModalTitle')}</Text>
                    <FlatList
                        data={units}
                        keyExtractor={(item) => item.unit_id}
@@ -365,7 +367,7 @@ const CreatePreparationScreen = () => {
                        style={styles.closeButton}
                        onPress={closeUnitModal}
                    >
-                       <Text style={styles.closeButtonText}>Close</Text>
+                       <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                    </TouchableOpacity>
                </View>
            </View>
@@ -380,7 +382,7 @@ const CreatePreparationScreen = () => {
        >
            <View style={styles.modalContainer}>
                <View style={styles.modalContent}>
-                   <Text style={styles.modalTitle}>Select Preparation Unit</Text>
+                   <Text style={styles.modalTitle}>{t('screens.createPreparation.selectPrepUnitModalTitle')}</Text>
                    <FlatList
                        data={units}
                        keyExtractor={(item) => item.unit_id}
@@ -397,7 +399,7 @@ const CreatePreparationScreen = () => {
                        style={styles.closeButton}
                        onPress={closePrepUnitModal}
                    >
-                       <Text style={styles.closeButtonText}>Close</Text>
+                       <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                    </TouchableOpacity>
                </View>
            </View>

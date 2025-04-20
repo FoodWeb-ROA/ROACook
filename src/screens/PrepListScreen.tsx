@@ -19,6 +19,7 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { Preparation } from '../types';
 import { usePreparations } from '../hooks/useSupabase';
 import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 type PrepListScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'PrepList'>;
 type PrepListScreenStackProp = StackNavigationProp<RootStackParamList>;
@@ -26,6 +27,7 @@ type PrepListScreenStackProp = StackNavigationProp<RootStackParamList>;
 const PrepListScreen = () => {
   const drawerNavigation = useNavigation<PrepListScreenNavigationProp>();
   const stackNavigation = useNavigation<PrepListScreenStackProp>();
+  const { t } = useTranslation();
 
   const { preparations, loading, error } = usePreparations();
 
@@ -52,7 +54,7 @@ const PrepListScreen = () => {
     <SafeAreaViewRN style={styles.safeArea}>
       <StatusBar style="dark" />
       <AppHeader
-        title="Preparations List"
+        title={t('screens.prepList.title')}
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
       />
@@ -63,14 +65,14 @@ const PrepListScreen = () => {
             <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
         ) : error ? (
-          <Text style={styles.errorText}>Error loading preparations</Text>
+          <Text style={styles.errorText}>{t('screens.prepList.errorLoading')}</Text>
         ) : (
           <FlatList
             data={preparations}
             renderItem={renderPreparationItem}
             keyExtractor={(item) => item.preparation_id}
             contentContainerStyle={styles.listContainer}
-            ListEmptyComponent={<Text style={styles.emptyText}>No preparations found.</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>{t('screens.prepList.noPreparationsFound')}</Text>}
           />
         )}
       </View>

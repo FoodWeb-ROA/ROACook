@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Dish, DishComponent } from '../types';
 import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
+import { useTranslation } from 'react-i18next';
 
 interface DishCardProps {
   dish: Dish;
@@ -31,6 +32,8 @@ const formatTime = (interval: string | null): string => {
 };
 
 const DishCard: React.FC<DishCardProps> = ({ dish, onPress }) => {
+  const { t } = useTranslation();
+  
   console.log('Dish card components:', dish.components);
   
   return (
@@ -46,18 +49,23 @@ const DishCard: React.FC<DishCardProps> = ({ dish, onPress }) => {
       <View style={styles.infoContainer}>
         <Text style={styles.title} numberOfLines={1}>{dish.dish_name}</Text>
         <View style={styles.detailsContainer}>
-          <View style={styles.detail}>
+          <View style={styles.detailRow}>
             <MaterialCommunityIcons name="clock-outline" size={16} color={COLORS.textLight} />
             <Text style={styles.detailText}>{formatTime(dish.total_time)}</Text>
           </View>
-          <View style={styles.detail}>
+          <View style={styles.detailRow}>
             <MaterialCommunityIcons name="account-multiple" size={16} color={COLORS.textLight} />
-            <Text style={styles.detailText}>{dish.num_servings ?? 'N/A'} servings</Text>
+            <Text style={styles.detailText}>{t('components.dishCard.servings', { count: dish.num_servings || 0 })}</Text>
           </View>
+          {dish.serving_size && dish.serving_unit && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailText}>{dish.serving_size} {dish.serving_unit.abbreviation || dish.serving_unit.unit_name}</Text>
+            </View>
+          )}
         </View>
         
         <View style={styles.componentsContainer}>
-          <Text style={styles.componentsTitle}>Components:</Text>
+          <Text style={styles.componentsTitle}>{t('components.dishCard.componentsTitle')}</Text>
           {dish.components && dish.components.length > 0 ? (
             <View style={styles.componentsList}>
               {dish.components.slice(0, 4).map((component, index) => (
@@ -81,7 +89,7 @@ const DishCard: React.FC<DishCardProps> = ({ dish, onPress }) => {
               )}
             </View>
           ) : (
-            <Text style={styles.noComponentsText}>No components listed</Text>
+            <Text style={styles.noComponentsText}>{t('components.dishCard.noComponentsText')}</Text>
           )}
         </View>
       </View>
@@ -117,7 +125,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  detail: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },

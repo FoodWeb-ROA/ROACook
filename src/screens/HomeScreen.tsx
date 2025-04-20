@@ -34,6 +34,7 @@ import { useAuth } from '../context/AuthContext';
 import { useMenuSections, useDishes } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
 import { uploadRecipeImages } from '../services/recipeParser';
+import { useTranslation } from 'react-i18next';
 
 // Helper function to chunk array with type annotations
 const chunk = <T,>(array: T[], size: number): T[][] => { // Add generic type T and return type T[][]
@@ -98,6 +99,7 @@ const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAuth();
   const { showActionSheetWithOptions } = useActionSheet();
+  const { t } = useTranslation();
   
   // Use dynamic data loading hooks
   const { menuSections, loading: loadingCategories, error: categoriesError, refresh: refreshMenuSections } = useMenuSections();
@@ -131,9 +133,9 @@ const HomeScreen = () => {
       // Ensure kitchen ID is available before proceeding
       if (!placeholderKitchenId) {
         Alert.alert(
-          "Error",
-          "Kitchen ID is not configured. Cannot add section.",
-          [{ text: "OK" }]
+          t('common.error'),
+          t('screens.home.error.missingKitchenId'),
+          [{ text: t('common.ok', 'OK') }]
         );
         console.error('Error adding section: kitchen_id is undefined. Check environment variables or configuration.');
         return; // Stop execution if kitchen ID is missing
@@ -149,18 +151,18 @@ const HomeScreen = () => {
       if (error) throw error;
       
       Alert.alert(
-        "Success",
-        `Section "${sectionName}" has been added successfully.`,
-        [{ text: "OK" }]
+        t('screens.home.addSectionSuccessTitle'),
+        t('screens.home.addSectionSuccessMessage', { sectionName }),
+        [{ text: t('common.ok', 'OK') }]
       );
       
       refreshMenuSections();
     } catch (error: any) {
       console.error('Error adding section:', error);
       Alert.alert(
-        "Error",
-        `Failed to add section "${sectionName}". Please try again. Error: ${error.message || String(error)}`,
-        [{ text: "OK" }]
+        t('common.error'),
+        t('screens.home.addSectionError', { sectionName, error: error.message || String(error) }),
+        [{ text: t('common.ok', 'OK') }]
       );
     }
   };
@@ -278,94 +280,76 @@ const HomeScreen = () => {
 
   // --- Action Sheet Logic for Upload ---
   const handleUploadRecipePress = async () => {
-    const options = ['Choose from Library', 'Take Photo', 'Upload File', 'Cancel'];
-    const cancelButtonIndex = 3;
-
     showActionSheetWithOptions(
       {
-        options,
-        cancelButtonIndex,
-        title: 'Import Recipe',
-        message: 'Select images or a file containing the recipe',
+        options: [
+          t('screens.home.uploadOptions.document'),
+          t('screens.home.uploadOptions.photos'),
+          t('common.cancel')
+        ],
+        cancelButtonIndex: 2,
+        title: t('screens.home.uploadOptions.title')
       },
       async (selectedIndex?: number) => {
-        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex) return;
+        if (selectedIndex === 0) {
+          // Pick Document
+          try {
+            const result = await DocumentPicker.getDocumentAsync({
+              type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            });
 
-        let imageUris: string[] = [];
-
-        try {
-            if (selectedIndex === 0) {
-                let result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: "images",
-                    quality: 0.8,
-                });
-
-                if (!result.canceled && result.assets) {
-                    imageUris = result.assets.map(asset => asset.uri);
-                }
-            } else if (selectedIndex === 1) {
-                const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-                if (permissionResult.granted === false) {
-                    Alert.alert("Permission Required", "Camera access is needed to take a photo.");
-                    return;
-                }
-
-                let result = await ImagePicker.launchCameraAsync({
-                    quality: 0.8,
-                });
-
-                if (!result.canceled && result.assets) {
-                    imageUris = [result.assets[0].uri];
-                }
-            } else if (selectedIndex === 2) {
-                console.log('Upload File selected');
-                 try {
-                    const result = await DocumentPicker.getDocumentAsync({
-                        copyToCacheDirectory: false, 
-                    });
-                    console.log('Document Picker Result:', JSON.stringify(result));
-                    if (!result.canceled && result.assets && result.assets.length > 0) {
-                        const asset = result.assets[0];
-                        if (asset.mimeType?.startsWith('image/')) {
-                            imageUris = [asset.uri];
-                        } else {
-                           Alert.alert('File Type Note', `Selected: ${asset.name}. Parsing non-image files via this method is not fully supported yet.`);
-                        }
-                    } else {
-                        console.log('Document picking cancelled or failed');
-                    }
-                } catch (error) {
-                    console.error('Error picking document:', error);
-                    Alert.alert('Error', 'Could not pick document.');
-                }
+            if (!result.canceled && result.assets && result.assets[0]) {
+              const asset = result.assets[0];
+              setIsParsing(true);
+              // TODO: Implement actual parsing logic here
+              console.log('Selected Document:', asset.uri);
+              // Replace with call to your backend/parsing service
+              await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate parsing time
+              setIsParsing(false);
+              Alert.alert(t('screens.home.parsingSuccessTitle'), t('screens.home.parsingSuccessMessageDocument'));
+              // TODO: Navigate to recipe creation/edit screen with parsed data
+            } else {
+              console.log('Document selection cancelled or failed');
             }
-
-            if (imageUris.length > 0) {
-                setIsParsing(true);
-                try {
-                    const parsedRecipes = await uploadRecipeImages(imageUris);
-                    console.log('Parsed Recipes:', parsedRecipes);
-                    if (parsedRecipes && parsedRecipes.length > 0) {
-                        // Navigate to CreateRecipeScreen with the first parsed recipe
-                        navigation.navigate('CreateRecipe', { parsedRecipe: parsedRecipes[0] });
-                    } else {
-                        Alert.alert('Parsing Failed', 'Could not extract recipes from the provided image(s).');
-                    }
-                } catch (parseError: any) {
-                    console.error('Error parsing recipe images:', parseError);
-                    Alert.alert('Parsing Error', parseError.message || 'An error occurred during parsing.');
-                }
-                finally {
-                    setIsParsing(false);
-                }
-            } else if (selectedIndex !== 2) {
-               console.log('No images selected or camera cancelled.');
-            }
-
-        } catch (error) {
-            console.error('Error during recipe import process:', error);
-            Alert.alert('Error', 'An unexpected error occurred.');
+          } catch (err) {
             setIsParsing(false);
+            console.error('Error picking document:', err);
+            Alert.alert(t('common.error'), t('screens.home.error.documentPick'));
+          }
+        } else if (selectedIndex === 1) {
+          // Pick Images
+          try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+              Alert.alert(t('screens.home.permissionDeniedTitle'), t('screens.home.permissionDeniedMessage'));
+              return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsMultipleSelection: true, // Allow selecting multiple images
+              quality: 1,
+            });
+
+            if (!result.canceled && result.assets) {
+              setIsParsing(true);
+              console.log('Selected Images:', result.assets.map(a => a.uri));
+              // TODO: Implement actual parsing logic here, potentially uploading images
+              // Example: Use the uploadRecipeImages function if it fits your backend
+              // const recipeData = await uploadRecipeImages(result.assets);
+              // console.log('Parsed Recipe Data:', recipeData);
+              await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate parsing time
+              setIsParsing(false);
+              Alert.alert(t('screens.home.parsingSuccessTitle'), t('screens.home.parsingSuccessMessagePhotos'));
+              // TODO: Navigate to recipe creation/edit screen with parsed data
+            } else {
+              console.log('Image selection cancelled or failed');
+            }
+          } catch (err) {
+            setIsParsing(false);
+            console.error('Error picking images:', err);
+            Alert.alert(t('common.error'), t('screens.home.error.imagePick'));
+          }
         }
       }
     );
@@ -387,31 +371,34 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <AppHeader 
-        title="ROACook"
+        title="ROA"
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
         rightComponent={renderHeaderRight()}
       />
 
-      {/* Replace ScrollView with fixed View */}
-      <View style={styles.container}>
-        <View style={styles.contentArea}>
-          {/* --- Categories Section --- */}
-          <View style={styles.categoriesSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Categories</Text>
-            </View>
-            
+      <ScrollView 
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={loadingCategories || loadingDishes} onRefresh={refreshMenuSections} />
+        }
+      >
+        {/* Category Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t('screens.home.categoriesTitle')}</Text>
+          </View>
+          <View style={{ height: CATEGORY_SECTION_HEIGHT }}>
             {loadingCategories ? (
-              <View style={styles.loadingContainer} />
+              <ActivityIndicator color={COLORS.primary} size="large" style={styles.loader} />
             ) : categoriesError ? (
-              <Text style={styles.errorText}>Error loading categories</Text>
-            ) : categoryPages.length === 0 ? (
-              <Text style={styles.noDataText}>No categories found</Text>
+              <Text style={styles.errorText}>{t('screens.home.errorLoadingCategories')}</Text>
+            ) : formattedCategories.length === 0 ? (
+              <Text style={styles.noDataText}>{t('screens.home.noCategoriesFound')}</Text>
             ) : (
-              <View style={styles.sectionContentContainer}>
+              <>
                 <FlatList
                   ref={categoryFlatListRef}
                   data={categoryPages}
@@ -425,7 +412,7 @@ const HomeScreen = () => {
                   style={styles.flatListStyle}
                   contentContainerStyle={styles.flatListContentContainer}
                 />
-              </View>
+              </>
             )}
           </View>
           
@@ -443,68 +430,74 @@ const HomeScreen = () => {
               ))}
             </View>
           )}
-
-          {/* --- Recent Dishes Section --- */}
-          <View style={styles.recentDishesSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { fontSize: SIZES.medium }]}>Recent Dishes</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Inventory')}> 
-                <Text style={[styles.viewAllText, { fontSize: SIZES.small }]}>View All</Text>
-              </TouchableOpacity> 
-            </View>
-            
-            {isLoading ? (
-              <View style={styles.loadingContainer} />
-            ) : hasError ? (
-              <Text style={[styles.errorText, { fontSize: SIZES.small }]}>Error loading dishes</Text>
-            ) : recentDishes.length === 0 ? (
-              <Text style={[styles.noDataText, { fontSize: SIZES.small }]}>No dishes found</Text>
+        </View>
+        
+        {/* Recent Dishes Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { fontSize: SIZES.medium }]}>{t('screens.home.recentDishesTitle')}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AllRecipes')}>
+              <Text style={[styles.viewAllText, { fontSize: SIZES.small }]}>{t('screens.home.viewAll')}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ height: RECIPE_SECTION_HEIGHT }}>
+            {loadingDishes ? (
+              <ActivityIndicator color={COLORS.primary} size="large" style={styles.loader} />
+            ) : dishesError ? (
+              <Text style={[styles.errorText, { fontSize: SIZES.small }]}>{t('screens.home.errorLoadingDishes')}</Text>
+            ) : dishes.length === 0 ? (
+              <Text style={[styles.noDataText, { fontSize: SIZES.small }]}>{t('screens.home.noDishesFound')}</Text>
             ) : (
               <>
-                <View style={styles.recipeSectionContainer}>
-                  <FlatList
-                    ref={recipeFlatListRef}
-                    data={recipePages}
-                    renderItem={renderRecipePage}
-                    keyExtractor={(_, index) => `recipe-page-${index}`}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onViewableItemsChanged={onRecipeViewableItemsChanged}
-                    viewabilityConfig={recipeViewabilityConfig}
-                    style={styles.flatListStyle}
-                    contentContainerStyle={[styles.flatListContentContainer, { paddingBottom: SIZES.padding * 0.5 }]}
-                  />
-                  {totalRecipePages > 1 && (
-                    <View style={styles.paginationContainer}> 
-                      {Array.from({length: totalRecipePages}).map((_, index) => (
-                        <View
-                          key={`recipe-dot-${index}`}
-                          style={[
-                            styles.paginationDot,
-                            currentRecipePage === index && styles.paginationDotActive
-                          ]}
-                        />
-                      ))}
-                    </View>
-                  )}
-                </View>
+                <FlatList
+                  ref={recipeFlatListRef}
+                  data={recipePages}
+                  renderItem={renderRecipePage}
+                  keyExtractor={(_, index) => `recipe-page-${index}`}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onViewableItemsChanged={onRecipeViewableItemsChanged}
+                  viewabilityConfig={recipeViewabilityConfig}
+                  style={styles.flatListStyle}
+                  contentContainerStyle={[styles.flatListContentContainer, { paddingBottom: SIZES.padding * 0.5 }]}
+                />
+                {totalRecipePages > 1 && (
+                  <View style={styles.paginationContainer}> 
+                    {Array.from({length: totalRecipePages}).map((_, index) => (
+                      <View
+                        key={`recipe-dot-${index}`}
+                        style={[
+                          styles.paginationDot,
+                          currentRecipePage === index && styles.paginationDotActive
+                        ]}
+                      />
+                    ))}
+                  </View>
+                )}
               </>
             )}
           </View>
         </View>
-      </View>
+      </ScrollView>
 
-      <View style={styles.bottomContainer}>
-          <TouchableOpacity 
-            style={[styles.floatingButton, styles.createButton]}
-            onPress={() => navigation.navigate('CreateRecipe')}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
-            <Text style={styles.floatingButtonText}>Add Recipe</Text>
-          </TouchableOpacity>
+      {/* FAB */}
+      {isParsing && (
+        <View style={styles.parsingOverlay}>
+          <ActivityIndicator size="large" color={COLORS.white} />
+          <Text style={styles.parsingText}>{t('screens.home.parsingIndicator', 'Parsing Recipe...')} </Text>
         </View>
+      )}
+      <View style={styles.fabContainer}>
+        <TouchableOpacity 
+          style={styles.floatingButton}
+          onPress={() => navigation.navigate('CreateRecipe', {})}
+          disabled={isParsing}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color={COLORS.white} />
+          <Text style={styles.floatingButtonText}>{t('screens.home.addRecipeButton')}</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -675,6 +668,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     // Remove paddingVertical if added by user
+  },
+  sectionContainer: {
+    flex: 1,
+    padding: SIZES.padding,
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  parsingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  parsingText: {
+    color: COLORS.white,
+    fontSize: SIZES.medium,
+    fontWeight: 'bold',
+    marginTop: SIZES.padding,
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: SIZES.padding,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
