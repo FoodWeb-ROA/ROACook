@@ -280,76 +280,94 @@ const HomeScreen = () => {
 
   // --- Action Sheet Logic for Upload ---
   const handleUploadRecipePress = async () => {
+    const options = ['Choose from Library', 'Take Photo', 'Upload File', 'Cancel'];
+    const cancelButtonIndex = 3;
+
     showActionSheetWithOptions(
       {
-        options: [
-          t('screens.home.uploadOptions.document'),
-          t('screens.home.uploadOptions.photos'),
-          t('common.cancel')
-        ],
-        cancelButtonIndex: 2,
-        title: t('screens.home.uploadOptions.title')
+        options,
+        cancelButtonIndex,
+        title: 'Import Recipe',
+        message: 'Select images or a file containing the recipe',
       },
       async (selectedIndex?: number) => {
-        if (selectedIndex === 0) {
-          // Pick Document
-          try {
-            const result = await DocumentPicker.getDocumentAsync({
-              type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-            });
+        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex) return;
 
-            if (!result.canceled && result.assets && result.assets[0]) {
-              const asset = result.assets[0];
-              setIsParsing(true);
-              // TODO: Implement actual parsing logic here
-              console.log('Selected Document:', asset.uri);
-              // Replace with call to your backend/parsing service
-              await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate parsing time
-              setIsParsing(false);
-              Alert.alert(t('screens.home.parsingSuccessTitle'), t('screens.home.parsingSuccessMessageDocument'));
-              // TODO: Navigate to recipe creation/edit screen with parsed data
-            } else {
-              console.log('Document selection cancelled or failed');
+        let imageUris: string[] = [];
+
+        try {
+            if (selectedIndex === 0) {
+                let result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: "images",
+                    quality: 0.8,
+                });
+
+                if (!result.canceled && result.assets) {
+                    imageUris = result.assets.map(asset => asset.uri);
+                }
+            } else if (selectedIndex === 1) {
+                const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+                if (permissionResult.granted === false) {
+                    Alert.alert("Permission Required", "Camera access is needed to take a photo.");
+                    return;
+                }
+
+                let result = await ImagePicker.launchCameraAsync({
+                    quality: 0.8,
+                });
+
+                if (!result.canceled && result.assets) {
+                    imageUris = [result.assets[0].uri];
+                }
+            } else if (selectedIndex === 2) {
+                console.log('Upload File selected');
+                 try {
+                    const result = await DocumentPicker.getDocumentAsync({
+                        copyToCacheDirectory: false, 
+                    });
+                    console.log('Document Picker Result:', JSON.stringify(result));
+                    if (!result.canceled && result.assets && result.assets.length > 0) {
+                        const asset = result.assets[0];
+                        if (asset.mimeType?.startsWith('image/')) {
+                            imageUris = [asset.uri];
+                        } else {
+                           Alert.alert('File Type Note', `Selected: ${asset.name}. Parsing non-image files via this method is not fully supported yet.`);
+                        }
+                    } else {
+                        console.log('Document picking cancelled or failed');
+                    }
+                } catch (error) {
+                    console.error('Error picking document:', error);
+                    Alert.alert('Error', 'Could not pick document.');
+                }
             }
-          } catch (err) {
+
+            if (imageUris.length > 0) {
+                setIsParsing(true);
+                try {
+                    const parsedRecipes = await uploadRecipeImages(imageUris);
+                    console.log('Parsed Recipes:', parsedRecipes);
+                    if (parsedRecipes && parsedRecipes.length > 0) {
+                        // Navigate to CreateRecipeScreen with the first parsed recipe
+                        navigation.navigate('CreateRecipe', { parsedRecipe: parsedRecipes[0] });
+                    } else {
+                        Alert.alert('Parsing Failed', 'Could not extract recipes from the provided image(s).');
+                    }
+                } catch (parseError: any) {
+                    console.error('Error parsing recipe images:', parseError);
+                    Alert.alert('Parsing Error', parseError.message || 'An error occurred during parsing.');
+                }
+                finally {
+                    setIsParsing(false);
+                }
+            } else if (selectedIndex !== 2) {
+               console.log('No images selected or camera cancelled.');
+            }
+
+        } catch (error) {
+            console.error('Error during recipe import process:', error);
+            Alert.alert('Error', 'An unexpected error occurred.');
             setIsParsing(false);
-            console.error('Error picking document:', err);
-            Alert.alert(t('common.error'), t('screens.home.error.documentPick'));
-          }
-        } else if (selectedIndex === 1) {
-          // Pick Images
-          try {
-            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!permissionResult.granted) {
-              Alert.alert(t('screens.home.permissionDeniedTitle'), t('screens.home.permissionDeniedMessage'));
-              return;
-            }
-
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsMultipleSelection: true, // Allow selecting multiple images
-              quality: 1,
-            });
-
-            if (!result.canceled && result.assets) {
-              setIsParsing(true);
-              console.log('Selected Images:', result.assets.map(a => a.uri));
-              // TODO: Implement actual parsing logic here, potentially uploading images
-              // Example: Use the uploadRecipeImages function if it fits your backend
-              // const recipeData = await uploadRecipeImages(result.assets);
-              // console.log('Parsed Recipe Data:', recipeData);
-              await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate parsing time
-              setIsParsing(false);
-              Alert.alert(t('screens.home.parsingSuccessTitle'), t('screens.home.parsingSuccessMessagePhotos'));
-              // TODO: Navigate to recipe creation/edit screen with parsed data
-            } else {
-              console.log('Image selection cancelled or failed');
-            }
-          } catch (err) {
-            setIsParsing(false);
-            console.error('Error picking images:', err);
-            Alert.alert(t('common.error'), t('screens.home.error.imagePick'));
-          }
         }
       }
     );
