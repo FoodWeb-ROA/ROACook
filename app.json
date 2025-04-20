@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "RecipeManagementApp",
-    "slug": "RecipeManagementApp",
-    "version": "1.0.0",
+    "name": "ROACook",
+    "slug": "roacook",
+    "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.arnavagarwal.RecipeManagementApp",
+      "bundleIdentifier": "com.FoodWebAI.ROACook",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,14 +24,14 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.arnavagarwal.RecipeManagementApp"
+      "package": "com.FoodWebAI.ROACook"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "464e2a36-8e18-42d6-8110-e2ffa2d1069d"
+        "projectId": "2edb2be1-62aa-4f6d-89b8-1b0f3a722939"
       }
     }
   }

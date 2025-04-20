@@ -1,151 +1,157 @@
-# Recipe Management App
+# ROACook - Recipe Management Mobile App (Internal Developer Documentation)
 
-## Supabase Data Management
+## Overview
 
-This project provides scripts to export and import data from/to your Supabase database. Follow these instructions to manage your data as JSON files.
+`ROACook` is a mobile application built using the Expo framework with React Native and TypeScript. It serves as the primary user interface for managing and interacting with recipes. The application connects to a Supabase backend for data persistence and utilizes various libraries for navigation, UI components, styling, and internationalization.
 
-### Prerequisites
+## Project Structure
 
-- Node.js and npm installed
-- Supabase URL and anonymous key (or JWT token)
-
-### Installation
-
-Make sure you have installed the dependencies:
-
-```bash
-npm install
+```
+ROACook/
+├── .expo/             # Expo development cache and logs
+├── .git/              # Git repository data
+├── .vscode/           # VSCode workspace settings
+├── assets/            # Static assets (fonts, images)
+│   ├── fonts/
+│   └── *.png
+├── node_modules/      # Project dependencies
+├── scripts/           # Utility scripts (e.g., data import/export)
+│   ├── exportData.ts
+│   ├── importData.ts
+│   ├── run-export.sh
+│   ├── run-import.sh
+│   └── ...
+├── src/               # Main application source code
+│   ├── components/    # Reusable UI components
+│   ├── constants/     # Constant values (theme, dimensions, etc.)
+│   ├── context/       # React Context providers (e.g., AuthContext)
+│   ├── data/          # Data structures or static data
+│   ├── hooks/         # Custom React hooks
+│   ├── locales/       # Internationalization (i18n) language files
+│   ├── navigation/    # Navigation setup (React Navigation)
+│   ├── screens/       # Application screens/views
+│   ├── services/      # Services interacting with external APIs (e.g., Supabase)
+│   ├── utils/         # Utility functions
+│   ├── i18n.ts        # i18next initialization
+│   └── types.ts       # TypeScript type definitions
+├── .env               # Environment variables (SUPABASE_URL, SUPABASE_ANON_KEY - **DO NOT COMMIT**)
+├── .gitignore         # Files and directories ignored by Git
+├── App.tsx            # Main application entry point component
+├── app.json           # Expo application configuration
+├── babel.config.js    # Babel configuration
+├── eas.json           # EAS Build configuration
+├── examples.txt       # Example data or usage notes
+├── index.ts           # Entry point for Metro bundler
+├── metro.config.js    # Metro bundler configuration
+├── package-lock.json  # Exact dependency versions (npm)
+├── package.json       # Project metadata and dependencies (npm)
+├── tsconfig.json      # TypeScript compiler configuration
+└── yarn.lock          # Exact dependency versions (yarn)
 ```
 
-### Exporting Data
+## Key Technologies & Libraries
 
-You can export data from your Supabase database in multiple ways:
+*   **Framework:** Expo SDK (~52.0) / React Native (0.76.9)
+*   **Language:** TypeScript
+*   **UI Toolkit:** React Native Paper (^5.13.1), NativeWind (^4.1.23) (Tailwind for RN)
+*   **Navigation:** React Navigation (^7.x) (Stack, Bottom Tabs, Drawer)
+*   **State Management:** React Context API (`AuthContext`)
+*   **Backend Integration:** Supabase JS Client (`@supabase/supabase-js` ^2.49.3)
+*   **Internationalization:** i18next, react-i18next, expo-localization
+*   **Fonts:** Custom Poppins fonts (`expo-font`)
+*   **Gestures:** `react-native-gesture-handler`
+*   **Animations:** `react-native-reanimated`
+*   **Utilities:** Expo Document Picker, Image Picker, Splash Screen, Status Bar, Action Sheet
 
-#### For Linux/Mac Users:
+## Setup & Running
 
-```bash
-npm run export-unix "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
+1.  **Install Dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+2.  **Environment Variables:**
+    *   Create a `.env` file in the `ROACook` root directory.
+    *   Add your Supabase URL and Anon Key:
+        ```dotenv
+        SUPABASE_URL=YOUR_SUPABASE_URL
+        SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+        ```
+    *   *Note:* Ensure `.env` is listed in `.gitignore`.
+3.  **Start the Development Server:**
+    ```bash
+    npm start
+    # or
+    yarn start
+    ```
+4.  **Run on Device/Emulator:**
+    *   Follow the instructions in the terminal after running `npm start`. You can run on Android, iOS, or Web.
+    *   `npm run android` / `yarn android`
+    *   `npm run ios` / `yarn ios`
+    *   `npm run web` / `yarn web`
 
-Or directly:
+## Core Components & Concepts
 
-```bash
-./scripts/run-export.sh "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
+*   **`App.tsx`:** The root component. Initializes fonts, sets up providers (SafeArea, Paper, Auth, ActionSheet), handles splash screen logic, and renders the `AppNavigator`.
+*   **`src/navigation/AppNavigator.tsx`:** Defines the main navigation structure (likely using stack, tabs, or drawers) based on authentication state.
+*   **`src/screens/`:** Contains individual screen components, representing different views within the app (e.g., `HomeScreen`, `RecipeDetailScreen`, `CreateRecipeScreen`).
+*   **`src/components/`:** Houses reusable UI elements used across multiple screens (e.g., `Button`, `Card`, `Input`, `PreparationCard`, `ScaleSliderInput`).
+*   **`src/context/AuthContext.tsx`:** Manages user authentication state and provides it to the rest of the application.
+*   **`src/services/supabaseClient.ts` (or similar):** Configures and exports the Supabase client instance for database interactions. Look for files importing `@supabase/supabase-js`.
+*   **`src/i18n.ts` & `src/locales/`:** Manages language translations and internationalization setup.
+*   **NativeWind:** Used for styling via Tailwind CSS classes. Configuration might be in `tailwind.config.js` (if present) or integrated into `babel.config.js`.
+*   **`src/types.ts`:** Central location for shared TypeScript interfaces and types, promoting consistency.
 
-#### For Windows Users:
+## Data Management Scripts (`scripts/`)
 
-```bash
-npm run export-win "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
+The `scripts/` directory contains Node.js scripts (using `ts-node`) for interacting with the Supabase database directly, primarily for backup and potentially seeding purposes.
 
-Or directly:
+*   **Exporting:** `exportData.ts` (run via `npm run export-unix` or `npm run export-win`) fetches data from specified Supabase tables and saves it to JSON files in an `exports/` directory (this directory should likely be in `.gitignore`). It can export individual tables, all tables combined, and a detailed nested recipe structure.
+*   **Importing:** `importData.ts` (run via `npm run import-unix` or `npm run import-win`) reads data from the JSON files in `exports/` and inserts it into the Supabase database, respecting table dependencies.
+*   **Fetching Detailed Recipes:** `run-fetch-recipes.sh` uses a specific script (likely wrapping `exportData.ts` or a dedicated fetch script) to generate `detailed-recipes.json` containing deeply nested recipe data.
 
-```bash
-node scripts/run-export.js "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
-
-### Export Output
-
-The exported data will be saved to the `exports` directory in the following format:
-
-- Each table will be saved as a separate JSON file: `exports/[tableName].json`
-- All tables will be saved in a single file: `exports/all-data.json`
-- Recipes with related data will be saved as: `exports/recipes-with-related-data.json`
-
-### Importing Data
-
-You can import data into your Supabase database from previously exported JSON files:
-
-#### For Linux/Mac Users:
-
-```bash
-npm run import-unix "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
-
-Or directly:
-
-```bash
-./scripts/run-import.sh "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
-
-#### For Windows Users:
-
-```bash
-npm run import-win "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
-
-Or directly:
-
-```bash
-node scripts/run-import.js "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
-```
-
-### Import Notes
-
-- The import process respects foreign key constraints by importing tables in the correct order.
-- If you need to import data to a different database, make sure the schema is identical.
-- Existing data with the same primary keys will cause conflicts unless handled by your Supabase configuration.
-
-### Specialized Data Fetching
-
-#### Detailed Recipes
-
-To fetch recipes with full details (including all relations and nested data):
+**Usage:**
 
 ```bash
-./scripts/run-fetch-recipes.sh "https://your-supabase-url.supabase.co" "your-supabase-anon-key"
+# Example Export (Unix/Mac)
+npm run export-unix "YOUR_SUPABASE_URL" "YOUR_SUPABASE_ANON_KEY"
+
+# Example Import (Windows)
+npm run import-win "YOUR_SUPABASE_URL" "YOUR_SUPABASE_ANON_KEY"
+
+# Example Fetch Detailed Recipes (Unix/Mac)
+./scripts/run-fetch-recipes.sh "YOUR_SUPABASE_URL" "YOUR_SUPABASE_ANON_KEY"
 ```
 
-This will generate a `detailed-recipes.json` file in the exports directory with a fully nested structure containing:
+*(Refer to the original README section for specific script command details if needed)*
 
-- Recipe details
-- Menu section
-- Ingredients with amounts
-- Preparations with their ingredients
+## Environment Variables
 
-This format is particularly useful for displaying complete recipe information in the app.
+*   `SUPABASE_URL`: The URL of your Supabase project.
+*   `SUPABASE_ANON_KEY`: The anonymous (public) key for your Supabase project.
 
-## Running the App
+These are typically loaded from the `.env` file. Ensure this file is present and correctly configured before running the app or data management scripts.
 
-To start the development server:
+## Build & Deployment (EAS)
 
-```bash
-npm start
-```
+The project is configured for EAS (Expo Application Services) builds, as indicated by `eas.json` and the `eas.projectId` in `app.json`.
 
-For specific platforms:
+*   Refer to EAS documentation for building and submitting the app: [https://docs.expo.dev/eas/](https://docs.expo.dev/eas/)
+*   Commands typically involve `eas build --platform [ios|android] --profile [development|preview|production]`.
 
-```bash
-npm run android
-npm run ios
-npm run web
-```
+## Recent UI Changes Log (From Previous README)
 
-# UI Updates
+*   `CreateRecipeScreen` renders added preparations using read-only `PreparationCard`.
+*   `PreparationCard` in `CreateRecipeScreen` shows "Amount:" instead of "Yield:", sub-ingredients only shown if parsed/uploaded.
+*   `CreateRecipeScreen` has scale slider for servings, updates amounts dynamically, saves scaled amounts & target servings.
+*   `ScaleSliderInput` layout adjusted.
+*   Total yield displayed below servings slider in `CreateRecipeScreen`.
+*   `CreateRecipeScreen` title changed to "Confirm Parsed Recipe" for parsed recipes.
+*   Reduced vertical spacing around header/slider in `CreateRecipeScreen`.
+*   `CreateRecipeScreen` includes `serving_item` input for count-based units, with modal to select existing components.
+*   Quantities rounded to one decimal place in UI.
+*   Count units use item name, simple pluralization ('s', 'es' for 'ss') applied based on quantity.
+*   Fixed sub-ingredient capitalization in `PreparationCard` on confirmation screens.
 
-CreateRecipeScreen now renders added preparations using the read-only `PreparationCard` component instead of the standard editable row.
-
-The preparation card in `CreateRecipeScreen` now displays the preparation's amount with the label "Amount:" instead of "Yield:". Sub-ingredients are not displayed as they are not stored in the component list at this stage.
-
-Preparations added via the parser/upload flow will now display their sub-ingredients on the `PreparationCard` in `CreateRecipeScreen`. Manually added preparations currently do not fetch/display sub-ingredients.
-
-CreateRecipeScreen now includes a scale slider (`ScaleSliderInput`) allowing users to adjust the target **number of servings**. Displayed component amounts update dynamically based on the ratio of target servings to original servings, and the scaled amounts are saved to the database along with the target number of servings.
-
-The `ScaleSliderInput` component layout has been adjusted to provide more width for the slider.
-`CreateRecipeScreen` now displays the calculated total yield below the servings slider, similar to `DishDetailScreen`.
-
-The title for `CreateRecipeScreen` when confirming a parsed recipe is now "Confirm Parsed Recipe".
-Reduced vertical spacing around the header and the servings slider/yield display in `CreateRecipeScreen`.
-
-`CreateRecipeScreen` now includes a `TextInput` for the `serving_item`, allowing users to specify a description (e.g., "slice", "bowl") for count-based serving units.
-This input is only visible when a count-based unit (like 'piece' or 'x') is selected for the serving unit.
-Added a button next to the `serving_item` input to open a modal allowing selection of an existing recipe component (ingredient/preparation) to populate the field.
-
-Quantities (ingredient amounts, yields) are now displayed rounded to one decimal place throughout the UI.
-
-Count units (e.g., unit 'x' with an item like 'leek') now use the item name as the unit and attempt simple pluralization (adding 's') if the quantity is not 1.
-
-Items ending in 'ss' (like 'glass') are pluralized by adding 'es'.
-
-Fixed sub-ingredient names not being capitalized when displayed within `PreparationCard` components in the confirmation screens.
+*(This section summarizes previous manual notes. Future changes should ideally be tracked via Git history and commit messages.)*
