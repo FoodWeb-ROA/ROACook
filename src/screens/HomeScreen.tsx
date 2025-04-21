@@ -54,10 +54,13 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // --- Category Grid Constants ---
 const CATEGORIES_PER_PAGE = 4;
 const CATEGORY_NUM_COLUMNS = 2;
-// Make category padding match recipe padding for consistency
-const CAT_PADDING = SIZES.padding;
-const CAT_ITEM_SPACING = SIZES.padding*0.8;
-const catAvailableWidthInPage = screenWidth - CAT_PADDING * 2;
+// Make category padding match recipe padding initially, then reduce slightly
+const RECIPE_PADDING = SIZES.padding;
+const BASE_CAT_PADDING = RECIPE_PADDING; // Start with recipe padding
+const CAT_PADDING = BASE_CAT_PADDING; // Reduce category padding slightly
+const CAT_ITEM_SPACING = SIZES.padding / 2; // Keep item spacing relative to base padding perhaps?
+// Recalculate available width based on the updated padding
+const catAvailableWidthInPage = 0.95*(screenWidth - CAT_PADDING * 2); 
 const categoryItemWidth = (catAvailableWidthInPage - CAT_ITEM_SPACING * (CATEGORY_NUM_COLUMNS - 1)) / CATEGORY_NUM_COLUMNS;
 const CAT_PAGE_WIDTH = screenWidth;
 
@@ -65,7 +68,6 @@ const CAT_PAGE_WIDTH = screenWidth;
 const RECIPE_NUM_COLUMNS = 2;
 const RECIPE_NUM_ROWS = 4; // Changed from 3 to 4
 const RECIPES_PER_PAGE = RECIPE_NUM_ROWS * RECIPE_NUM_COLUMNS; // 2 columns * 4 rows
-const RECIPE_PADDING = SIZES.padding;
 // Reduce spacing between recipe items
 const RECIPE_ITEM_SPACING = SIZES.padding;
 
@@ -391,7 +393,7 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <AppHeader 
-        title="ROA"
+        title="ROACook"
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
         rightComponent={renderHeaderRight()}
@@ -423,7 +425,8 @@ const HomeScreen = () => {
                   renderItem={renderCategoryPage}
                   keyExtractor={(_, index) => `category-page-${index}`}
                   horizontal
-                  pagingEnabled
+                  snapToInterval={CAT_PAGE_WIDTH}
+                  decelerationRate="fast"
                   showsHorizontalScrollIndicator={false}
                   onViewableItemsChanged={onCategoryViewableItemsChanged}
                   viewabilityConfig={categoryViewabilityConfig}
@@ -535,9 +538,9 @@ const styles = StyleSheet.create({
     paddingTop: SIZES.padding*0.5, 
   },
   categoriesSection: {
-    flex: 0.5, // Adjust flex proportion
+    flex: 1, // Adjust flex proportion
     paddingBottom: 0,
-    marginBottom: SIZES.padding * 0.8, // Increase space below categories section slightly more
+    marginBottom: SIZES.padding , // Increase space below categories section slightly more
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -567,14 +570,14 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   fixedFabContainer: {
-    paddingHorizontal: SIZES.padding * 2.0,
+    paddingHorizontal: SIZES.padding,
   },
   floatingButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SIZES.padding * 0.75,
-    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding / 4,
+    paddingHorizontal: SIZES.padding/4,
     borderRadius: 25, // Pill shape
     margin: 8,
     width: '60%',
@@ -676,7 +679,7 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row',
     marginBottom: CAT_ITEM_SPACING, // Use standard item spacing
-    justifyContent: 'space-between', // Ensure items spread
+    justifyContent: 'flex-start', // Ensure items spread
   },
   // New style for the dot separator containers
   dotSeparatorContainer: {
@@ -689,7 +692,7 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     flex: 1,
-    padding: SIZES.padding,
+    padding: SIZES.padding/4,
   },
   loader: {
     flex: 1,

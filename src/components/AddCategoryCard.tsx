@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: COLORS.border,
-    minHeight: 120,
+    minHeight: 130,
   },
   iconContainer: {
     width: SIZES.base * 4,

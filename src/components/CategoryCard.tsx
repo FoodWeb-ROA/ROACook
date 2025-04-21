@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Category } from '../types';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 
@@ -16,11 +15,6 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
       onPress={() => onPress(category)}
       activeOpacity={0.8}
     >
-      {category.icon && (
-        <View style={styles.iconContainer}>
-          <MaterialCommunityIcons name={category.icon as any} size={30} color={COLORS.white} />
-        </View>
-      )}
       <Text style={styles.title}>{category.name}</Text>
     </TouchableOpacity>
   );
@@ -35,16 +29,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...SHADOWS.small,
-    minHeight: 120,
-  },
-  iconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
+    minHeight: 130,
   },
   title: {
     fontSize: SIZES.medium,
@@ -52,7 +37,6 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     textAlign: 'center',
     width: '100%',
-    marginTop: SIZES.base,
   },
 });
 

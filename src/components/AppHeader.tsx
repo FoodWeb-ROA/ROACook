@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   titleText: {
-    ...FONTS.h3,
+    ...FONTS.h2,
     color: COLORS.white,
     fontWeight: 'bold',
     textAlign: 'center',

@@ -23,7 +23,7 @@ const DishGridItem: React.FC<DishGridItemProps> = ({ dish, onPress }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius * 2,
+    borderRadius: SIZES.radius * 2.5,
     paddingVertical: SIZES.small,
     paddingHorizontal: SIZES.medium,
     ...SHADOWS.small,

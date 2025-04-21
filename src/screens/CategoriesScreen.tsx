@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start', 
     gap: SIZES.padding,
   },
   loadingContainer: {
