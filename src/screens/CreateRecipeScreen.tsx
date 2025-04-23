@@ -139,7 +139,7 @@ const CreateRecipeScreen = () => {
       setCookingNotes(dishToEdit.cooking_notes || '');
       setServingItem((dishToEdit as any).serving_item || ''); // Populate serving item
       
-      // Populate components
+      // Populate components including the 'item' field
       const loadedComponents: ComponentInput[] = dishToEdit.components.map((comp, index) => ({
         key: `loaded-${comp.ingredient_id}-${index}`, // Generate a unique key
         ingredient_id: comp.ingredient_id,
@@ -147,6 +147,7 @@ const CreateRecipeScreen = () => {
         amount: String(comp.amount || ''),
         unit_id: comp.unit?.unit_id || null,
         isPreparation: comp.isPreparation || false,
+        item: comp.item || null, // <-- ADDED: Populate item
       }));
       setComponents(loadedComponents);
 
@@ -169,7 +170,7 @@ const CreateRecipeScreen = () => {
       
       setCookingNotes(prepToEdit.cooking_notes || '');
       
-      // Populate components (ingredients of the preparation)
+      // Populate components (ingredients of the preparation) including 'item'
       const loadedComponents: ComponentInput[] = prepComponentsToEdit.map((comp, index) => ({
           key: `loaded-prep-${comp.ingredient_id}-${index}`, // Generate a unique key
           ingredient_id: comp.ingredient_id,
@@ -177,6 +178,7 @@ const CreateRecipeScreen = () => {
           amount: String(comp.amount || ''),
           unit_id: comp.unit?.unit_id || null,
           isPreparation: false, // Ingredients within a prep are not themselves preps in this context
+          item: (comp as any).item || null, // <-- ADDED: Populate item (cast if needed)
       }));
       setComponents(loadedComponents);
     }
@@ -229,7 +231,7 @@ const CreateRecipeScreen = () => {
     setOriginalServings(initialParsedServings); // Set number
     setServingItem(parsedRecipe.serving_item || ''); // Populate serving item
 
-    // Populate components - **Attempt to match units**
+    // Populate components - **Attempt to match units and populate item**
     const initialComponents: ComponentInput[] = (parsedRecipe.components || []).map((ing, index) => {
         let matchedUnitId: string | null = null;
         const parsedUnit = ing.unit?.toLowerCase().trim();
@@ -254,7 +256,7 @@ const CreateRecipeScreen = () => {
             isPreparation: ing.ingredient_type === 'Preparation', 
             originalPrep: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing as ParsedIngredient) : undefined,
             subIngredients: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing.components ?? null) : null, // Store sub-ingredients if it's a prep
-            item: ing.item || null, // ADDED: Copy item description
+            item: ing.item || null, // <-- MODIFIED: Copy item description (was already there)
             reference_ingredient: ing.ingredient_type === 'Preparation' ? ing.reference_ingredient : null,  // ADDED: Store reference ingredient
         };
     });
@@ -377,8 +379,8 @@ const CreateRecipeScreen = () => {
     setComponentSearchQuery(''); // Reset search
   };
 
-  // TODO: Implement handler to update amount/unit_id for a component in the list
-  const handleComponentUpdate = (key: string, field: 'amount' | 'unit_id', value: string | null) => {
+  // TODO: Implement handler to update amount/unit_id/item for a component in the list
+  const handleComponentUpdate = (key: string, field: 'amount' | 'unit_id' | 'item', value: string | null) => { // <-- Added 'item'
       setComponents(prev => 
           prev.map(c => c.key === key ? { ...c, [field]: value } : c)
       );
@@ -605,6 +607,7 @@ const CreateRecipeScreen = () => {
           ingredient_id: component.ingredient_id,
           amount: parseFloat(component.amount) * (originalServings > 0 ? numServings / originalServings : 1),
           unit_id: component.unit_id,
+          item: component.item || null, // <-- ADDED: Include item in saved data
         });
       }
       
@@ -1192,7 +1195,7 @@ const CreateRecipeScreen = () => {
                                 <View style={styles.componentControlsContainer}>
                                     {/* Display scaled amount - make non-editable */}
                                     <TextInput
-                                        style={styles.componentInputAmount}
+                                        style={[styles.componentInputAmount, styles.readOnlyInput]} // Make non-editable visually distinct
                                         value={formattedDisplay.amount} // Display formatted scaled amount
                                         editable={false} // Amount driven by base + slider
                                     />
@@ -1201,11 +1204,34 @@ const CreateRecipeScreen = () => {
                                         style={styles.componentUnitTrigger}
                                         onPress={() => openComponentUnitSelector(item.key)}
                                     >
+                                        {/* Find unit abbreviation directly */}
                                         <Text style={[styles.pickerText, !item.unit_id && styles.placeholderText]}>
-                                            {formattedDisplay.unit} {/* Display unit from formatter */}
+                                            {units.find(u => u.unit_id === item.unit_id)?.abbreviation || 'Unit'}
                                         </Text>
                                          <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
                                     </TouchableOpacity>
+
+                                    {/* Conditionally Render Item Input */}
+                                    {item.unit_id === pieceUnitId && (
+                                       <TextInput
+                                          style={styles.itemInput} // Add specific style for this input
+                                          placeholder="(e.g., large)" // Add placeholder
+                                          placeholderTextColor={COLORS.placeholder}
+                                          value={item.item || ''} // Use item field from component state
+                                          onChangeText={(value) => handleComponentUpdate(item.key, 'item', value)}
+                                       />
+                                    )}
+
+                                    {/* Editable Base Amount Input */}
+                                    <TextInput
+                                        style={styles.componentInputAmount} // Keep original style for base amount
+                                        placeholder={t('common.amount')} // Generic amount placeholder
+                                        placeholderTextColor={COLORS.placeholder}
+                                        value={item.amount} // Bind to base amount string
+                                        onChangeText={(value) => handleComponentUpdate(item.key, 'amount', value)}
+                                        keyboardType="numeric"
+                                    />
+
                                     <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButton}>
                                         <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
                                     </TouchableOpacity>
@@ -1783,6 +1809,12 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: SIZES.font,
   },
+  readOnlyInput: {
+    backgroundColor: COLORS.secondary,
+    color: COLORS.textLight,
+    borderColor: COLORS.secondary,
+    marginRight: SIZES.base, // Add margin to separate from unit picker
+  },
   componentUnitTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1792,9 +1824,22 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     paddingHorizontal: SIZES.base,
     paddingVertical: SIZES.base / 2, 
-    marginLeft: SIZES.base,
-    minHeight: 36, // Make trigger slightly shorter than amount input
-    minWidth: 60, // Ensure minimum width
+    // Removed marginLeft, relying on marginRight of previous/next elements
+    minHeight: 36, 
+    minWidth: 60, 
+  },
+  itemInput: { // Style for the new item description input
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
+    paddingHorizontal: SIZES.base,
+    paddingVertical: SIZES.base / 2,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minWidth: 80, // Adjust width as needed
+    fontSize: SIZES.font,
+    marginLeft: SIZES.base, // Add margin before this input
+    marginRight: SIZES.base, // Add margin after this input
   },
   removeButton: {
     paddingLeft: SIZES.base, // Space before remove icon

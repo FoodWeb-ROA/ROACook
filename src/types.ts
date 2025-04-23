@@ -42,6 +42,7 @@ export type DishComponent = {
     name: string; // Name of the component (ingredient or preparation)
     amount: number | null;
     unit: Unit | null;
+    item?: string | null; // <-- ADDED: Item description (e.g., "large", "medium")
     isPreparation: boolean;
     // Include details based on whether it's a raw ingredient or a preparation
     preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;

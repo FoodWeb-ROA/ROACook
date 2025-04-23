@@ -144,7 +144,7 @@
         "addSectionModalTitle": "Añadir Nueva Sección"
       },
       "categoryRecipes": {
-        "preparationsTitle": "Preparaciones:",
+        "preparationsTitle": "Preparaciones",
         "noDishesInCategory": "No se encontraron platos en esta categoría",
         "titleFallback": "Platos de Categoría",
         "loading": "Cargando {{categoryName}}..."
@@ -152,7 +152,7 @@
       "allRecipes": {
         "title": "Todas las Recetas",
         "searchPlaceholder": "Buscar recetas...",
-        "sortByLabel": "Ordenar por:",
+        "sortByLabel": "Ordenar por",
         "sortByName": "Nombre",
         "sortByNewest": "Más Recientes",
         "servings": "porciones",
@@ -171,7 +171,7 @@
       },
       "inventory": {
         "title": "Inventario",
-        "usedInTitle": "Usado en:",
+        "usedInTitle": "Usado en",
         "notUsedInRecipes": "Aún no se usa en ninguna receta",
         "noDataFound": "No se encontraron datos."
       },
@@ -181,8 +181,8 @@
       "dishDetail": {
         "loading": "Cargando Plato...",
         "notFound": "Plato no encontrado",
-        "servingsLabel": "Porciones:",
-        "servingSizeLabel": "Tamaño de Porción:",
+        "servingsLabel": "Porciones",
+        "servingSizeLabel": "Tamaño de Porción",
         "adjustServingsLabel": "Ajustar Porciones Objetivo (Base: {{baseServings}})",
         "servingsSuffix": "Porciones",
         "preparationsTitle": "Preparaciones",
@@ -209,7 +209,7 @@
         "servingSizeLabel": "Tamaño de la Porción",
         "servingSizePlaceholder": "ej., 4",
         "servingUnitLabel": "Unidad de Porción *",
-        "servingIngredientLabel": "Ingrediente de Porción (ej., \\\"pechuga\\\", \\\"rollos\\\", \\\"salchicha\\\")",
+        "servingIngredientLabel": "Ingrediente de Porción (ej., \"pechuga\", \"rollos\", \"salchicha\")",
         "servingIngredientPlaceholder": "Descripción manual o seleccionar...",
         "ingredientsTitle": "Ingredientes",
         "noRawIngredients": "Aún no se han añadido ingredientes crudos.",
@@ -240,13 +240,14 @@
         "createTitle": "Crear Nueva Receta"
       },
       "createPreparation": {
+        "title": "Editar Preparación",
         "loadingUnits": "Cargando unidades...",
-        "refIngredientLabel": "Ingrediente de Referencia:",
-        "scaledAmountLabel": "Cantidad Usada en Receta (Escalada):",
-        "ingredientsTitle": "Ingredientes:",
+        "refIngredientLabel": "Ingrediente de Referencia",
+        "scaledAmountLabel": "Cantidad Usada en Receta (Escalada)",
+        "ingredientsTitle": "Ingredientes",
         "amountPlaceholder": "Cant.",
         "noSubIngredients": "No hay sub-ingredientes listados.",
-        "instructionsTitle": "Instrucciones:",
+        "instructionsTitle": "Instrucciones",
         "noInstructions": "No se proporcionaron instrucciones.",
         "selectUnitModalTitle": "Seleccionar Unidad",
         "selectPrepUnitModalTitle": "Seleccionar Unidad de Preparación"
@@ -257,16 +258,16 @@
         "logoText": "FoodWeb"
       },
       "dishCard": {
-        "componentsTitle": "Componentes:",
+        "componentsTitle": "Componentes",
         "noComponents": "No hay componentes listados",
         "servings_one": "{{count}} porción",
         "servings_other": "{{count}} porciones"
       },
       "preparationCard": {
         "detailsMissingError": "Faltan detalles de la preparación.",
-        "ingredientsTitle": "Ingredientes:",
+        "ingredientsTitle": "Ingredientes",
         "noIngredients": "No hay ingredientes listados.",
-        "subTitle": "Ingredientes:"
+        "subTitle": "Ingredientes"
       },
       "addCategoryCard": {
         "addButton": "Añadir",

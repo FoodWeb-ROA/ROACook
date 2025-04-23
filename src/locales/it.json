@@ -129,14 +129,14 @@
         "addSectionModalTitle": "Aggiungi Nuova Sezione"
       },
       "categoryRecipes": {
-        "preparationsTitle": "Preparazioni:",
+        "preparationsTitle": "Preparazioni",
         "noDishesInCategory": "Nessun piatto trovato in questa categoria",
         "loading": "Caricamento {{categoryName}}...",
         "titleFallback": "Piatti della Categoria"
       },
       "allRecipes": {
         "searchPlaceholder": "Cerca ricette...",
-        "sortByLabel": "Ordina per:",
+        "sortByLabel": "Ordina per",
         "sortByName": "Nome",
         "sortByNewest": "Più Recenti",
         "title": "Tutte le Ricette",
@@ -154,7 +154,7 @@
         "noPreparationsFound": "Nessuna preparazione trovata."
       },
       "inventory": {
-        "usedInTitle": "Usato in:",
+        "usedInTitle": "Usato in",
         "notUsedInRecipes": "Non ancora utilizzato in nessuna ricetta",
         "noDataFound": "Nessun dato trovato.",
         "title": "Inventario"
@@ -165,8 +165,8 @@
       "dishDetail": {
         "loading": "Caricamento Piatto...",
         "notFound": "Piatto non trovato",
-        "servingsLabel": "Porzioni:",
-        "servingSizeLabel": "Dimensione Porzione:",
+        "servingsLabel": "Porzioni",
+        "servingSizeLabel": "Dimensione Porzione",
         "adjustServingsLabel": "Regola Porzioni Obiettivo (Base: {{baseServings}})",
         "servingsSuffix": "Porzioni",
         "preparationsTitle": "Preparazioni",
@@ -232,13 +232,14 @@
         "prepSuffix": "(Prep)"
       },
       "createPreparation": {
+        "title": "Modifica Preparazione",
         "loadingUnits": "Caricamento unità...",
-        "refIngredientLabel": "Ingrediente di Riferimento:",
-        "scaledAmountLabel": "Quantità Usata in Ricetta (Scalata):",
-        "ingredientsTitle": "Ingredienti:",
+        "refIngredientLabel": "Ingrediente di Riferimento",
+        "scaledAmountLabel": "Quantità Usata in Ricetta (Scalata)",
+        "ingredientsTitle": "Ingredienti",
         "amountPlaceholder": "Qtà",
         "noSubIngredients": "Nessun sotto-ingrediente elencato.",
-        "instructionsTitle": "Istruzioni:",
+        "instructionsTitle": "Istruzioni",
         "noInstructions": "Nessuna istruzione fornita.",
         "selectUnitModalTitle": "Seleziona Unità",
         "selectPrepUnitModalTitle": "Seleziona Unità di Preparazione"
@@ -275,16 +276,16 @@
         "logoText": "FoodWeb"
       },
       "dishCard": {
-        "componentsTitle": "Componenti:",
+        "componentsTitle": "Componenti",
         "noComponents": "Nessun componente elencato",
         "servings_one": "{{count}} porzione",
         "servings_other": "{{count}} porzioni"
       },
       "preparationCard": {
         "detailsMissingError": "Dettagli preparazione mancanti.",
-        "ingredientsTitle": "Ingredienti:",
+        "ingredientsTitle": "Ingredienti",
         "noIngredients": "Nessun ingrediente elencato.",
-        "subTitle": "Ingredienti:"
+        "subTitle": "Ingredienti"
       },
       "addCategoryCard": {
         "addButton": "Aggiungi",

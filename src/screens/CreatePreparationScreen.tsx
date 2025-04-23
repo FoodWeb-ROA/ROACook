@@ -1,34 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Modal, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Modal, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
-import { ParsedIngredient, Unit, Preparation, DishComponent } from '../types';
-import { useUnits } from '../hooks/useSupabase'; // Import useUnits hook
+import { ParsedIngredient, Unit, Preparation, DishComponent, Ingredient } from '../types';
+import { useUnits, useIngredients } from '../hooks/useSupabase';
+import { useLookup } from '../hooks/useLookup';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
-import { capitalizeWords, formatQuantity, formatQuantityAuto } from '../utils/textFormatters'; // Corrected import path assumption
-import PreparationCard from '../components/PreparationCard'; // Import PreparationCard
+import { capitalizeWords, formatQuantity, formatQuantityAuto } from '../utils/textFormatters';
+import PreparationCard from '../components/PreparationCard';
 import { useTranslation } from 'react-i18next';
 
 type CreatePrepRouteProp = RouteProp<RootStackParamList, 'CreatePreparation'>;
 type CreatePrepNavProp = StackNavigationProp<RootStackParamList, 'CreatePreparation'>;
 
 // Type for internal state management of ingredients
-type EditablePrepIngredient = ParsedIngredient & {
+// Adjusted to potentially hold more info for adding/lookup
+// Removed Partial<ParsedIngredient> to avoid potential type conflicts
+type EditablePrepIngredient = {
     key: string; // Unique key for lists
-    amountStr: string; // Keep original amount as string for TextInput
-    scaledAmountStr: string; // Keep scaled amount as string for display
+    ingredient_id?: string | null; // Keep track of existing ID
+    name: string;
+    amountStr: string; // Keep original (base) amount as string for TextInput
     unitId: string | null; // Store matched unit ID
+    isPreparation?: boolean;
+    // Carry over other potentially useful fields from ParsedIngredient if needed
+    unit?: string | null; // Original unit string for reference
+    item?: string | null; // Item description
+    reference_ingredient?: string | null;
+    // Avoid carrying over 'components'/'instructions' here unless absolutely necessary
 };
 
 const CreatePreparationScreen = () => {
   const route = useRoute<CreatePrepRouteProp>();
   const navigation = useNavigation<CreatePrepNavProp>();
   const { preparation, scaleMultiplier = 1 } = route.params;
-  const { units, loading: loadingUnits } = useUnits(); // Fetch units
+  const { units, loading: loadingUnits } = useUnits();
+  const { lookupIngredient, checkIngredientNameExists } = useLookup();
   const { t } = useTranslation();
 
   // --- State ---
@@ -46,11 +57,40 @@ const CreatePreparationScreen = () => {
   // Prep Unit Modal State
   const [prepUnitModalVisible, setPrepUnitModalVisible] = useState(false);
 
+  // --- State for adding components (from CreateRecipeScreen) ---
+  const [componentSearchModalVisible, setComponentSearchModalVisible] = useState(false);
+  const [componentSearchQuery, setComponentSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<(Ingredient & { isPreparation?: boolean })[]>([]); // Use Ingredient type
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // --- Loading State ---
+  const [isScreenLoading, setIsScreenLoading] = useState(true);
+
+  // Add state for pieceUnitId
+  const [pieceUnitId, setPieceUnitId] = useState<string | null>(null);
 
   // --- Effects ---
+  // Combined loading effect
+  useEffect(() => {
+    const isLoading = loadingUnits; // Add other loading states if needed
+    setIsScreenLoading(isLoading);
+  }, [loadingUnits]);
+
+  // Effect to find pieceUnitId
+  useEffect(() => {
+    if (!isScreenLoading && units.length > 0 && !pieceUnitId) {
+      const countUnit = units.find(u =>
+        u.unit_name.toLowerCase() === 'piece' ||
+        u.unit_name.toLowerCase() === 'count' ||
+        u.abbreviation?.toLowerCase() === 'x'
+      );
+      setPieceUnitId(countUnit?.unit_id || null);
+    }
+  }, [isScreenLoading, units, pieceUnitId]);
+
   // Initialize state from route params and match units
   useEffect(() => {
-    if (loadingUnits) return; // Wait for units to load
+    if (isScreenLoading) return; // Wait for units to load
 
     const typedPrep = preparation as ParsedIngredient & { ingredients?: ParsedIngredient[]; instructions?: string[], reference_ingredient?: string | null };
     setPrepName(typedPrep.name || 'Preparation');
@@ -67,7 +107,6 @@ const CreatePreparationScreen = () => {
     }
     setPrepUnitId(matchedPrepUnitId);
 
-
     // Process ingredients
     const initialIngredients: EditablePrepIngredient[] = (typedPrep.components || []).map((ing, index) => {
       let matchedUnitId: string | null = null;
@@ -77,24 +116,106 @@ const CreatePreparationScreen = () => {
         matchedUnitId = foundUnit?.unit_id || null;
       }
 
+      // Explicitly create EditablePrepIngredient without spreading ParsedIngredient
       return {
-        ...ing,
         key: `prep-ing-${index}-${Date.now()}`,
+        // Safely access ingredient_id if it exists on the parsed object
+        ingredient_id: (ing as any).ingredient_id || null, // Use 'as any' or check if parser adds it
+        name: ing.name || 'Unknown Ingredient',
         amountStr: String(ing.amount ?? ''),
-        scaledAmountStr: String(ing.amount ? formatQuantity(ing.amount * scaleMultiplier) : ''),
         unitId: matchedUnitId,
+        isPreparation: ing.ingredient_type?.toLowerCase() === 'preparation',
+        unit: ing.unit, // Carry over original unit string
+        item: ing.item, // Carry over item description
+        reference_ingredient: ing.ingredient_type?.toLowerCase() === 'preparation' ? ing.reference_ingredient : null,
       };
     });
     setEditableIngredients(initialIngredients);
 
-  }, [preparation, units, loadingUnits, scaleMultiplier]); // Depend on preparation, units, and loading state
+  }, [preparation, isScreenLoading, units, scaleMultiplier]); // Adjusted dependencies
 
   // --- Handlers ---
-  const handleIngredientUpdate = (key: string, field: 'amountStr' | 'unitId', value: string | null) => {
+  // Debounced search function (from CreateRecipeScreen)
+  const searchIngredients = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      // Assuming lookupIngredient returns items with an `isPreparation` flag
+      const results = await lookupIngredient(query);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching components:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [lookupIngredient]);
+
+  // Debounce effect (from CreateRecipeScreen)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      searchIngredients(componentSearchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [componentSearchQuery, searchIngredients]);
+
+  // Add Component Handler (adapted from CreateRecipeScreen)
+  const handleAddComponent = async (selectedComponent: any) => {
+    const ingredient_id = selectedComponent?.ingredient_id || '';
+    const name = selectedComponent?.name || '';
+
+    if (!name.trim()) {
+      Alert.alert(t('common.error'), t('alerts.errorAddComponentMissingName'));
+      return;
+    }
+
+    // Check for duplicates only if it's a *new* component being added
+    if (!ingredient_id) {
+       try {
+         const nameExists = await checkIngredientNameExists(name.trim());
+         if (nameExists) {
+           Alert.alert(
+             t('alerts.duplicateIngredientTitle'),
+             t('alerts.duplicateIngredientMessage', { name: name.trim() }),
+             [{ text: t('common.ok'), onPress: () => setComponentSearchQuery(name.trim()) }]
+           );
+           return;
+         }
+       } catch (error) {
+         console.error(`Failed to check for duplicate ingredient name "${name}":`, error);
+       }
+    }
+
+    const isPrep = !!selectedComponent.isPreparation;
+
+    setEditableIngredients(prev => [
+        ...prev,
+        {
+            key: `new-prep-ing-${Date.now()}`,
+            ingredient_id: ingredient_id,
+            name: name,
+            amountStr: '', // Start with empty amount for new components
+            unitId: null,
+            isPreparation: isPrep,
+        }
+    ]);
+    setComponentSearchModalVisible(false);
+    setComponentSearchQuery('');
+  };
+
+  // Remove Component Handler (from CreateRecipeScreen)
+  const handleRemoveComponent = (key: string) => {
+    setEditableIngredients(prev => prev.filter(c => c.key !== key));
+  };
+
+  // Update existing handler to manage amount string AND item string
+  const handleIngredientUpdate = (key: string, field: 'amountStr' | 'unitId' | 'item', value: string | null) => {
     setEditableIngredients(prev =>
       prev.map(ing => (ing.key === key ? { ...ing, [field]: value } : ing))
     );
-    // Close unit modal if a unit was selected
     if (field === 'unitId') {
         closeUnitModal();
     }
@@ -116,7 +237,6 @@ const CreatePreparationScreen = () => {
     if (currentManagingComponentKey) {
       handleIngredientUpdate(currentManagingComponentKey, 'unitId', unit.unit_id);
     }
-    // Modal closing is handled in handleIngredientUpdate
   };
 
   // Open unit modal for the preparation itself
@@ -134,14 +254,17 @@ const CreatePreparationScreen = () => {
       closePrepUnitModal();
   };
 
-  // Navigate to sub-preparation screen
+  // Navigate to sub-preparation screen (Keep existing logic, ensure it uses the correct navigation)
   const handleSubPreparationPress = (ingredient: EditablePrepIngredient) => {
-    // Only navigate if it's a preparation type
-    if (ingredient.ingredient_type?.toLowerCase() === 'preparation') {
-      navigation.navigate('CreatePreparation', { 
-        preparation: ingredient, 
-        scaleMultiplier
-      });
+    if (ingredient.isPreparation) {
+      // Need to reconstruct a ParsedIngredient-like object if needed by the screen
+      // This might require storing the original parsed prep data if we navigate back to this screen type
+      // For now, let's assume we navigate away or handle it differently
+      console.warn("Navigation to sub-preparation edit from within preparation edit not fully implemented yet.");
+      // If we navigate to PreparationDetails instead:
+      // if (ingredient.ingredient_id) {
+      //   navigation.navigate('PreparationDetails', { preparationId: ingredient.ingredient_id, recipeServingScale: scaleMultiplier });
+      // }
     }
   };
 
@@ -163,12 +286,13 @@ const CreatePreparationScreen = () => {
   };
 
   // --- Render ---
-  if (loadingUnits) {
-      return <SafeAreaView style={styles.safeArea}><View style={styles.centered}><Text>{t('screens.createPreparation.loadingUnits')}</Text></View></SafeAreaView>
+  if (isScreenLoading) { // Use combined loading state
+      return <SafeAreaView style={styles.safeArea}><View style={styles.centered}><ActivityIndicator size="large" color={COLORS.primary} /></View></SafeAreaView>
   }
 
-  const prepUnitName = units.find(u => u.unit_id === prepUnitId)?.abbreviation || 'Unit';
-  const displayPrepAmount = formatQuantity(parseFloat(prepAmount) * scaleMultiplier);
+  const prepUnitAbbr = units.find(u => u.unit_id === prepUnitId)?.abbreviation || 'Unit';
+  // Calculate scaled prep amount for display only
+  const displayPrepAmount = formatQuantityAuto(parseFloat(prepAmount) * scaleMultiplier, prepUnitAbbr).amount;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -193,104 +317,116 @@ const CreatePreparationScreen = () => {
             </View>
           )}
 
-          {/* Prep Amount & Unit (Editable - shows scaled amount) */}
+          {/* Prep Amount & Unit (Displays scaled amount, unit editable) */}
           <View style={styles.section}>
               <Text style={styles.label}>{t('screens.createPreparation.scaledAmountLabel')}:</Text>
               <View style={styles.componentControlsContainer}>
+                   {/* Display Scaled Amount (Non-Editable) */}
                    <TextInput
-                       style={styles.componentInputAmount}
-                       placeholder={t('screens.createPreparation.amountPlaceholder')}
+                       style={[styles.componentInputAmount, styles.readOnlyInput]} // Make visually distinct
                        value={displayPrepAmount}
-                       onChangeText={setPrepAmount}
-                       keyboardType="numeric"
                        editable={false}
                    />
+                   {/* Unit Selector */}
                    <TouchableOpacity
                        style={styles.componentUnitTrigger}
                        onPress={openPrepUnitModal}
                    >
                        <Text style={[styles.pickerText, !prepUnitId && styles.placeholderText]}>
-                           {prepUnitName}
+                           {prepUnitAbbr}
                        </Text>
                         <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
                    </TouchableOpacity>
                </View>
            </View>
 
-
-          {/* Ingredients Section */}
+          {/* Ingredients Section - REFACTORED */}
           <View style={styles.section}>
               <Text style={styles.sectionHeader}>{t('screens.createPreparation.ingredientsTitle')}:</Text>
               {editableIngredients.length > 0 ? (
                 editableIngredients.map((item) => {
-                  // Calculate scaled amount for display
-                  const scaledAmount = parseFloat(item.amountStr) * scaleMultiplier;
-                  const formattedDisplay = formatQuantityAuto(scaledAmount, item.unit, item.item);
+                  const unit = units.find(u => u.unit_id === item.unitId);
+                  const unitAbbr = unit?.abbreviation || 'Unit';
+                  const baseAmountNum = parseFloat(item.amountStr);
+                  const scaledAmount = isNaN(baseAmountNum) ? null : baseAmountNum * scaleMultiplier;
+                  const formattedDisplay = formatQuantityAuto(scaledAmount, unitAbbr, item.item);
+
                   return (
-                    <View key={item.key} style={styles.componentItemContainer}>
-                      {item.ingredient_type === 'Preparation' ? (
-                        // Construct a temporary DishComponent-like object for PreparationCard
-                        (() => {
-                          const pseudoPrepDetails: Preparation = {
-                            preparation_id: item.key, // Use item key as temporary ID
-                            name: item.name,
-                            directions: item.instructions?.join('\n') || null,
-                            total_time: null, // Re-add mapping, parser doesn't provide this
-                            yield_unit: units.find(u => u.unit_id === item.unitId) || null,
-                            yield_amount: parseFloat(item.amountStr) || null,
-                            reference_ingredient: item.reference_ingredient || null,
-                            // Map ParsedIngredient sub-ingredients to PreparationIngredient (simplified)
-                            ingredients: (item.components || []).map(subIng => ({
-                              preparation_id: item.key, // Temporary ID
-                              ingredient_id: subIng.name, // Use name as temporary ID
-                              name: capitalizeWords(subIng.name),
-                              amount: subIng.amount,
-                              unit: units.find(u => u.abbreviation?.toLowerCase() === subIng.unit?.toLowerCase() || u.unit_name.toLowerCase() === subIng.unit?.toLowerCase()) || null,
-                            })),
-                            cooking_notes: null, // Not available
-                          };
-
-                          const pseudoComponent: DishComponent = {
-                            dish_id: '', // Not relevant here
-                            ingredient_id: item.key, // Temporary ID
-                            name: item.name,
-                            amount: parseFloat(item.amountStr) || null,
-                            unit: units.find(u => u.unit_id === item.unitId) || null,
-                            isPreparation: true,
-                            preparationDetails: pseudoPrepDetails,
-                            rawIngredientDetails: null,
-                          };
-
-                          return (
-                            <PreparationCard
-                              component={pseudoComponent}
-                              onPress={() => handleSubPreparationPress(item)}
-                              scaleMultiplier={scaleMultiplier}
-                            />
-                          );
-                        })()
+                    <View key={item.key} style={item.isPreparation ? styles.preparationCardContainer : styles.componentItemContainer}>
+                      {item.isPreparation ? (
+                        // --- Render Preparation Card ---
+                        <>
+                          <PreparationCard
+                             component={{ // Construct necessary DishComponent props
+                               dish_id: '',
+                               ingredient_id: item.ingredient_id || item.key,
+                               name: item.name,
+                               amount: isNaN(baseAmountNum) ? null : baseAmountNum, // Pass base amount
+                               unit: units.find(u => u.unit_id === item.unitId) || null,
+                               isPreparation: true,
+                               preparationDetails: { // Construct minimal Preparation details
+                                 preparation_id: item.ingredient_id || item.key,
+                                 name: item.name,
+                                 yield_amount: isNaN(baseAmountNum) ? null : baseAmountNum,
+                                 yield_unit: units.find(u => u.unit_id === item.unitId) || null,
+                                 // Add other known details if available from 'item'
+                                 directions: null, total_time: null, reference_ingredient: null, ingredients: [], cooking_notes: null,
+                               },
+                               rawIngredientDetails: null,
+                             }}
+                             onPress={() => handleSubPreparationPress(item)}
+                             scaleMultiplier={scaleMultiplier} // Pass scale multiplier
+                             amountLabel={t('common.amount')} // Label as Amount
+                           />
+                          <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButtonPrepCard}>
+                              <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
+                          </TouchableOpacity>
+                         </>
                       ) : (
-                        // Regular ingredient
+                        // --- Render Raw Ingredient ---
                         <>
                           <Text style={styles.componentNameText}>{capitalizeWords(item.name)}</Text>
                           <View style={styles.componentControlsContainer}>
-                            <TextInput
-                              style={styles.componentInputAmount}
-                              placeholder={t('screens.createPreparation.amountPlaceholder')}
-                              placeholderTextColor={COLORS.placeholder}
-                              value={formattedDisplay.amount}
-                              onChangeText={(value) => handleIngredientUpdate(item.key, 'amountStr', value)}
-                              keyboardType="numeric"
-                              editable={false}
-                            />
+                             {/* Display Scaled Amount (Non-Editable) */}
+                             <TextInput
+                                style={[styles.componentInputAmount, styles.readOnlyInput, { minWidth: 50 }]}
+                                value={formattedDisplay.amount}
+                                editable={false}
+                             />
+                             {/* Unit Selector */}
                             <TouchableOpacity
-                              style={styles.componentUnitTrigger}
+                              style={[styles.componentUnitTrigger, { minWidth: 60 }]}
                               onPress={() => openUnitModal(item.key)}
                             >
                               <Text style={[styles.pickerText, !item.unitId && styles.placeholderText]}>
-                                {formattedDisplay.unit || 'Unit'}
+                                {unitAbbr} { /* Display only unit abbreviation */}
                               </Text>
                               <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
+                            </TouchableOpacity>
+
+                            {/* Conditionally Render Item Input */}
+                            {item.unitId === pieceUnitId && (
+                               <TextInput
+                                  style={styles.itemInput} // Use the same style as CreateRecipe
+                                  placeholder="(e.g., large)"
+                                  placeholderTextColor={COLORS.placeholder}
+                                  value={item.item || ''}
+                                  onChangeText={(value) => handleIngredientUpdate(item.key, 'item', value)}
+                               />
+                            )}
+
+                             {/* Editable Base Amount Input */}
+                             <TextInput
+                                style={[styles.componentInputAmount, { marginLeft: SIZES.base, minWidth: 60 }]} 
+                                placeholder={t('screens.createPreparation.amountPlaceholder')}
+                                placeholderTextColor={COLORS.placeholder}
+                                value={item.amountStr}
+                                onChangeText={(value) => handleIngredientUpdate(item.key, 'amountStr', value)}
+                                keyboardType="numeric"
+                             />
+                             {/* Remove Button */}
+                            <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButton}>
+                                <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
                             </TouchableOpacity>
                           </View>
                         </>
@@ -301,9 +437,17 @@ const CreatePreparationScreen = () => {
               ) : (
                 <Text style={styles.itemText}>{t('screens.createPreparation.noSubIngredients')}</Text>
               )}
+               {/* Add Component Button (from CreateRecipeScreen) */}
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => setComponentSearchModalVisible(true)}
+              >
+                {/* Reuse translation key from CreateRecipeScreen */}
+                <Text style={styles.addButtonText}>{t('screens.createRecipe.addIngredientPreparationButton')}</Text>
+              </TouchableOpacity>
            </View>
 
-          {/* Instructions Section */}
+          {/* Instructions Section (Keep existing) */}
           <View style={styles.section}>
               <Text style={styles.sectionHeader}>{t('screens.createPreparation.instructionsTitle')}:</Text>
               {instructions.length > 0 ? (
@@ -318,8 +462,8 @@ const CreatePreparationScreen = () => {
                       multiline
                     />
                     {instructions.length > 1 && (
-                      <TouchableOpacity 
-                        onPress={() => handleRemoveInstructionStep(index)} 
+                      <TouchableOpacity
+                        onPress={() => handleRemoveInstructionStep(index)}
                         style={styles.removeStepButton}
                       >
                         <MaterialCommunityIcons name="close-circle-outline" size={22} color={COLORS.textLight} />
@@ -330,13 +474,19 @@ const CreatePreparationScreen = () => {
               ) : (
                 <Text style={styles.itemText}>{t('screens.createPreparation.noInstructions')}</Text>
               )}
-              <TouchableOpacity 
-                onPress={handleAddInstructionStep} 
+              <TouchableOpacity
+                onPress={handleAddInstructionStep}
                 style={styles.addStepButton}
               >
-                <Text style={styles.addStepButtonText}>+ Add Step</Text>
+                 {/* Reuse translation key */}
+                <Text style={styles.addStepButtonText}>{t('screens.createRecipe.addStepButton')}</Text>
               </TouchableOpacity>
            </View>
+
+           {/* TODO: Add Save/Update Button */}
+           {/* <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges}>
+              <Text style={styles.saveButtonText}>{t('common.save')}</Text>
+           </TouchableOpacity> */}
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -362,6 +512,7 @@ const CreatePreparationScreen = () => {
                                <Text style={styles.modalItemText}>{capitalizeWords(item.unit_name)} ({item.abbreviation || 'N/A'})</Text>
                            </TouchableOpacity>
                        )}
+                       ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noUnitsFound')}</Text>}
                    />
                    <TouchableOpacity
                        style={styles.closeButton}
@@ -394,6 +545,7 @@ const CreatePreparationScreen = () => {
                                <Text style={styles.modalItemText}>{capitalizeWords(item.unit_name)} ({item.abbreviation || 'N/A'})</Text>
                            </TouchableOpacity>
                        )}
+                       ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noUnitsFound')}</Text>}
                    />
                    <TouchableOpacity
                        style={styles.closeButton}
@@ -405,43 +557,126 @@ const CreatePreparationScreen = () => {
            </View>
        </Modal>
 
+        {/* Component Search Modal (from CreateRecipeScreen) */}
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={componentSearchModalVisible}
+            onRequestClose={() => setComponentSearchModalVisible(false)}
+        >
+           <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                    {/* Reuse translation key */}
+                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectComponentModalTitle')}</Text>
+                    <TextInput
+                        style={styles.searchInput}
+                        // Reuse translation key
+                        placeholder={t('screens.createRecipe.searchComponentPlaceholder')}
+                        placeholderTextColor={COLORS.placeholder}
+                        value={componentSearchQuery}
+                        onChangeText={setComponentSearchQuery}
+                    />
+                    {searchLoading ? (
+                        <ActivityIndicator size="large" color={COLORS.primary} style={styles.searchLoader} />
+                    ) : (
+                        <FlatList
+                            data={searchResults}
+                            keyExtractor={(item) => item.ingredient_id || `search-${item.name}`}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.modalItem}
+                                    onPress={() => handleAddComponent(item)}
+                                >
+                                    <Text style={styles.modalItemText}>
+                                        {item.name} {item.isPreparation ? t('screens.createRecipe.prepSuffix') : ''}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={
+                                componentSearchQuery.trim() !== '' ? (
+                                    <View>
+                                        <Text style={styles.emptyListText}>
+                                            {t('screens.createRecipe.searchNoResults')}
+                                        </Text>
+                                        {/* Button to create NEW ingredient */}
+                                        <TouchableOpacity
+                                            style={[styles.createNewButton, { marginTop: SIZES.padding }]}
+                                            onPress={() => handleAddComponent({
+                                                name: componentSearchQuery.trim(),
+                                                isPreparation: false // Default to raw ingredient
+                                            })}
+                                        >
+                                            <Text style={styles.createNewButtonText}>
+                                                {t('screens.createRecipe.createButtonLabel', { query: componentSearchQuery.trim() })}
+                                            </Text>
+                                        </TouchableOpacity>
+                                         {/* Button to create NEW preparation */}
+                                         <TouchableOpacity
+                                            style={[styles.createNewButton, { marginTop: SIZES.padding, borderColor: COLORS.tertiary }]} 
+                                            onPress={() => handleAddComponent({
+                                                name: componentSearchQuery.trim(),
+                                                isPreparation: true // Create as preparation
+                                            })}
+                                        >
+                                            <Text style={[styles.createNewButtonText, { color: COLORS.tertiary }]}>
+                                                {t('screens.createRecipe.createButtonLabel', { query: componentSearchQuery.trim() })} {t('screens.createRecipe.prepSuffix')}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.emptyListText}>
+                                        {t('screens.createRecipe.searchPlaceholderComponents')}
+                                    </Text>
+                                )
+                            }
+                        />
+                    )}
+                    <TouchableOpacity
+                        style={styles.closeButton}
+                        onPress={() => setComponentSearchModalVisible(false)}
+                    >
+                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
     </SafeAreaView>
   );
 };
 
-// --- Styles (Combine styles from ConfirmParsed and CreateRecipe) ---
+// --- Styles (Combine styles from ConfirmParsed and CreateRecipe, adapt as needed) ---
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
   container: { flex: 1 },
-  contentContainer: { 
-    paddingHorizontal: SIZES.padding * 2, // Keep horizontal padding
-    paddingTop: 0, // Remove top padding
-    paddingBottom: SIZES.padding * 4 
+  contentContainer: {
+    paddingHorizontal: SIZES.padding * 1.5, // Adjusted padding
+    paddingTop: SIZES.padding, // Added top padding
+    paddingBottom: SIZES.padding * 4
   },
   prepName: { ...FONTS.h2, color: COLORS.white, marginBottom: SIZES.padding },
   refIngredientContainer: {
     marginBottom: SIZES.padding,
+    flexDirection: 'row', // Align label and text horizontally
+    alignItems: 'center',
   },
-  refIngredientText: {
-    ...FONTS.body3,
-    color: COLORS.text,
-  },
-  section: { marginBottom: SIZES.padding * 1.5 }, // Add spacing between sections
+  // Removed refIngredientText, use itemText instead
+  section: { marginBottom: SIZES.padding * 1.5 },
   sectionHeader: { ...FONTS.h3, color: COLORS.white, marginBottom: SIZES.padding },
-  itemText: { ...FONTS.body3, color: COLORS.text, marginBottom: SIZES.base / 2, marginLeft: SIZES.padding },
+  itemText: { ...FONTS.body3, color: COLORS.text, marginBottom: SIZES.base / 2, marginLeft: SIZES.padding }, // Added marginLeft
   metaText: { ...FONTS.body3, color: COLORS.textLight, marginBottom: SIZES.base },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  label: { // Label style from CreateRecipeScreen
+  label: {
     ...FONTS.body3,
     color: COLORS.textLight,
     marginBottom: SIZES.base * 0.8,
   },
-  // Copied/adapted from CreateRecipeScreen for component editing
+  // Component styles (adapted from CreateRecipeScreen)
   componentItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: SIZES.padding / 2, // Reduced padding
+    paddingVertical: SIZES.padding / 2,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     marginBottom: SIZES.base,
@@ -449,12 +684,14 @@ const styles = StyleSheet.create({
   componentNameText: {
     ...FONTS.body3,
     color: COLORS.text,
-    flex: 1, // Allow name to take up space
+    flex: 0.4, // Adjust flex distribution
     marginRight: SIZES.base,
   },
   componentControlsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 0.6, // Adjust flex distribution
+    justifyContent: 'flex-end', // Align controls to the right
   },
   componentInputAmount: {
     backgroundColor: COLORS.surface,
@@ -464,10 +701,15 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     borderWidth: 1,
     borderColor: COLORS.border,
-    minWidth: 60, // Increased minWidth
+    minWidth: 50, // Adjusted minWidth
     textAlign: 'right',
     fontSize: SIZES.font,
-    marginRight: SIZES.base, // Add margin between amount and unit
+    // marginRight: SIZES.base, // Removed margin, adjusted layout
+  },
+  readOnlyInput: { // Style for non-editable display fields
+    backgroundColor: COLORS.secondary, // Darker background
+    color: COLORS.textLight, // Lighter text
+    borderColor: COLORS.secondary, // Match background
   },
   componentUnitTrigger: {
     flexDirection: 'row',
@@ -479,18 +721,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.base,
     paddingVertical: SIZES.base / 2,
     minHeight: 36,
-    minWidth: 70, // Increased minWidth
-    justifyContent: 'space-between', // Align text and icon
+    minWidth: 60, // Adjusted minWidth
+    justifyContent: 'space-between',
+    marginLeft: SIZES.base, // Add margin before unit trigger
   },
   pickerText: {
     ...FONTS.body3,
     color: COLORS.text,
-    marginRight: 4, // Add space before chevron
+    marginRight: 4,
   },
   placeholderText: {
     color: COLORS.placeholder,
   },
-  // Modal styles from CreateRecipeScreen
+  removeButton: {
+    paddingLeft: SIZES.base, // Space before remove icon
+  },
+  // Modal styles (from CreateRecipeScreen)
    modalContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -502,7 +748,12 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     padding: SIZES.padding * 2,
     width: '90%',
-    maxHeight: '70%', // Adjusted height
+    maxHeight: '80%', // Adjusted height
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   modalTitle: {
     ...FONTS.h3,
@@ -512,6 +763,8 @@ const styles = StyleSheet.create({
   },
   modalItem: {
     paddingVertical: SIZES.padding,
+    borderBottomWidth: 1, // Add separator
+    borderBottomColor: COLORS.border,
   },
   modalItemText: {
     fontSize: SIZES.font,
@@ -529,7 +782,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: '600',
   },
-  // Direction styles from CreateRecipeScreen
+  // Direction styles (from CreateRecipeScreen)
    directionStepContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -555,36 +808,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
     textAlignVertical: 'top',
   },
-  // Styles for sub-preparation items
-  prepItemContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center', 
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    paddingHorizontal: SIZES.padding,
-    paddingVertical: SIZES.base,
-    marginVertical: SIZES.base / 2,
-  },
-  prepItemContent: {
-    flex: 1,
-    marginRight: SIZES.base,
-  },
-  prepItemName: {
-    ...FONTS.body2,
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  prepItemInfo: {
-    ...FONTS.body3,
-    color: COLORS.textLight,
-    fontStyle: 'italic',
-  },
-  chevronIcon: {
-    marginLeft: SIZES.base,
-  },
   removeStepButton: {
     marginLeft: SIZES.base,
     paddingTop: SIZES.padding * 0.75, // Align with TextInput padding
@@ -597,12 +820,90 @@ const styles = StyleSheet.create({
     padding: SIZES.padding * 0.75,
     borderRadius: SIZES.radius,
     alignItems: 'center',
-    marginTop: SIZES.base, // Space above add button
+    marginTop: SIZES.base,
   },
   addStepButtonText: {
     color: COLORS.primary,
     ...FONTS.body3,
     fontWeight: '600',
+  },
+  // Add Button (from CreateRecipeScreen)
+  addButton: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    marginTop: SIZES.padding, // Add margin above
+  },
+  addButtonText: {
+    color: COLORS.primary,
+    ...FONTS.body3,
+    fontWeight: '600',
+  },
+  // Search Modal Specific Styles (from CreateRecipeScreen)
+  searchInput: {
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding * 0.75,
+    borderRadius: SIZES.radius,
+    marginBottom: SIZES.padding,
+    fontSize: SIZES.font,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  searchLoader: {
+    marginVertical: SIZES.padding * 2,
+  },
+  emptyListText: {
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    textAlign: 'center',
+    paddingVertical: SIZES.padding * 2,
+    fontStyle: 'italic',
+  },
+  createNewButton: {
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    marginHorizontal: SIZES.padding, // Reduced horizontal margin
+  },
+  createNewButtonText: {
+    color: COLORS.primary,
+    ...FONTS.body3,
+    fontWeight: '600',
+  },
+  // Prep Card specific styles (from CreateRecipeScreen)
+  preparationCardContainer: {
+    marginBottom: SIZES.base,
+    position: 'relative', // For remove button positioning
+  },
+  removeButtonPrepCard: {
+    position: 'absolute',
+    top: SIZES.padding / 2,
+    right: SIZES.padding / 2,
+    backgroundColor: 'rgba(0,0,0,0.3)', // Semi-transparent background
+    borderRadius: 12,
+    padding: 2,
+    zIndex: 1, // Ensure it's above the card
+  },
+  itemInput: { // Add the itemInput style (copied from CreateRecipeScreen potentially)
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
+    paddingHorizontal: SIZES.base,
+    paddingVertical: SIZES.base / 2,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minWidth: 80, // Adjust width as needed
+    fontSize: SIZES.font,
+    marginLeft: SIZES.base, // Add margin before this input
+    marginRight: SIZES.base, // Add margin after this input
   },
 });
 

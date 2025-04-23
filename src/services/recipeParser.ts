@@ -50,8 +50,9 @@ export const uploadRecipeImages = async (imageUris: string[]): Promise<ParsedRec
             method: 'POST',
             body: formData,
             headers: {
-                // Content-Type is set automatically by fetch for FormData
-                // 'Content-Type': 'multipart/form-data', 
+                // Explicitly set Content-Type header for multipart/form-data.
+                // NOTE: Do NOT include the boundary parameter; fetch adds it automatically.
+                'Content-Type': 'multipart/form-data',
             },
         });
 

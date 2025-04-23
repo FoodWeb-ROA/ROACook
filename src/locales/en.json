@@ -133,13 +133,13 @@
       "categoryRecipes": {
         "loading": "Loading {{categoryName}}...",
         "titleFallback": "Category Dishes",
-        "preparationsTitle": "Preparations:",
+        "preparationsTitle": "Preparations",
         "noDishesInCategory": "No dishes found in this category"
       },
       "allRecipes": {
         "title": "All Recipes",
         "searchPlaceholder": "Search recipes...",
-        "sortByLabel": "Sort by:",
+        "sortByLabel": "Sort by",
         "sortByName": "Name",
         "sortByNewest": "Newest",
         "retry": "Retry",
@@ -158,7 +158,7 @@
       },
       "inventory": {
         "title": "Inventory",
-        "usedInTitle": "Used In:",
+        "usedInTitle": "Used In",
         "notUsedInRecipes": "Not used in any recipes yet",
         "noDataFound": "No data found."
       },
@@ -168,8 +168,8 @@
       "dishDetail": {
         "loading": "Loading Dish...",
         "notFound": "Dish not found",
-        "servingsLabel": "Servings:",
-        "servingSizeLabel": "Serving Size:",
+        "servingsLabel": "Servings",
+        "servingSizeLabel": "Serving Size",
         "adjustServingsLabel": "Adjust Target Servings (Base: {{baseServings}})",
         "servingsSuffix": "Servings",
         "preparationsTitle": "Preparations",
@@ -196,7 +196,7 @@
         "servingSizeLabel": "Serving Size",
         "servingSizePlaceholder": "e.g., 4",
         "servingUnitLabel": "Serving Unit *",
-        "servingIngredientLabel": "Serving Ingredient (e.g., \\\"breast\\\", \\\"rolls\\\", \\\"sausage\\\")",
+        "servingIngredientLabel": "Serving Ingredient (e.g., \"breast\", \"rolls\", \"sausage\")",
         "servingIngredientPlaceholder": "Manual description or select...",
         "ingredientsTitle": "Ingredients",
         "noRawIngredients": "No raw ingredients added yet.",
@@ -235,13 +235,14 @@
         "prepSuffix": "(Prep)"
       },
       "createPreparation": {
+        "title": "Edit Preparation",
         "loadingUnits": "Loading units...",
-        "refIngredientLabel": "Reference Ingredient:",
-        "scaledAmountLabel": "Amount Used in Recipe (Scaled):",
-        "ingredientsTitle": "Ingredients:",
+        "refIngredientLabel": "Reference Ingredient",
+        "scaledAmountLabel": "Amount Used in Recipe (Scaled)",
+        "ingredientsTitle": "Ingredients",
         "amountPlaceholder": "Amt",
         "noSubIngredients": "No sub-ingredients listed.",
-        "instructionsTitle": "Instructions:",
+        "instructionsTitle": "Instructions",
         "noInstructions": "No instructions provided.",
         "selectUnitModalTitle": "Select Unit",
         "selectPrepUnitModalTitle": "Select Preparation Unit"
@@ -278,16 +279,16 @@
         "logoText": "FoodWeb"
       },
       "dishCard": {
-        "componentsTitle": "Components:",
+        "componentsTitle": "Components",
         "noComponents": "No components listed",
         "servings_one": "{{count}} serving",
         "servings_other": "{{count}} servings"
       },
       "preparationCard": {
         "detailsMissingError": "Preparation details missing.",
-        "ingredientsTitle": "Ingredients:",
+        "ingredientsTitle": "Ingredients",
         "noIngredients": "No ingredients listed.",
-        "subTitle": "Ingredients:"
+        "subTitle": "Ingredients"
       },
       "addCategoryCard": {
         "addButton": "Add",
