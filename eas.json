@@ -12,13 +12,17 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_NO_CAPABILITY_SYNC": "1"
+      }
     }
   },
   "submit": {
     "production": {
       "ios": {
         "companyName": "FoodWeb AI"
+      
       }
     }
   }

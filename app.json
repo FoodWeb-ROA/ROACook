@@ -17,6 +17,10 @@
       "bundleIdentifier": "com.FoodWebAI.ROACook",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"],
+        "com.apple.developer.networking.wifi-info": true
       }
     },
     "android": {
