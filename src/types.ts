@@ -21,6 +21,7 @@ export type Preparation = {
     yield_unit: Unit | null;
     yield_amount: number | null; // Add yield amount
     reference_ingredient: string | null; // New field for reference ingredient
+    fingerprint?: string | null; // ADDED: Fingerprint for duplicate detection
     ingredients: PreparationIngredient[];
     cooking_notes: string | null;
 };
@@ -82,7 +83,6 @@ export type MeasurementUnit =
 export type Kitchen = {
   kitchen_id: string;
   name: string;
-  location: string;
   members?: KitchenMember[];
 };
 
@@ -154,6 +154,7 @@ export type ComponentInput = {
     subIngredients?: ParsedIngredient[] | null; // Store parsed sub-ingredients
     item?: string | null; // ADDED: To store item description (e.g., "cloves")
     reference_ingredient?: string | null; // Store reference ingredient for preparations
+    matched?: boolean; // ADDED: Flag to indicate this component was auto-matched to a database entry
 }; 
 
 export interface IUser {

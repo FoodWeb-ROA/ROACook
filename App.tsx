@@ -14,6 +14,7 @@ import { UnitSystemProvider } from './src/context/UnitSystemContext';
 import { Provider } from 'react-redux';
 import store from './src/store';
 import { DeepLinkHandler, useDeepLinking } from './src/hooks/useDeepLinking';
+import { ReactQueryClientProvider } from './src/components/ReactQueryClientProvider';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -21,7 +22,9 @@ SplashScreen.preventAutoHideAsync();
 export default function App() {
 	return (
 		<Provider store={store}>
+			<ReactQueryClientProvider>
 			<DeepLinkIntersepter />
+			</ReactQueryClientProvider>
 		</Provider>
 	);
 }

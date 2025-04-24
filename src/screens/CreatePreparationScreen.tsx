@@ -13,6 +13,14 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { capitalizeWords, formatQuantity, formatQuantityAuto } from '../utils/textFormatters';
 import PreparationCard from '../components/PreparationCard';
 import { useTranslation } from 'react-i18next';
+import { slug, stripDirections, fingerprintPreparation } from '../utils/normalise';
+import { 
+  findDishByName, 
+  findCloseIngredient, 
+  checkIngredientNameExists, 
+  checkPreparationNameExists,
+  findPreparationByFingerprint 
+} from '../data/dbLookup';
 
 type CreatePrepRouteProp = RouteProp<RootStackParamList, 'CreatePreparation'>;
 type CreatePrepNavProp = StackNavigationProp<RootStackParamList, 'CreatePreparation'>;
@@ -31,6 +39,7 @@ type EditablePrepIngredient = {
     unit?: string | null; // Original unit string for reference
     item?: string | null; // Item description
     reference_ingredient?: string | null;
+    matched?: boolean; // ADDED: Flag to indicate ingredient was auto-matched
     // Avoid carrying over 'components'/'instructions' here unless absolutely necessary
 };
 
@@ -107,30 +116,60 @@ const CreatePreparationScreen = () => {
     }
     setPrepUnitId(matchedPrepUnitId);
 
-    // Process ingredients
-    const initialIngredients: EditablePrepIngredient[] = (typedPrep.components || []).map((ing, index) => {
-      let matchedUnitId: string | null = null;
-      const parsedUnit = ing.unit?.toLowerCase().trim();
-      if (parsedUnit && units.length > 0) {
-        const foundUnit = units.find(u => u.unit_name.toLowerCase() === parsedUnit || u.abbreviation?.toLowerCase() === parsedUnit);
-        matchedUnitId = foundUnit?.unit_id || null;
+    // MODIFIED: Process ingredients with auto-matching similar to CreateRecipeScreen
+    const mapParsedIngredients = async () => {
+      const mappedIngredients: EditablePrepIngredient[] = [];
+      
+      for (const ing of (typedPrep.components || [])) {
+        // 1. Try to match raw ingredients (not preps) automatically
+        let matchedIngredient = null;
+        let matched = false;
+        let matchedUnitId: string | null = null;
+        
+        try {
+          // Only search for matches if this is a raw ingredient (not a preparation)
+          if (ing.ingredient_type !== 'Preparation') {
+            console.log(`Trying to auto-match "${ing.name}"...`);
+            const closeMatches = await findCloseIngredient(ing.name);
+            // Consider it a close match if we found something with a good similarity score
+            if (closeMatches.length > 0) {
+              matchedIngredient = closeMatches[0]; // Use the first/best match
+              matched = true;
+              console.log(`Auto-matched "${ing.name}" to "${matchedIngredient.name}" (ID: ${matchedIngredient.ingredient_id})`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error trying to match ingredient "${ing.name}":`, error);
+          // Continue without matching - we'll create a new ingredient later
+        }
+        
+        // 2. Match the unit regardless
+        const parsedUnit = ing.unit?.toLowerCase().trim();
+        if (parsedUnit && units.length > 0) {
+          const foundUnit = units.find(u => u.unit_name.toLowerCase() === parsedUnit || u.abbreviation?.toLowerCase() === parsedUnit);
+          matchedUnitId = foundUnit?.unit_id || null;
+        }
+        
+        // 3. Create the EditablePrepIngredient
+        mappedIngredients.push({
+          key: `prep-ing-${ing.name}-${Date.now()}`,
+          ingredient_id: matched ? matchedIngredient.ingredient_id : null,
+          name: matched ? matchedIngredient.name : (ing.name || 'Unknown Ingredient'),
+          amountStr: String(ing.amount ?? ''),
+          unitId: matchedUnitId,
+          isPreparation: ing.ingredient_type?.toLowerCase() === 'preparation',
+          unit: ing.unit, // Carry over original unit string
+          item: ing.item, // Carry over item description
+          reference_ingredient: ing.ingredient_type?.toLowerCase() === 'preparation' ? ing.reference_ingredient : null,
+          matched: matched, // Flag auto-matched ingredients
+        });
       }
-
-      // Explicitly create EditablePrepIngredient without spreading ParsedIngredient
-      return {
-        key: `prep-ing-${index}-${Date.now()}`,
-        // Safely access ingredient_id if it exists on the parsed object
-        ingredient_id: (ing as any).ingredient_id || null, // Use 'as any' or check if parser adds it
-        name: ing.name || 'Unknown Ingredient',
-        amountStr: String(ing.amount ?? ''),
-        unitId: matchedUnitId,
-        isPreparation: ing.ingredient_type?.toLowerCase() === 'preparation',
-        unit: ing.unit, // Carry over original unit string
-        item: ing.item, // Carry over item description
-        reference_ingredient: ing.ingredient_type?.toLowerCase() === 'preparation' ? ing.reference_ingredient : null,
-      };
-    });
-    setEditableIngredients(initialIngredients);
+      
+      setEditableIngredients(mappedIngredients);
+    };
+    
+    // Execute the async mapping function
+    mapParsedIngredients();
 
   }, [preparation, isScreenLoading, units, scaleMultiplier]); // Adjusted dependencies
 
@@ -166,44 +205,99 @@ const CreatePreparationScreen = () => {
   const handleAddComponent = async (selectedComponent: any) => {
     const ingredient_id = selectedComponent?.ingredient_id || '';
     const name = selectedComponent?.name || '';
+    const trimmedName = name.trim();
 
-    if (!name.trim()) {
+    if (!trimmedName) {
       Alert.alert(t('common.error'), t('alerts.errorAddComponentMissingName'));
       return;
     }
 
-    // Check for duplicates only if it's a *new* component being added
-    if (!ingredient_id) {
-       try {
-         const nameExists = await checkIngredientNameExists(name.trim());
-         if (nameExists) {
-           Alert.alert(
-             t('alerts.duplicateIngredientTitle'),
-             t('alerts.duplicateIngredientMessage', { name: name.trim() }),
-             [{ text: t('common.ok'), onPress: () => setComponentSearchQuery(name.trim()) }]
-           );
-           return;
-         }
-       } catch (error) {
-         console.error(`Failed to check for duplicate ingredient name "${name}":`, error);
-       }
+    // If we have an ID, add it directly
+    if (ingredient_id) {
+      addComponentWithDetails(ingredient_id, trimmedName, !!selectedComponent.isPreparation, true);
+      return;
+    }
+    
+    // No ID provided (user wants to create a new ingredient/preparation)
+    try {
+      // 1. Check for close/exact matches first
+      const closeMatches = await findCloseIngredient(trimmedName);
+      
+      // 1a. Check for an exact (case-insensitive) match
+      const exactMatch = closeMatches.find(match => slug(match.name) === slug(trimmedName));
+      
+      if (exactMatch) {
+        console.log(`Found exact match for "${trimmedName}": ${exactMatch.name} (ID: ${exactMatch.ingredient_id}). Using it directly.`);
+        addComponentWithDetails(exactMatch.ingredient_id, exactMatch.name, !!exactMatch.isPreparation, true);
+        return;
+      } 
+      
+      // 1b. If no exact match, but similar matches exist, prompt the user
+      if (closeMatches.length > 0) {
+        const bestMatch = closeMatches[0];
+        Alert.alert(
+          t('alerts.similarIngredientFoundTitle'),
+          t('alerts.similarIngredientFoundMessage', { 
+            entered: trimmedName, 
+            found: bestMatch.name
+          }),
+          [
+            {
+              text: t('common.useExisting'),
+              onPress: () => {
+                // Add with the matched ID and name
+                addComponentWithDetails(
+                  bestMatch.ingredient_id,
+                  bestMatch.name,
+                  !!bestMatch.isPreparation,
+                  true // Marked as matched
+                );
+              }
+            },
+            {
+              text: t('common.createNew'),
+              style: 'destructive',
+              onPress: () => {
+                // User explicitly wants to create new
+                console.log(`User chose to create new component "${trimmedName}" despite similar matches.`);
+                // Determine if it should be created as a prep based on the modal choice (if applicable)
+                // For simplicity here, assume new components added this way are raw ingredients
+                addComponentWithDetails('', trimmedName, false, false); 
+              }
+            }
+          ]
+        );
+        return; // Exit early
+      }
+      
+      // 2. No close or exact matches found - safe to add as new
+      console.log(`No similar or exact matches found for "${trimmedName}". Creating new.`);
+      // Assume new components are raw unless explicitly created as prep (e.g., via separate button)
+      addComponentWithDetails('', trimmedName, false, false); 
+
+    } catch (error) {
+      console.error(`Error checking for similar/exact components "${trimmedName}":`, error);
+      Alert.alert(t('common.error'), t('alerts.errorCheckingDuplicates'));
+      addComponentWithDetails('', trimmedName, false, false);
     }
 
-    const isPrep = !!selectedComponent.isPreparation;
-
-    setEditableIngredients(prev => [
+    // Helper function to add the component with given details
+    function addComponentWithDetails(id: string, name: string, isPrep: boolean, matched: boolean) {
+      setEditableIngredients(prev => [
         ...prev,
         {
-            key: `new-prep-ing-${Date.now()}`,
-            ingredient_id: ingredient_id,
-            name: name,
-            amountStr: '', // Start with empty amount for new components
-            unitId: null,
-            isPreparation: isPrep,
+          key: `new-prep-ing-${id || 'new'}-${Date.now()}`, // Adjusted key
+          ingredient_id: id,
+          name: name,
+          amountStr: '', // Start with empty amount for new components
+          unitId: null,
+          isPreparation: isPrep,
+          matched: matched, // Add the matched flag
         }
-    ]);
-    setComponentSearchModalVisible(false);
-    setComponentSearchQuery('');
+      ]);
+      setComponentSearchModalVisible(false);
+      setComponentSearchQuery('');
+    }
   };
 
   // Remove Component Handler (from CreateRecipeScreen)
@@ -385,7 +479,12 @@ const CreatePreparationScreen = () => {
                       ) : (
                         // --- Render Raw Ingredient ---
                         <>
-                          <Text style={styles.componentNameText}>{capitalizeWords(item.name)}</Text>
+                          <Text style={styles.componentNameText}>
+                            {capitalizeWords(item.name)}
+                            {item.matched && (
+                              <Text style={styles.matchedBadge}> {t('common.matched')}</Text>
+                            )}
+                          </Text>
                           <View style={styles.componentControlsContainer}>
                             {/* Editable Base Amount Input */}
                             <TextInput
@@ -898,6 +997,14 @@ const styles = StyleSheet.create({
     fontSize: SIZES.font,
     marginLeft: SIZES.base, // Add margin before this input
     marginRight: SIZES.base, // Add margin after this input
+  },
+  matchedBadge: {
+    backgroundColor: COLORS.primary,
+    color: COLORS.white,
+    paddingHorizontal: SIZES.padding * 0.25,
+    paddingVertical: SIZES.padding * 0.125,
+    borderRadius: SIZES.radius,
+    marginLeft: SIZES.base,
   },
 });
 

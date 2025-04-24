@@ -2,14 +2,17 @@ import { call, put } from 'redux-saga/effects';
 import {
 	authStateChanged,
 	loginSuccess,
+	loginFailure,
 	registerSuccess,
 	registerFailure,
 	oauthSuccess,
 	oauthFailure,
 	logoutSuccess
 } from '../../slices/authSlice';
-import { checkExistingUser, insertPublicUser } from './userProfileSaga';
+import { checkKitchenUserLink, linkUserToKitchen } from './userProfileSaga';
+import { fetchUserProfile } from './utils';
 import { CheckUser, CreateUser } from './types';
+import { IUser } from '../../types';
 
 export function* handleAuthStateChange(
 	action: ReturnType<typeof authStateChanged>
@@ -25,123 +28,93 @@ export function* handleAuthStateChange(
 		try {
 			const { user } = session;
 
+			if (!user) {
+				console.error('* handleAuthStateChange: Session exists but user object is null.');
+				yield put(logoutSuccess());
+				return;
+			}
+
 			console.log(`* handleAuthStateChange/user:`, JSON.stringify(user, null, 2));
 
-			const checkExistingUserResponse: CheckUser = yield call(
-				checkExistingUser,
+			const kitchenLinkResponse: { data: { kitchen_id: string } | null; error: any } = yield call(
+				checkKitchenUserLink,
 				user.id
 			);
 
-			if (checkExistingUserResponse.data) {
-				console.log(`* handleAuthStateChange: User exists in public table.`);
-
+			if (kitchenLinkResponse.error) {
+				console.error(
+					'* handleAuthStateChange: Error checking kitchen link:',
+					kitchenLinkResponse.error
+				);
+				const errorMsg = kitchenLinkResponse.error.message || 'Database error checking user kitchen link.';
 				if (user.app_metadata.provider === 'email') {
-					const hasFullName =
-						user.user_metadata?.full_name ||
-						checkExistingUserResponse.data.user_fullname;
-
-					if (hasFullName) {
-						console.log(
-							`* handleAuthStateChange: Email/password login or existing user.`
-						);
-
-						yield put(
-							loginSuccess({
-								session,
-								user: checkExistingUserResponse.data
-							})
-						);
-					} else {
-						console.log(`* handleAuthStateChange: Email/password signup flow.`);
-
-						yield put(
-							registerSuccess({
-								session,
-								user: checkExistingUserResponse.data
-							})
-						);
-					}
+					yield put(registerFailure(errorMsg));
 				} else {
-					console.log(`* handleAuthStateChange: OAuth login or existing user.`);
-
-					yield put(
-						oauthSuccess({
-							session,
-							user: checkExistingUserResponse.data
-						})
-					);
+					yield put(oauthFailure(errorMsg));
 				}
-			} else if (checkExistingUserResponse.error?.code === 'PGRST116') {
-				console.log(
-					`* handleAuthStateChange: User not found in public table. Inserting...`
-				);
+				return;
+			}
 
-				const fullname =
-					user.user_metadata?.full_name || user.user_metadata?.name || 'New User';
+			if (kitchenLinkResponse.data) {
+				console.log(`* handleAuthStateChange: User ${user.id} is linked to kitchen ${kitchenLinkResponse.data.kitchen_id}.`);
+				
+				const userProfile: (IUser & { kitchen_id: string }) | null = yield call(fetchUserProfile, user);
 
-				const language = user.user_metadata?.language || 'EN';
-
-				const insertPublicUserResponse: CreateUser = yield call(
-					insertPublicUser,
-					user,
-					fullname,
-					language
-				);
-
-				if (insertPublicUserResponse.error || !insertPublicUserResponse.data) {
-					console.error(
-						'* handleAuthStateChange: User insertion failed:',
-						insertPublicUserResponse.error?.message
-					);
-
-					if (user.app_metadata.provider === 'email') {
-						yield put(
-							registerFailure(
-								insertPublicUserResponse.error?.message ||
-									'Sign Up User Profile Creation Failed'
-							)
-						);
-					} else {
-						yield put(
-							oauthFailure(
-								insertPublicUserResponse.error?.message ||
-									'OAuth User Profile Creation Failed'
-							)
-						);
-					}
-
+				if (!userProfile) {
+					console.error('* handleAuthStateChange: Failed to fetch combined user profile after confirming kitchen link.');
+					const errorMsg = 'Failed to retrieve full user profile.';
+					if (user.app_metadata.provider === 'email') yield put(loginFailure(errorMsg));
+					else yield put(oauthFailure(errorMsg));
 					return;
 				}
 
-				console.log(`* handleAuthStateChange: User inserted successfully.`);
-
 				if (user.app_metadata.provider === 'email') {
-					yield put(
-						registerSuccess({ session, user: insertPublicUserResponse.data })
-					);
+					console.log('* handleAuthStateChange: Email provider - dispatching loginSuccess.');
+					yield put(loginSuccess({ session, user: userProfile }));
 				} else {
-					yield put(oauthSuccess({ session, user: insertPublicUserResponse.data }));
+					console.log('* handleAuthStateChange: OAuth provider - dispatching oauthSuccess.');
+					yield put(oauthSuccess({ session, user: userProfile }));
 				}
 			} else {
-				console.error(
-					'* handleAuthStateChange: Error checking existing user:',
-					checkExistingUserResponse.error
+				console.log(
+					`* handleAuthStateChange: User ${user.id} not linked to a kitchen. Attempting to link...`
 				);
 
+				const linkResponse: { data: { kitchen_id: string } | null; error: any } = yield call(
+					linkUserToKitchen,
+					user
+				);
+
+				if (linkResponse.error || !linkResponse.data) {
+					console.error(
+						'* handleAuthStateChange: Failed to link user to kitchen:',
+						linkResponse.error?.message
+					);
+					const errorMsg = linkResponse.error?.message || 'Failed to link user to a kitchen.';
+					if (user.app_metadata.provider === 'email') {
+						yield put(registerFailure(errorMsg));
+					} else {
+						yield put(oauthFailure(errorMsg));
+					}
+					return;
+				}
+
+				console.log(`* handleAuthStateChange: User linked successfully to kitchen ${linkResponse.data.kitchen_id}.`);
+				
+				const userProfile: (IUser & { kitchen_id: string }) | null = yield call(fetchUserProfile, user);
+
+				if (!userProfile) {
+					console.error('* handleAuthStateChange: Failed to fetch combined user profile after linking to kitchen.');
+					const errorMsg = 'Failed to retrieve full user profile after linking.';
+					if (user.app_metadata.provider === 'email') yield put(registerFailure(errorMsg));
+					else yield put(oauthFailure(errorMsg));
+					return;
+				}
+
 				if (user.app_metadata.provider === 'email') {
-					yield put(
-						registerFailure(
-							checkExistingUserResponse.error?.message ||
-								'Database error checking user.'
-						)
-					);
+					yield put(registerSuccess({ session, user: userProfile }));
 				} else {
-					yield put(
-						oauthFailure(
-							checkExistingUserResponse.error?.message ||
-								'Database error checking user.'
-						)
-					);
+					yield put(oauthSuccess({ session, user: userProfile }));
 				}
 			}
 		} catch (error: any) {
@@ -149,22 +122,11 @@ export function* handleAuthStateChange(
 				'Error processing session update in handleAuthStateChange:',
 				error
 			);
-
-			yield put(oauthFailure(error.message || 'Error processing session update.'));
-
-			if (session.user.app_metadata.provider === 'email') {
-				yield put(
-					registerFailure(error.message || 'Error processing session update.')
-				);
-			} else {
-				yield put(
-					oauthFailure(error.message || 'Error processing session update.')
-				);
-			}
+			const errorMsg = error.message || 'Error processing session update.';
+			yield put(oauthFailure(errorMsg));
 		}
 	} else {
 		console.log('* handleAuthStateChange: Session is null, user logged out.');
-
 		yield put(logoutSuccess());
 	}
 }

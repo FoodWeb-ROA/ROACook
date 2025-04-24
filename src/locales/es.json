@@ -48,7 +48,14 @@
       "dishes": "Platos",
       "metric": "Métrico",
       "imperial": "Imperial",
-      "referenceIngredient": "Ingrediente de Referencia"
+      "referenceIngredient": "Ingrediente de Referencia",
+      "updating": "Actualizando...",
+      "logout": "Cerrar sesión",
+      "info": "Información",
+      "update": "Actualizar",
+      "unknownIngredient": "Ingrediente Desconocido",
+      "unknownComponent": "Componente Desconocido",
+      "unexpectedError": "Ocurrió un error inesperado"
     },
     "validation": {
       "required": "{{field}} es obligatorio",
@@ -69,7 +76,14 @@
       "searchNoResults": "No se encontraron componentes coincidentes.",
       "createButtonLabel": "+ Crear \"{{query}}\"",
       "searchPlaceholderComponents": "Escribe para buscar ingredientes o preparaciones",
-      "prepSuffix": "(Prep)"
+      "prepSuffix": "(Prep)",
+      "invalidEmail": "Invalid email address",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "fullnameRequired": "Fullname is required",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "invalidLanguage": "Invalid language",
+      "languageRequired": "Language is required"
     },
     "navigation": {
       "home": "Inicio",
@@ -77,11 +91,12 @@
       "inventory": "Inventario",
       "allRecipes": "Todas las Recetas",
       "preparationsList": "Lista de Preparaciones",
-      "account": "Cuenta",
+      "account": "Perfil",
       "support": "Soporte",
       "preferences": "Preferencias",
       "createEditPreparation": "Crear/Editar Preparación",
-      "createEditRecipe": "Crear/Editar Receta"
+      "createEditRecipe": "Crear/Editar Receta",
+      "manageKitchens": "Gestionar Cocinas"
     },
     "screens": {
       "login": {
@@ -113,6 +128,9 @@
           "emailPasswordRequired": "Por favor, ingresa correo electrónico y contraseña",
           "allFieldsRequired": "Por favor, ingresa correo, contraseña y nombre de usuario",
           "passwordLength": "La contraseña debe tener al menos 6 caracteres"
+        },
+        "placeholders": {
+          "fullName": "Full Name"
         }
       },
       "home": {
@@ -182,7 +200,40 @@
         "noDataFound": "No se encontraron datos."
       },
       "account": {
-        "logout": "Cerrar Sesión"
+        "profileInfo": "Información del perfil",
+        "email": "Correo electrónico",
+        "fullName": "Nombre completo",
+        "fullNamePlaceholder": "Introduce tu nombre completo",
+        "updateProfile": "Actualizar perfil",
+        "security": "Seguridad",
+        "changePassword": "Cambiar contraseña",
+        "currentPassword": "Contraseña actual",
+        "currentPasswordPlaceholder": "Introduce la contraseña actual",
+        "newPassword": "Nueva contraseña",
+        "newPasswordPlaceholder": "Introduce la nueva contraseña",
+        "confirmPassword": "Confirmar nueva contraseña",
+        "confirmPasswordPlaceholder": "Confirma la nueva contraseña",
+        "updatePassword": "Actualizar contraseña",
+        "logout": {
+          "button": "Cerrar sesión",
+          "title": "Confirmar cierre de sesión",
+          "message": "¿Estás seguro de que quieres cerrar sesión?"
+        },
+        "error": {
+          "notAuthenticated": "Usuario no autenticado.",
+          "updateFailed": "Error al actualizar el perfil.",
+          "passwordUpdateFailed": "Error al actualizar la contraseña.",
+          "passwordsDoNotMatch": "Las nuevas contraseñas no coinciden.",
+          "currentPasswordRequired": "Se requiere la contraseña actual para cambiar la contraseña.",
+          "newPasswordRequired": "La nueva contraseña no puede estar vacía."
+        },
+        "success": {
+          "profileUpdated": "Perfil actualizado correctamente.",
+          "passwordUpdated": "Contraseña actualizada correctamente."
+        },
+        "info": {
+          "noChanges": "No se detectaron cambios."
+        }
       },
       "dishDetail": {
         "loading": "Cargando Plato...",
@@ -299,6 +350,13 @@
         "newSection": "Nueva Sección",
         "addNewSection": "Añadir Nueva Sección",
         "sectionName": "Nombre de Sección"
+      },
+      "languagePicker": {
+        "selectLanguageFallback": "Select Language"
+      },
+      "scaleSlider": {
+        "scaleSuffix": "x escala",
+        "servingsSuffix": "Porciones"
       }
     },
     "alerts": {

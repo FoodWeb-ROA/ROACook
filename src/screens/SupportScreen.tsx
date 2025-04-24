@@ -36,6 +36,10 @@ const SupportScreen = () => {
     stackNavigation.navigate('HelpScreen');
   };
 
+  const navigateToAboutScreen = () => {
+    stackNavigation.navigate('About');
+  };
+
   const renderSettingItem = (
     icon: string,
     title: string,
@@ -70,7 +74,7 @@ const SupportScreen = () => {
       <ScrollView style={styles.container}>
         <View style={styles.section}>
           {renderSettingItem('help-circle-outline', t('screens.support.helpAndSupport'), navigateToHelpScreen)}
-          {renderSettingItem('information-outline', t('screens.support.about'), () => console.log('About'))}
+          {renderSettingItem('information-outline', t('screens.support.about'), navigateToAboutScreen)}
         </View>
       </ScrollView>
     </SafeAreaViewRN>

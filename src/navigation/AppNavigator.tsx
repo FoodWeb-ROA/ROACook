@@ -21,6 +21,8 @@ import CreateRecipeScreen from '../screens/CreateRecipeScreen';
 import CreatePreparationScreen from '../screens/CreatePreparationScreen';
 import AllRecipesScreen from '../screens/AllRecipesScreen';
 import HelpScreen from '../screens/HelpScreen';
+import ManageKitchensScreen from '../screens/ManageKitchensScreen';
+import AboutScreen from '../screens/AboutScreen';
 
 // Types
 import { RootStackParamList } from './types';
@@ -31,8 +33,8 @@ import { useTypedSelector } from '../hooks/useTypedSelector';
 export type DrawerParamList = {
   Home: undefined;
   AllRecipes: undefined;
-  Account: undefined;
-  Preferences: undefined;
+  // Account: undefined; // Keep Account commented out
+  Preferences: undefined; // Uncommented
   Support: undefined;
 };
 
@@ -93,6 +95,8 @@ const DrawerNavigator = () => {
           )
         }}
       />
+      {/* Removed Account from Drawer */}
+      {/* 
       <Drawer.Screen 
         name="Account" 
         component={AccountScreen} 
@@ -102,6 +106,8 @@ const DrawerNavigator = () => {
           )
         }}
       />
+      */}
+      {/* Preferences is present in Drawer */}
       <Drawer.Screen 
         name="Preferences" 
         component={PreferencesScreen} 
@@ -185,6 +191,24 @@ const AppNavigator = () => {
               name="HelpScreen"
               component={HelpScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ManageKitchens"
+              component={ManageKitchensScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="About"
+              component={AboutScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Account"
+              component={AccountScreen}
+            />
+            <Stack.Screen 
+              name="Preferences"
+              component={PreferencesScreen}
             />
           </>
         ) : (

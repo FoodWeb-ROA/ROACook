@@ -31,6 +31,15 @@ import { DishComponent } from '../types';
 import ScaleSliderInput from '../components/ScaleSliderInput';
 import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
 import { useTranslation } from 'react-i18next';
+// ADDED: Import new utility functions and lookup methods
+import { slug, stripDirections, fingerprintPreparation } from '../utils/normalise';
+import { 
+  findDishByName, 
+  findCloseIngredient, 
+  checkIngredientNameExists, 
+  checkPreparationNameExists,
+  findPreparationByFingerprint 
+} from '../data/dbLookup';
 
 type CreateRecipeNavigationProp = StackNavigationProp<RootStackParamList>;
 // Define RouteProp type for this screen
@@ -143,7 +152,7 @@ const CreateRecipeScreen = () => {
       const loadedComponents: ComponentInput[] = dishToEdit.components.map((comp, index) => ({
         key: `loaded-${comp.ingredient_id}-${index}`, // Generate a unique key
         ingredient_id: comp.ingredient_id,
-        name: comp.name || 'Unknown Component', 
+        name: comp.name || t('common.unknownComponent'), 
         amount: String(comp.amount || ''),
         unit_id: comp.unit?.unit_id || null,
         isPreparation: comp.isPreparation || false,
@@ -174,7 +183,7 @@ const CreateRecipeScreen = () => {
       const loadedComponents: ComponentInput[] = prepComponentsToEdit.map((comp, index) => ({
           key: `loaded-prep-${comp.ingredient_id}-${index}`, // Generate a unique key
           ingredient_id: comp.ingredient_id,
-          name: comp.name || 'Unknown Ingredient', 
+          name: comp.name || t('common.unknownIngredient'), 
           amount: String(comp.amount || ''),
           unit_id: comp.unit?.unit_id || null,
           isPreparation: false, // Ingredients within a prep are not themselves preps in this context
@@ -231,36 +240,73 @@ const CreateRecipeScreen = () => {
     setOriginalServings(initialParsedServings); // Set number
     setServingItem(parsedRecipe.serving_item || ''); // Populate serving item
 
-    // Populate components - **Attempt to match units and populate item**
-    const initialComponents: ComponentInput[] = (parsedRecipe.components || []).map((ing, index) => {
+    // ADDED: Automatically map and populate components, with ingredient lookup
+    // using the findCloseIngredient function from dbLookup.ts
+    const mapParsedComponents = async () => {
+      const mappedComponents: ComponentInput[] = [];
+      
+      if (!parsedRecipe.components) {
+        setComponents([]); 
+        return;
+      }
+      
+      for (const ing of parsedRecipe.components) {
+        // 1. Try to automatically match this ingredient to a similar one in the DB
+        let matchedIngredient = null;
+        let matched = false;
         let matchedUnitId: string | null = null;
+        
+        try {
+          // Only search for matches if this is a raw ingredient (not a preparation)
+          if (ing.ingredient_type !== 'Preparation') {
+            const closeMatches = await findCloseIngredient(ing.name);
+            // Consider it a close match if we found something
+            if (closeMatches.length > 0) {
+              matchedIngredient = closeMatches[0]; // Use the first/best match
+              matched = true;
+              console.log(`Auto-matched "${ing.name}" to "${matchedIngredient.name}" (ID: ${matchedIngredient.ingredient_id})`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error trying to match ingredient "${ing.name}":`, error);
+          // Continue without matching - we'll create a new ingredient later
+        }
+        
+        // 2. Match the unit regardless of whether we found an ingredient match
         const parsedUnit = ing.unit?.toLowerCase().trim();
         if (parsedUnit && units.length > 0) {
-            const foundUnit = units.find(u => 
-                u.unit_name.toLowerCase() === parsedUnit || 
-                u.abbreviation?.toLowerCase() === parsedUnit
-            );
-            if (foundUnit) {
-                matchedUnitId = foundUnit.unit_id;
-            } else {
-                console.warn(`Parsed ingredient unit "${ing.unit}" for "${ing.name}" not found.`);
-            }
+          const foundUnit = units.find(u => 
+            u.unit_name.toLowerCase() === parsedUnit || 
+            u.abbreviation?.toLowerCase() === parsedUnit
+          );
+          if (foundUnit) {
+            matchedUnitId = foundUnit.unit_id;
+          } else {
+            console.warn(`Parsed ingredient unit "${ing.unit}" for "${ing.name}" not found.`);
+          }
         }
-
-        return {
-            key: `parsed-${index}-${Date.now()}`, // Generate unique key
-            ingredient_id: '', // User needs to select
-            name: ing.name || 'Unknown Ingredient', // Pre-fill name
-            amount: String(ing.amount || ''), // Pre-fill amount
-            unit_id: matchedUnitId, // Set matched unit ID, or null if not found
-            isPreparation: ing.ingredient_type === 'Preparation', 
-            originalPrep: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing as ParsedIngredient) : undefined,
-            subIngredients: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing.components ?? null) : null, // Store sub-ingredients if it's a prep
-            item: ing.item || null, // <-- MODIFIED: Copy item description (was already there)
-            reference_ingredient: ing.ingredient_type === 'Preparation' ? ing.reference_ingredient : null,  // ADDED: Store reference ingredient
-        };
-    });
-    setComponents(initialComponents);
+        
+        // 3. Create the ComponentInput
+        mappedComponents.push({
+          key: `parsed-${ing.name}-${Date.now()}`, // Generate unique key
+          ingredient_id: matched ? matchedIngredient.ingredient_id : '', // Use matched ID or empty for new
+          name: matched ? matchedIngredient.name : ing.name, // Use matched name or original
+          amount: String(ing.amount || ''), // Pre-fill amount
+          unit_id: matchedUnitId, // Set matched unit ID, or null if not found
+          isPreparation: ing.ingredient_type === 'Preparation',
+          originalPrep: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing as ParsedIngredient) : undefined,
+          subIngredients: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing.components ?? null) : null,
+          item: ing.item || null,
+          reference_ingredient: ing.ingredient_type === 'Preparation' ? ing.reference_ingredient : null,
+          matched: matched, // ADDED: Flag to indicate this was auto-matched
+        });
+      }
+      
+      setComponents(mappedComponents);
+    };
+    
+    // Execute the async mapping function
+    mapParsedComponents();
 
     // Set default serving unit if not found from parsed data AND not set above
     if (!matchedServingUnitId && !loadingUnits && units.length > 0) { 
@@ -268,7 +314,7 @@ const CreateRecipeScreen = () => {
         setServingUnitId(defaultUnit?.unit_id || null);
     }
 
-  }, [isConfirming, isScreenLoading, parsedRecipe, units, loadingUnits]); // Add units/loadingUnits dependency
+  }, [isConfirming, isScreenLoading, parsedRecipe, units, loadingUnits]);
 
   // Effect to set default serving unit and menu section once loaded
   useEffect(() => {
@@ -325,58 +371,102 @@ const CreateRecipeScreen = () => {
 
   // --- Handlers (Placeholder/Basic Structure) --- 
 
-  // Enhance handleAddComponent to better handle UUIDs
+  // Enhance handleAddComponent to better handle UUIDs and duplicates
   const handleAddComponent = async (selectedIngredient: any) => {
     const ingredient_id = selectedIngredient?.ingredient_id || '';
     const name = selectedIngredient?.name || '';
+    const trimmedName = name.trim();
     
-    if (!name.trim()) {
+    if (!trimmedName) {
       console.error('Cannot add component: Missing name', selectedIngredient);
       Alert.alert(t('common.error'), t('alerts.errorAddComponentMissingName')); 
       return;
     }
 
-    // If creating a new ingredient, check if it already exists
-    if (!ingredient_id) {
-      try {
-        const nameExists = await checkIngredientNameExists(name.trim());
-        if (nameExists) {
-          Alert.alert(
-            t('alerts.duplicateIngredientTitle'), 
-            t('alerts.duplicateIngredientMessage', { name: name.trim() }), 
-            [
-              { 
-                text: t('common.ok'), 
-                onPress: () => {
-                  // Reset search to help them find the existing ingredient
-                  setComponentSearchQuery(name.trim());
-                }
+    // If we have an ID, add it directly (this came from search results)
+    if (ingredient_id) {
+      addComponentWithDetails(ingredient_id, trimmedName, !!selectedIngredient.isPreparation, true);
+      return;
+    }
+    
+    // No ID provided (user wants to create a new ingredient)
+    try {
+      // 1. Check for close/exact matches first
+      const closeMatches = await findCloseIngredient(trimmedName);
+      
+      // 1a. Check for an exact (case-insensitive) match within the results
+      const exactMatch = closeMatches.find(match => slug(match.name) === slug(trimmedName));
+      
+      if (exactMatch) {
+        console.log(`Found exact match for "${trimmedName}": ${exactMatch.name} (ID: ${exactMatch.ingredient_id}). Using it directly.`);
+        addComponentWithDetails(exactMatch.ingredient_id, exactMatch.name, !!exactMatch.isPreparation, true);
+        return;
+      } 
+      
+      // 1b. If no exact match, but similar matches exist, prompt the user
+      if (closeMatches.length > 0) {
+        const bestMatch = closeMatches[0]; // Use the first/best match for the prompt
+        Alert.alert(
+          t('alerts.similarIngredientFoundTitle'),
+          t('alerts.similarIngredientFoundMessage', { 
+            entered: trimmedName, 
+            found: bestMatch.name
+          }),
+          [
+            {
+              text: t('common.useExisting'),
+              onPress: () => {
+                // Add with the matched ID and name
+                addComponentWithDetails(
+                  bestMatch.ingredient_id,
+                  bestMatch.name,
+                  !!bestMatch.isPreparation,
+                  true // Marked as matched
+                );
               }
-            ]
-          );
-          return;
-        }
-      } catch (error) {
-        console.error(`Failed to check for duplicate ingredient name "${name}":`, error);
+            },
+            {
+              text: t('common.createNew'),
+              style: 'destructive',
+              onPress: () => {
+                // User explicitly wants to create new, skip further checks
+                console.log(`User chose to create new ingredient "${trimmedName}" despite similar matches.`);
+                addComponentWithDetails('', trimmedName, false, false); // Add as new
+              }
+            }
+          ]
+        );
+        return; // Exit early - component added via alert callback
       }
+      
+      // 2. No close or exact matches found - safe to add as new
+      console.log(`No similar or exact matches found for "${trimmedName}". Creating new.`);
+      addComponentWithDetails('', trimmedName, false, false); // Add as new
+
+    } catch (error) {
+      console.error(`Error checking for similar/exact ingredients "${trimmedName}":`, error);
+      // Fallback: Allow adding as new, but log the error
+      Alert.alert(t('common.error'), t('alerts.errorCheckingDuplicates'));
+      addComponentWithDetails('', trimmedName, false, false);
     }
 
-    // The isPreparation flag should be provided by the lookup function now
-    const isPrep = !!selectedIngredient.isPreparation;
-    
-    setComponents(prev => [
+    // Helper function to add the component with given details
+    function addComponentWithDetails(id: string, name: string, isPrep: boolean, matched: boolean) {
+      setComponents(prev => [
         ...prev,
         {
-            key: `component-${Date.now()}`, 
-            ingredient_id: ingredient_id, 
-            name: name,
-            amount: '', // Start with empty amount
-            unit_id: null, // Start with no unit selected
-            isPreparation: isPrep,
+          key: `component-${id || 'new'}-${Date.now()}`, // Adjusted key
+          ingredient_id: id, 
+          name: name,
+          amount: '', // Start with empty amount
+          unit_id: null, // Start with no unit selected
+          isPreparation: isPrep,
+          matched: matched, // Add the matched flag
         }
-    ]);
-    setComponentSearchModalVisible(false); // Close modal
-    setComponentSearchQuery(''); // Reset search
+      ]);
+      setComponentSearchModalVisible(false); // Close modal
+      setComponentSearchQuery(''); // Reset search
+    }
   };
 
   // TODO: Implement handler to update amount/unit_id/item for a component in the list
@@ -460,20 +550,58 @@ const CreateRecipeScreen = () => {
     if (!isEditing) {
       try {
         if (recipeKind === 'dish') {
-          const nameExists = await checkDishNameExists(dishName.trim());
-          if (nameExists) {
+          const duplicateDishId = await findDishByName(dishName.trim());
+          if (duplicateDishId) {
+            // MODIFIED: Instead of just alerting, give the option to replace
             Alert.alert(
               t('alerts.duplicateNameTitle'), 
-              t('alerts.duplicateDishMessage', { name: dishName.trim() }) 
+              t('alerts.duplicateDishReplaceMessage', { name: dishName.trim() }),
+              [
+                {
+                  text: t('common.replace'),
+                  onPress: async () => {
+                    // Proceed with save logic but use UPDATE instead of INSERT
+                    await saveDishLogic(duplicateDishId); // Pass the existing ID
+                  }
+                },
+                {
+                  text: t('common.cancel'),
+                  style: 'cancel'
+                }
+              ]
             );
             return;
           }
         } else if (recipeKind === 'preparation') {
-          const nameExists = await checkPreparationNameExists(dishName.trim());
-          if (nameExists) {
+          const duplicatePrepId = await checkPreparationNameExists(dishName.trim());
+          if (duplicatePrepId) {
+            // For preparations, offer to add name suffix or replace
             Alert.alert(
               t('alerts.duplicateNameTitle'), 
-              t('alerts.duplicatePrepMessage', { name: dishName.trim() }) 
+              t('alerts.duplicatePrepMessage', { name: dishName.trim() }),
+              [
+                {
+                  text: t('common.replace'),
+                  onPress: async () => {
+                    // Proceed with preparation save logic but UPDATE instead of INSERT
+                    await savePrepLogic(duplicatePrepId); // Pass the existing ID
+                  }
+                },
+                {
+                  text: t('common.rename'),
+                  onPress: async () => {
+                    // Add a suffix to the preparation name and continue
+                    const newName = `${dishName.trim()} - ${t('common.variant')}`;
+                    setDishName(newName);
+                    // Continue with save (will now insert as a new prep with the modified name)
+                    saveDishLogic();
+                  }
+                },
+                {
+                  text: t('common.cancel'),
+                  style: 'cancel'
+                }
+              ]
             );
             return;
           }
@@ -503,7 +631,7 @@ const CreateRecipeScreen = () => {
     }
     
     if (!servingUnitId) {
-      Alert.alert(t('alerts.missingInfoTitle'), t('alerts.selectServingUnit')); s
+      Alert.alert(t('alerts.missingInfoTitle'), t('alerts.selectServingUnit')); 
       return;
     }
     // Validate components
@@ -511,18 +639,18 @@ const CreateRecipeScreen = () => {
         !c.amount.trim() || isNaN(parseFloat(c.amount)) || parseFloat(c.amount) <= 0 || !c.unit_id
     );
     if (invalidComponent) {
-        Alert.alert(t('alerts.invalidComponentTitle'), t('alerts.invalidComponentMessage', { name: invalidComponent.name })); s
+        Alert.alert(t('alerts.invalidComponentTitle'), t('alerts.invalidComponentMessage', { name: invalidComponent.name })); 
         return;
     }
     if (components.length === 0) {
-        Alert.alert(t('alerts.missingComponentsTitle'), t('alerts.addOneComponent')); s
+        Alert.alert(t('alerts.missingComponentsTitle'), t('alerts.addOneComponent')); 
         return;
     }
     // Validate time inputs
     const hours = parseInt(totalTimeHours); 
     const minutes = parseInt(totalTimeMinutes);
     if (isNaN(hours) || hours < 0 || isNaN(minutes) || minutes < 0 || minutes >= 60) {
-        Alert.alert(t('alerts.invalidTimeTitle'), t('alerts.invalidTimeMessage')); s
+        Alert.alert(t('alerts.invalidTimeTitle'), t('alerts.invalidTimeMessage')); 
         return;
     }
     // Validate numServings (now a number state)
@@ -557,13 +685,60 @@ const CreateRecipeScreen = () => {
       for (const component of components) {
         if (!component.ingredient_id) {
           try {
+            // MODIFIED: Before creating a new ingredient, try to find a close match one more time
+            // (in case components have been added manually without ingredient_id)
+            const closeMatches = await findCloseIngredient(component.name);
+            if (closeMatches.length > 0 && !component.matched) {
+              // Use first match if we found something
+              const matchedIngredient = closeMatches[0];
+              component.ingredient_id = matchedIngredient.ingredient_id;
+              component.matched = true;
+              console.log(`Last-minute match: Using ${matchedIngredient.name} (ID: ${matchedIngredient.ingredient_id}) for "${component.name}"`);
+            }
+            
             // If this component is a NEW preparation and we have the full parsed details, create it (and its nested structure) recursively.
-            if (component.isPreparation && component.originalPrep) {
+            if (!component.ingredient_id && component.isPreparation && component.originalPrep) {
               console.log(`Creating full nested preparation for component: ${component.name}`);
-              const newPrepId = await createParsedPreparation(component.originalPrep);
-              component.ingredient_id = newPrepId;
-              console.log(`Nested preparation created with ID: ${newPrepId}`);
-            } else {
+              
+              // ADDED: Check if a preparation with identical (normalized) content already exists
+              const prepFingerprint = fingerprintPreparation(
+                // If we have subIngredients, convert them to ComponentInput structure for fingerprinting
+                component.subIngredients ? 
+                  component.subIngredients.map(subIng => ({
+                    key: `fingerprint-${subIng.name}`,
+                    ingredient_id: '', // Leave blank for fingerprint calculation
+                    name: subIng.name,
+                    amount: String(subIng.amount || ''),
+                    unit_id: null, // Unit IDs aren't known at this point for fingerprinting
+                    isPreparation: subIng.ingredient_type === 'Preparation'
+                  }) as ComponentInput) 
+                  : [],
+                component.originalPrep.instructions
+              );
+              
+              // Try to find an existing preparation with the same fingerprint
+              const existingPrepId = await findPreparationByFingerprint(prepFingerprint);
+              if (existingPrepId) {
+                // Use the existing preparation instead of creating a new one
+                component.ingredient_id = existingPrepId;
+                console.log(`Found existing preparation with identical content (ID: ${existingPrepId})`);
+              } else {
+                // No matching preparation found, check if the name exists
+                const sameNamePrepId = await checkPreparationNameExists(component.name);
+                if (sameNamePrepId) {
+                  // Name exists but fingerprint is different - append dish name to make unique
+                  const newPrepName = `${component.name} - ${dishName}`;
+                  console.log(`Preparation name exists but content differs. Renaming to: ${newPrepName}`);
+                  component.originalPrep.name = newPrepName; // Modify name before creating
+                  component.name = newPrepName; // Update display name too
+                }
+                
+                // Create the new preparation with potentially renamed/modified details
+                const newPrepId = await createParsedPreparation(component.originalPrep, prepFingerprint);
+                component.ingredient_id = newPrepId;
+                console.log(`Nested preparation created with ID: ${newPrepId}`);
+              }
+            } else if (!component.ingredient_id) {
               // Otherwise, fall back to creating a simple ingredient entry (and optionally a blank preparation).
               if (!component.unit_id) {
                 throw new Error(`Cannot create ingredient: Missing unit for ${component.name}`);
@@ -620,10 +795,11 @@ const CreateRecipeScreen = () => {
           components: componentsToSave
       });
 
-      if (isEditing) {
+      if (isEditing || existingId) {
         // --- UPDATE LOGIC --- 
-        if (dishIdToEdit) {
-          console.log("Updating dish:", dishIdToEdit);
+        const dishIdToUpdate = existingId || dishIdToEdit;
+        if (dishIdToUpdate) {
+          console.log("Updating dish:", dishIdToUpdate);
           // 3a. Update 'dishes' table
           const { error: dishUpdateError } = await supabase
             .from('dishes')
@@ -638,89 +814,32 @@ const CreateRecipeScreen = () => {
               serving_item: servingItem.trim() || undefined,
               cooking_notes: cookingNotes.trim() || undefined
             })
-            .eq('dish_id', dishIdToEdit);
+            .eq('dish_id', dishIdToUpdate);
           
           if (dishUpdateError) throw dishUpdateError;
 
           // 3b. Update 'dish_components' (Simple: Delete all then insert new)
-          console.log("Deleting existing components for dish:", dishIdToEdit);
+          console.log("Deleting existing components for dish:", dishIdToUpdate);
           const { error: deleteError } = await supabase
             .from('dish_components')
             .delete()
-            .eq('dish_id', dishIdToEdit);
+            .eq('dish_id', dishIdToUpdate);
           
           if (deleteError) throw deleteError;
 
           if (componentsToSave.length > 0) {
-            const componentsWithDishId = componentsToSave.map(c => ({ ...c, dish_id: dishIdToEdit }));
+            const componentsWithDishId = componentsToSave.map(c => ({ ...c, dish_id: dishIdToUpdate }));
             console.log("Inserting updated components:", componentsWithDishId);
             const { error: componentsInsertError } = await supabase
               .from('dish_components')
               .insert(componentsWithDishId);
             if (componentsInsertError) throw componentsInsertError;
           }
-          Alert.alert(t('common.success'), t('alerts.dishUpdateSuccess')); s
+          Alert.alert(t('common.success'), existingId ? t('alerts.dishReplaceSuccess') : t('alerts.dishUpdateSuccess')); 
 
         } else if (preparationIdToEdit) {
           console.log("Updating preparation:", preparationIdToEdit);
-
-          // Update preparations table (directions, time, yield)
-          const { error: prepUpdateError } = await supabase
-            .from('preparations')
-            .update({ 
-              directions: formattedDirections || undefined, 
-              // Calculate total minutes for preparation update
-              total_time: (parseInt(totalTimeHours) * 60 + parseInt(totalTimeMinutes)) || undefined, 
-              num_servings: numServings,
-              serving_size: servingSizeNum ?? undefined,
-              amount_unit_id: servingUnitId,
-              reference_ingredient: (prepToEdit && prepToEdit.reference_ingredient) ? prepToEdit.reference_ingredient : "",
-              // Note: preparation_id is the primary key, not updated here
-            })
-            .eq('preparation_id', preparationIdToEdit);
-          
-          if (prepUpdateError) throw prepUpdateError;
-
-          // Update ingredients table (name, notes - assuming prep name/notes are stored there)
-          // Check your DB schema: are prep name/notes in 'ingredients' or 'preparations'?
-          // Assuming name/notes are in 'ingredients' based on usePreparationDetail hook structure
-          const { error: ingredientUpdateError } = await supabase
-            .from('ingredients') 
-            .update({ 
-              name: dishName.trim(), // Using dishName state for prep name
-              cooking_notes: cookingNotes.trim() || undefined,
-            } as { name: string; cooking_notes?: string | undefined }) // Explicitly type the update object
-            .eq('ingredient_id', preparationIdToEdit); // Match the ingredient corresponding to the prep
-
-          if (ingredientUpdateError) throw ingredientUpdateError;
-
-          // Update 'preparation_ingredients' (Simple: Delete all then insert new)
-          console.log("Deleting existing ingredients for preparation:", preparationIdToEdit);
-          const { error: deletePrepIngError } = await supabase
-            .from('preparation_ingredients')
-            .delete()
-            .eq('preparation_id', preparationIdToEdit);
-          
-          if (deletePrepIngError) throw deletePrepIngError;
-
-          if (componentsToSave.length > 0) {
-            const prepComponentsWithId = componentsToSave.map(c => ({ ...c, preparation_id: preparationIdToEdit }));
-             console.log("Inserting updated preparation ingredients:", prepComponentsWithId);
-            const { error: prepComponentsInsertError } = await supabase
-              .from('preparation_ingredients')
-              .insert(prepComponentsWithId);
-            if (prepComponentsInsertError) throw prepComponentsInsertError;
-          }
-          Alert.alert(t('common.success'), t('alerts.prepUpdateSuccess')); s
-
-          // Navigation after update (go back to detail or list?)
-          if (navigation.canGoBack()) {
-             navigation.goBack(); 
-          } else {
-              // Fallback if cannot go back (e.g., deep link)
-              // navigation.replace('Home'); // Or navigate somewhere else
-          }
-
+          await savePrepLogic(preparationIdToEdit);
         }
 
         // Navigation after update (go back to detail or list?)
@@ -787,247 +906,228 @@ const CreateRecipeScreen = () => {
                     } catch (componentsError) {
                         console.error("Error inserting components:", componentsError);
                         // Don't rethrow - the dish was created, components can be added later
-                        Alert.alert(t('common.warning'), t('alerts.dishCreateWarnComponents')); s
+                        Alert.alert(t('common.warning'), t('alerts.dishCreateWarnComponents')); 
                     }
                 }
-                Alert.alert(t('common.success'), t('alerts.dishCreateSuccess')); s
+                Alert.alert(t('common.success'), t('alerts.dishCreateSuccess')); 
         } else if (recipeKind === 'preparation') {
             // --- Creating a PREPARATION ---
-            console.log("Attempting to insert new preparation...");
-            
-            // 1. Insert into ingredients table first
-            const { data: ingredientInsertData, error: ingredientError } = await supabase
-                .from('ingredients')
-                .insert({
-                    // ingredient_id will be generated by the database
-                    name: dishName.trim(), // Use dishName state for prep name
-                    cooking_notes: cookingNotes.trim() || undefined,
-                    // TODO: Determine default unit/amount for base ingredient entry if needed by schema
-                    // These might not be strictly necessary if the prep is only defined by its components/yield
-                    unit_id: servingUnitId, // Placeholder: Use serving unit? Or a default? Requires schema check.
-                    amount: 1,             // Placeholder: Default amount?
-                })
-                .select('ingredient_id') // Select the DB-generated ID
-                .single();
-
-                if (ingredientError) {
-                    console.error("Error inserting base ingredient for preparation:", ingredientError);
-                    throw ingredientError;
-                }
-                if (!ingredientInsertData || !ingredientInsertData.ingredient_id) throw new Error('Failed to insert base ingredient for preparation or retrieve ID');
-
-                const newPreparationId = ingredientInsertData.ingredient_id;
-                console.log('Base ingredient for preparation inserted with ID:', newPreparationId);
-
-                // 2. Insert into preparations table
-                const { error: prepError } = await supabase
-                    .from('preparations')
-                    .insert({ 
-                        preparation_id: newPreparationId, // Use the generated ID
-                        directions: formattedDirections || '', // Provide empty string if no directions
-                        total_time: (parseInt(totalTimeHours) * 60 + parseInt(totalTimeMinutes)) || undefined,
-                        num_servings: numServings,
-                        serving_size: servingSizeNum ?? undefined,
-                        amount_unit_id: servingUnitId,
-                        reference_ingredient: (preparationsList.length > 0 && preparationsList[0].reference_ingredient) 
-                            ? preparationsList[0].reference_ingredient 
-                            : "",
-                    });
-
-                if (prepError) {
-                    console.error("Error inserting preparation details:", prepError);
-                    throw prepError;
-                }
-                console.log('Preparation details inserted for ID:', newPreparationId);
-
-                // 3. Insert into 'preparation_ingredients' table
-                if (componentsToSave.length > 0) {
-                    const prepComponentsToInsert = componentsToSave.map(c => ({ 
-                        ...c, 
-                        preparation_id: newPreparationId 
-                    }));
-                    console.log("Inserting preparation ingredients:", JSON.stringify(prepComponentsToInsert));
-                    const { error: prepComponentsError } = await supabase
-                        .from('preparation_ingredients')
-                        .insert(prepComponentsToInsert);
-                    if (prepComponentsError) {
-                        console.error("Error inserting preparation ingredients:", prepComponentsError);
-                        throw prepComponentsError;
-                    }
-                }
-                Alert.alert(t('common.success'), t('alerts.prepCreateSuccess')); s
-            }
-            
-            // Common navigation for successful creation
-            navigation.goBack(); 
+            await savePrepLogic();
         }
-
-    } catch (error: any) {
-        console.error("Error saving recipe:", error);
-        Alert.alert(t('alerts.errorSavingRecipeTitle'), error.message || t('alerts.errorSavingRecipeDefault')); s
-    } finally {
-        setSubmitting(false);
+            
+        // Common navigation for successful creation
+        navigation.goBack(); 
     }
-  };
 
-  const createParsedIngredient = async (ing: ParsedIngredient): Promise<string> => {
-      // Check for duplicate ingredient name
-      try {
-        const nameExists = await checkIngredientNameExists(ing.name.trim());
-        if (nameExists) {
-          // If ingredient already exists, fetch its ID instead of creating a new one
-          const { data: existingIng, error: lookupErr } = await supabase
-            .from('ingredients')
-            .select('ingredient_id')
-            .ilike('name', ing.name.trim())
-            .limit(1)
-            .single();
-            
-          if (!lookupErr && existingIng) {
-            console.log(`Using existing ingredient "${ing.name}" with ID: ${existingIng.ingredient_id}`);
-            return existingIng.ingredient_id;
-          }
-          // Fall through to creation if lookup fails
-        }
-      } catch (error) {
-        console.error(`Error checking if ingredient "${ing.name}" exists:`, error);
-        // Continue with creation if check fails
-      }
-      
-      // returns ingredient_id
-      // map unit
-      let unitId: string | null = null;
-      const parsedUnit = ing.unit?.toLowerCase().trim();
-      if (parsedUnit) {
-         const found = units.find(u => u.unit_name.toLowerCase() === parsedUnit || u.abbreviation?.toLowerCase() === parsedUnit);
-         unitId = found?.unit_id || null;
-      }
-      // Ensure unitId is always a valid UUID, not empty string
-      if (!unitId && units.length > 0) {
-        unitId = units[0].unit_id;
-      }
-      
-      // Extra validation to absolutely prevent empty string UUIDs
-      if (!unitId || unitId === '') {
-        throw new Error("Invalid input syntax for type uuid: Cannot use empty string as unit_id");
-      }
-      
-      // insert ingredient
-      const { data: ingInsert, error: ingErr } = await supabase
-        .from('ingredients')
-        .insert({ 
-          name: ing.name.trim(), 
-          unit_id: unitId, // Now guaranteed to be a valid string
-          amount: ing.amount ?? 1 
+  } catch (error: any) {
+      console.error("Error saving recipe:", error);
+      Alert.alert(t('alerts.errorSavingRecipeTitle'), error.message || t('alerts.errorSavingRecipeDefault')); 
+  } finally {
+      setSubmitting(false);
+  }
+};
+
+// ADDED: Extracted preparation saving logic to a standalone function
+const savePrepLogic = async (existingPrepId?: string) => {
+  const timeString = `${String(totalTimeHours).padStart(2, '0')}:${String(totalTimeMinutes).padStart(2, '0')}:00`;
+  const totalMinutes = parseInt(totalTimeHours) * 60 + parseInt(totalTimeMinutes);
+  let servingSizeNum: number | null = parseInt(servingSize);
+  if (isNaN(servingSizeNum) || servingSizeNum <= 0) {
+    servingSizeNum = null;
+  }
+  const formattedDirections = directions.map(step => step.trim()).filter(step => step).join('\n');
+  
+  try {
+    // Calculate a fingerprint for the preparation based on normalized content
+    const prepFingerprint = fingerprintPreparation(components, formattedDirections);
+    console.log(`Preparation fingerprint: ${prepFingerprint.substring(0, 50)}...`);
+    
+    // For updates or replacements 
+    if (existingPrepId) {
+      console.log("Updating preparation:", existingPrepId);
+      // Update preparations table
+      const { error: prepUpdateError } = await supabase
+        .from('preparations')
+        .update({ 
+          directions: formattedDirections || undefined, 
+          total_time: totalMinutes || undefined, 
+          num_servings: numServings,
+          serving_size: servingSizeNum ?? undefined,
+          amount_unit_id: servingUnitId,
+          fingerprint: prepFingerprint, // ADDED: Store fingerprint for future lookups
+          reference_ingredient: (preparationsList.length > 0 && preparationsList[0].reference_ingredient) ? 
+            preparationsList[0].reference_ingredient : "",
         })
-        .select('ingredient_id')
-        .single();
-      if (ingErr || !ingInsert) throw new Error(ingErr?.message || 'Failed to insert ingredient');
-      return ingInsert.ingredient_id;
-   };
+        .eq('preparation_id', existingPrepId);
+      
+      if (prepUpdateError) throw prepUpdateError;
+      
+      // Update ingredients table name/notes
+      const { error: ingredientUpdateError } = await supabase
+        .from('ingredients')
+        .update({ 
+          name: dishName.trim(),
+          cooking_notes: cookingNotes.trim() || undefined,
+        } as { name: string; cooking_notes?: string | undefined }) // Type the update object
+        .eq('ingredient_id', existingPrepId);
+      
+      if (ingredientUpdateError) throw ingredientUpdateError;
+      
+      // Delete and re-add preparation ingredients
+      const { error: deletePrepIngError } = await supabase
+        .from('preparation_ingredients')
+        .delete()
+        .eq('preparation_id', existingPrepId);
+      
+      if (deletePrepIngError) throw deletePrepIngError;
+      
+      // Save updated components
+      if (components.length > 0) {
+        const componentsToSave = components.map(c => ({
+          preparation_id: existingPrepId,
+          ingredient_id: c.ingredient_id,
+          amount: parseFloat(c.amount) * (originalServings > 0 ? numServings / originalServings : 1),
+          unit_id: c.unit_id,
+          item: c.item || null,
+        }));
+        
+        const { error: prepComponentsInsertError } = await supabase
+          .from('preparation_ingredients')
+          .insert(componentsToSave);
+        if (prepComponentsInsertError) throw prepComponentsInsertError;
+      }
+      
+      Alert.alert(t('common.success'), t('alerts.prepUpdateSuccess')); 
+    } else {
+      // Creating a new preparation
+      console.log("Attempting to insert new preparation...");
+      
+      // Before creating, check again if a preparation with this fingerprint exists
+      const existingFingerprintPrepId = await findPreparationByFingerprint(prepFingerprint);
+      if (existingFingerprintPrepId) {
+        // A preparation with identical content exists
+        Alert.alert(
+          t('alerts.duplicatePreparationTitle'),
+          t('alerts.duplicatePreparationFingerprintMessage'),
+          [
+            {
+              text: t('common.useExisting'),
+              onPress: () => {
+                // Navigate back - will be done in the main save flow
+                navigation.goBack();
+              }
+            },
+            {
+              text: t('common.createAnyway'),
+              onPress: async () => {
+                // Continue with creating a renamed version
+                const newName = `${dishName.trim()} - ${t('common.variant')}`;
+                setDishName(newName);
+                // Call save prep logic again but with the new name
+                await createNewPreparation(newName);
+              }
+            }
+          ]
+        );
+        return;
+      }
+      
+      // No duplicate fingerprint found, proceed with creation
+      await createNewPreparation(dishName);
+    }
+  } catch (error: any) {
+    console.error("Error in savePrepLogic:", error);
+    throw error; // Propagate for handling in the main save function
+  }
+};
 
-   const createParsedPreparation = async (prep: ParsedIngredient): Promise<string> => {
-       // Check for duplicate preparation name
-       try {
-         const nameExists = await checkPreparationNameExists(prep.name.trim());
-         if (nameExists) {
-           // If preparation already exists, fetch its ID instead of creating a new one
-           const { data: existingPrep, error: lookupErr } = await supabase
-             .from('ingredients')
-             .select('ingredient_id')
-             .ilike('name', prep.name.trim())
-             .limit(1)
-             .single();
-             
-           if (!lookupErr && existingPrep) {
-             // Check if it's actually a preparation
-             const { data: prepCheck, error: prepCheckErr } = await supabase
-               .from('preparations')
-               .select('preparation_id')
-               .eq('preparation_id', existingPrep.ingredient_id)
-               .limit(1);
-               
-             if (!prepCheckErr && prepCheck && prepCheck.length > 0) {
-               console.log(`Using existing preparation "${prep.name}" with ID: ${existingPrep.ingredient_id}`);
-               return existingPrep.ingredient_id;
-             }
-             // If it's an ingredient but not a preparation, we should create a new preparation
-           }
-           // Fall through to creation if lookup fails or it's not a preparation
-         }
-       } catch (error) {
-         console.error(`Error checking if preparation "${prep.name}" exists:`, error);
-         // Continue with creation if check fails
-       }
-       
-       // create base ingredient first
-       const baseId = await createParsedIngredient(prep);
-       // insert into preparations table
-       const { error: prepErr } = await supabase
-         .from('preparations')
-         .insert({ 
-           preparation_id: baseId, 
-           directions: (prep as any).instructions?.join('\n') || '', 
-           total_time: 0, 
-           reference_ingredient: prep.reference_ingredient || ''
-         });
-       if (prepErr) throw new Error(prepErr.message);
-       // insert sub ingredients
-       const subIngs = (prep as any).components as ParsedIngredient[] | undefined;
-       if (subIngs && subIngs.length > 0) {
-          for (const sub of subIngs) {
-             try {
-                const childId = sub.ingredient_type === 'Preparation' ? 
-                    await createParsedPreparation(sub) : 
-                    await createParsedIngredient(sub);
-                
-                // Ensure we have a valid unit_id for the sub-ingredient
-                let subUnitId = null;
-                if (units.length > 0) {
-                    // Try to match the parsed unit name with available units
-                    if (sub.unit) {
-                        const parsedSubUnit = sub.unit.toLowerCase().trim();
-                        const foundUnit = units.find(u => 
-                            u.unit_name.toLowerCase() === parsedSubUnit || 
-                            u.abbreviation?.toLowerCase() === parsedSubUnit
-                        );
-                        if (foundUnit) {
-                            subUnitId = foundUnit.unit_id;
-                        }
-                    }
-                    
-                    // If no match found, use first available unit
-                    if (!subUnitId) {
-                        subUnitId = units[0].unit_id;
-                    }
-                    
-                    console.log(`Adding sub-ingredient ${sub.name} (ID: ${childId}) with unit ${subUnitId}`);
-                    
-                    const { error: subIngError } = await supabase
-                        .from('preparation_ingredients')
-                        .insert({ 
-                            preparation_id: baseId, 
-                            ingredient_id: childId, 
-                            amount: sub.amount ?? 1, 
-                            unit_id: subUnitId
-                        });
-                        
-                    if (subIngError) {
-                        console.error(`Error adding sub-ingredient ${sub.name}:`, subIngError);
-                        throw new Error(subIngError.message);
-                    }
-                } else {
-                    console.error('No units available for sub-ingredient:', sub.name);
-                    throw new Error('No units available for sub-ingredient: ' + sub.name);
-                }
-             } catch (error) {
-                console.error('Error processing sub-ingredient:', sub.name, error);
-                throw error;
-             }
-          }
-       }
-       return baseId;
-   };
+// Helper function to create a new preparation
+const createNewPreparation = async (prepName: string) => {
+  try {
+    // Calculate a fingerprint for the preparation
+    const prepFingerprint = fingerprintPreparation(components, directions);
+    
+    // 1. Insert into ingredients table first
+    const { data: ingredientInsertData, error: ingredientError } = await supabase
+      .from('ingredients')
+      .insert({
+        name: prepName.trim(),
+        cooking_notes: cookingNotes.trim() || undefined,
+        unit_id: servingUnitId,
+        amount: 1,
+      })
+      .select('ingredient_id')
+      .single();
+
+    if (ingredientError) {
+      console.error("Error inserting base ingredient for preparation:", ingredientError);
+      throw ingredientError;
+    }
+    if (!ingredientInsertData || !ingredientInsertData.ingredient_id) {
+      throw new Error('Failed to insert base ingredient for preparation or retrieve ID');
+    }
+
+    const newPreparationId = ingredientInsertData.ingredient_id;
+    console.log('Base ingredient for preparation inserted with ID:', newPreparationId);
+
+    // 2. Insert into preparations table
+    const totalMinutes = parseInt(totalTimeHours) * 60 + parseInt(totalTimeMinutes);
+    let servingSizeNum: number | null = parseInt(servingSize);
+    if (isNaN(servingSizeNum) || servingSizeNum <= 0) {
+      servingSizeNum = null;
+    }
+    const formattedDirections = directions.map(step => step.trim()).filter(step => step).join('\n');
+    
+    const { error: prepError } = await supabase
+      .from('preparations')
+      .insert({ 
+        preparation_id: newPreparationId,
+        directions: formattedDirections || '',
+        total_time: totalMinutes || undefined,
+        num_servings: numServings,
+        serving_size: servingSizeNum ?? undefined,
+        amount_unit_id: servingUnitId,
+        fingerprint: prepFingerprint, // ADDED: Store fingerprint
+        reference_ingredient: (preparationsList.length > 0 && preparationsList[0].reference_ingredient) 
+          ? preparationsList[0].reference_ingredient 
+          : "",
+      });
+
+    if (prepError) {
+      console.error("Error inserting preparation details:", prepError);
+      throw prepError;
+    }
+    console.log('Preparation details inserted for ID:', newPreparationId);
+
+    // 3. Insert into 'preparation_ingredients' table
+    if (components.length > 0) {
+      const prepComponentsToInsert = components.map(c => ({ 
+        preparation_id: newPreparationId,
+        ingredient_id: c.ingredient_id,
+        amount: parseFloat(c.amount) * (originalServings > 0 ? numServings / originalServings : 1),
+        unit_id: c.unit_id,
+        item: c.item || null,
+      }));
+      
+      console.log("Inserting preparation ingredients:", JSON.stringify(prepComponentsToInsert));
+      const { error: prepComponentsError } = await supabase
+        .from('preparation_ingredients')
+        .insert(prepComponentsToInsert);
+        
+      if (prepComponentsError) {
+        console.error("Error inserting preparation ingredients:", prepComponentsError);
+        throw prepComponentsError;
+      }
+    }
+    
+    Alert.alert(t('common.success'), t('alerts.prepCreateSuccess'));
+    
+    return newPreparationId;
+  } catch (error) {
+    console.error("Error creating new preparation:", error);
+    throw error;
+  }
+};
 
   // --- Render Logic --- 
   if (isScreenLoading) {
@@ -1088,7 +1188,7 @@ const CreateRecipeScreen = () => {
               step={1} // Step by whole servings
               currentValue={numServings} // Use target servings state
               displayValue={String(numServings)} // Display target servings
-              displaySuffix={t('common.servings')} 
+              displaySuffix={t('components.scaleSlider.servingsSuffix')} 
               onValueChange={(value) => setNumServings(Math.round(value))} // Update target servings (rounded)
               onSlidingComplete={(value) => setNumServings(Math.round(value))} // Final update (rounded)
               onTextInputChange={(text) => { // Handle direct text input for servings
@@ -1191,7 +1291,12 @@ const CreateRecipeScreen = () => {
                         
                         return (
                            <View key={item.key} style={styles.componentItemContainer}>
-                                <Text style={styles.componentNameText}>{capitalizeWords(item.name)}</Text>
+                                <Text style={styles.componentNameText}>
+                                  {capitalizeWords(item.name)}
+                                  {item.matched && (
+                                    <Text style={styles.matchedBadge}> {t('common.matched')}</Text>
+                                  )}
+                                </Text>
                                 <View style={styles.componentControlsContainer}>
                                     {/* Editable Base Amount Input */}
                                     <TextInput
@@ -1999,6 +2104,11 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     ...FONTS.body3,
     fontWeight: '600',
+  },
+  matchedBadge: {
+    fontSize: SIZES.font,
+    color: COLORS.success,
+    marginLeft: SIZES.base,
   },
 });
 

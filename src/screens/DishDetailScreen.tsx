@@ -82,6 +82,16 @@ const DishDetailScreen = () => {
     // console.log("Edit pressed for dish:", dishId); // Log for now
   };
 
+  // Add type for parameters
+  const calculateScaledAmount = (baseAmount: number | null, c: DishComponent) => {
+    // ... function body ...
+  };
+  
+  // Add type for parameter
+  const formatQuantity = (c: DishComponent) => {
+    // ... function body ...
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
@@ -139,6 +149,27 @@ const DishDetailScreen = () => {
           }
       }
       return interval;
+  };
+
+  const renderComponent = (component: DishComponent, index: number) => {
+    // Calculate scaled amount and format
+    const scaledAmount = component.amount ? component.amount * servingScale : null;
+    const unitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
+    const formattedComponent = formatQuantityAuto(scaledAmount, unitAbbr);
+
+    return (
+      <View key={component.ingredient_id} style={styles.ingredientItem}>
+        <Text style={styles.ingredientName}>
+          {component.name || t('common.unknownIngredient')}
+          {component.isPreparation ? t('screens.dishDetail.prepSuffix') : ''}
+        </Text>
+        <View style={styles.ingredientQuantity}>
+          <Text style={styles.ingredientQuantityText}>
+            {formattedComponent.amount} {formattedComponent.unit}
+          </Text>
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -205,8 +236,8 @@ const DishDetailScreen = () => {
                 step={1}
                 currentValue={targetServings}
                 displayValue={String(targetServings)}
-                displaySuffix={t('screens.dishDetail.servingsSuffix', 'Servings')}
-                onValueChange={(newTarget) => {
+                displaySuffix={t('components.scaleSlider.servingsSuffix')}
+                onValueChange={(newTarget: number) => {
                   setTargetServings(Math.round(newTarget));
                 }}
                 onSlidingComplete={(finalTarget) => {
@@ -232,23 +263,7 @@ const DishDetailScreen = () => {
           {RawIngredients.length > 0 && (
             <View style={styles.sectionContainer}> 
               <Text style={styles.sectionTitle}>{t('screens.dishDetail.rawIngredientsTitle')}</Text>
-              {RawIngredients.map((component) => {
-                // Calculate scaled amount and format
-                const scaledAmount = component.amount ? component.amount * servingScale : null;
-                const unitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
-                const formattedComponent = formatQuantityAuto(scaledAmount, unitAbbr);
-
-                return (
-                  <View key={component.ingredient_id} style={styles.ingredientItem}>
-                    <Text style={styles.ingredientName}>{component.name || 'Unknown Ingredient'}</Text>
-                    <View style={styles.ingredientQuantity}>
-                      <Text style={styles.ingredientQuantityText}>
-                        {formattedComponent.amount} {formattedComponent.unit}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
+              {RawIngredients.map((component) => renderComponent(component, 0))}
             </View>
           )}
 

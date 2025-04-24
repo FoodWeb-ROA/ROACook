@@ -48,10 +48,25 @@
       "dishes": "Dishes",
       "metric": "Metric",
       "imperial": "Imperial",
-      "referenceIngredient": "Reference Ingredient"
+      "referenceIngredient": "Reference Ingredient",
+      "updating": "Updating...",
+      "logout": "Logout",
+      "info": "Info",
+      "update": "Update",
+      "cancel": "Cancel",
+      "unknownIngredient": "Unknown Ingredient",
+      "unknownComponent": "Unknown Component",
+      "unexpectedError": "An unexpected error occurred"
     },
     "validation": {
-      "required": "{{field}} is required"
+      "required": "{{field}} is required",
+      "invalidEmail": "Invalid email address",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "fullnameRequired": "Fullname is required",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "invalidLanguage": "Invalid language",
+      "languageRequired": "Language is required"
     },
     "navigation": {
       "home": "Home",
@@ -63,7 +78,8 @@
       "support": "Support",
       "preferences": "Preferences",
       "createEditPreparation": "Create/Edit Preparation",
-      "createEditRecipe": "Create/Edit Recipe"
+      "createEditRecipe": "Create/Edit Recipe",
+      "manageKitchens": "Manage Kitchens"
     },
     "screens": {
       "login": {
@@ -90,11 +106,13 @@
         "signUpSuccessTitle": "Account Created",
         "signUpSuccessMessage": "Your account has been created successfully! Check your email for verification.",
         "signUpErrorTitle": "Sign Up Error",
-        "unexpectedError": "An unexpected error occurred",
         "validation": {
           "emailPasswordRequired": "Please enter both email and password",
           "allFieldsRequired": "Please enter email, password, and username",
           "passwordLength": "Password must be at least 6 characters long"
+        },
+        "placeholders": {
+          "fullName": "Full Name"
         }
       },
       "home": {
@@ -169,7 +187,48 @@
         "noDataFound": "No data found."
       },
       "account": {
-        "logout": "Logout"
+        "profileInfo": "Profile Information",
+        "email": "Email",
+        "fullName": "Full Name",
+        "fullNamePlaceholder": "Enter your full name",
+        "updateProfile": "Update Profile",
+        "security": "Security",
+        "changePassword": "Change Password",
+        "currentPassword": "Current Password",
+        "currentPasswordPlaceholder": "Enter current password",
+        "newPassword": "New Password",
+        "newPasswordPlaceholder": "Enter new password",
+        "confirmPassword": "Confirm New Password",
+        "confirmPasswordPlaceholder": "Confirm new password",
+        "updatePassword": "Update Password",
+        "logout": {
+          "button": "Logout",
+          "title": "Confirm Logout",
+          "message": "Are you sure you want to logout?"
+        },
+        "error": {
+          "notAuthenticated": "User not authenticated.",
+          "updateFailed": "Failed to update profile.",
+          "passwordUpdateFailed": "Failed to update password.",
+          "passwordsDoNotMatch": "New passwords do not match.",
+          "currentPasswordRequired": "Current password is required to change password.",
+          "newPasswordRequired": "New password cannot be empty.",
+          "emailUpdateFailed": "Failed to update email address."
+        },
+        "success": {
+          "profileUpdated": "Profile updated successfully.",
+          "passwordUpdated": "Password updated successfully.",
+          "emailUpdateInitiated": "Confirmation email sent to {{email}}. Please check your new email to confirm the change."
+        },
+        "info": {
+          "noChanges": "No changes detected.",
+          "noEmailChange": "Please enter a new email address different from the current one."
+        },
+        "manageKitchens": "Manage Kitchens",
+        "goToManageKitchens": "Go to Manage Kitchens",
+        "newEmail": "New Email",
+        "newEmailPlaceholder": "Enter new email address",
+        "updateEmail": "Update Email"
       },
       "dishDetail": {
         "loading": "Loading Dish...",
@@ -182,7 +241,12 @@
         "rawIngredientsTitle": "Raw Ingredients",
         "noComponents": "No components listed for this dish.",
         "directionsTitle": "Directions",
-        "notesTitle": "Notes"
+        "notesTitle": "Notes",
+        "prepSuffix": "(Prep)",
+        "info": {
+          "noChanges": "No changes detected."
+        },
+        "searchPlaceholderComponents": "Type to search for ingredients or preparations"
       },
       "preparationDetail": {
         "loading": "Loading Preparation...",
@@ -242,7 +306,10 @@
         "searchNoResults": "No matching components found.",
         "createButtonLabel": "+ Create \"{{query}}\"",
         "searchPlaceholderComponents": "Type to search for ingredients or preparations",
-        "prepSuffix": "(Prep)"
+        "prepSuffix": "(Prep)",
+        "info": {
+          "noChanges": "No changes detected."
+        }
       },
       "createPreparation": {
         "title": "Edit Preparation",
@@ -272,6 +339,18 @@
         "successMessage": "Your feedback has been submitted successfully.",
         "errorTitle": "Error",
         "errorMessage": "There was an error submitting your feedback. Please try again."
+      },
+      "manageKitchens": {
+        "title": "Manage Your Kitchens",
+        "noKitchens": "You are not a member of any kitchens",
+        "switchKitchenTitle": "Switch Kitchen",
+        "switchKitchenMessage": "You have successfully switched kitchens. The app will update to show content from this kitchen.",
+        "leaveKitchenTitle": "Leave Kitchen",
+        "leaveKitchenMessage": "Are you sure you want to leave \"{{name}}\"? You will lose access to all recipes in this kitchen.",
+        "leaveButton": "Leave"
+      },
+      "about": {
+        "moreToCome": "More to come!"
       }
     },
     "alerts": {
@@ -324,6 +403,13 @@
         "newSection": "New Section",
         "addNewSection": "Add New Section",
         "sectionName": "Section Name"
+      },
+      "languagePicker": {
+        "selectLanguageFallback": "Select Language"
+      },
+      "scaleSlider": {
+        "scaleSuffix": "x scale",
+        "servingsSuffix": "Servings"
       }
     }
   }

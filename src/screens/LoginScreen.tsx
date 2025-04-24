@@ -17,6 +17,7 @@ import { ILanguage } from '../types';
 import { MaterialIcons, FontAwesome5, AntDesign } from '@expo/vector-icons';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import LanguagePicker from '../components/LanguagePicker';
+import { useTranslation } from 'react-i18next';
 
 interface SignInValues {
 	email: string;
@@ -37,25 +38,26 @@ const LoginScreen = () => {
 	);
 
 	const errorSelector = useTypedSelector(state => state.auth.error);
+	const { t } = useTranslation();
 
-	const signInValidationSchema = Yup.object({
+	const signInValidationSchema = Yup.object().shape({
 		email: Yup.string()
-			.email('Invalid email address')
-			.required('Email is required'),
-		password: Yup.string().required('Password is required')
+			.email(t('screens.login.validation.invalidEmail'))
+			.required(t('screens.login.validation.emailRequired')),
+		password: Yup.string().required(t('screens.login.validation.passwordRequired'))
 	});
 
-	const signUpValidationSchema = Yup.object({
-		fullname: Yup.string().required('Fullname is required'),
+	const signUpValidationSchema = Yup.object().shape({
+		fullname: Yup.string().required(t('screens.login.validation.fullnameRequired')),
 		email: Yup.string()
-			.email('Invalid email address')
-			.required('Email is required'),
+			.email(t('screens.login.validation.invalidEmail'))
+			.required(t('screens.login.validation.emailRequired')),
 		password: Yup.string()
-			.min(6, 'Password must be at least 6 characters')
-			.required('Password is required'),
+			.min(6, t('screens.login.validation.passwordMinLength'))
+			.required(t('screens.login.validation.passwordRequired')),
 		language: Yup.string()
-			.oneOf(['EN', 'ES', 'FR', 'IT'], 'Invalid language')
-			.required('Language is required')
+			.oneOf(['EN', 'ES', 'FR', 'IT'], t('screens.login.validation.invalidLanguage'))
+			.required(t('screens.login.validation.languageRequired'))
 	});
 
 	const handleSubmit = (values: SignInValues | SignUpValues) => {
@@ -223,7 +225,7 @@ const LoginScreen = () => {
 							<Text style={styles.label}>Full Name</Text>
 							<TextInput
 								style={styles.input}
-								placeholder="Full Name"
+								placeholder={t('screens.login.placeholders.fullName')}
 								onChangeText={handleChange('fullname')}
 								onBlur={handleBlur('fullname')}
 								value={values.fullname}

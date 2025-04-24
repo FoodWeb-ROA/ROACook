@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { useFormikContext } from 'formik';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
+import { useTranslation } from 'react-i18next';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface ILanguage {
 	ISO_Code: string;
@@ -24,6 +26,7 @@ const languages: ILanguage[] = [
 const LanguagePicker: React.FC = () => {
 	const { values, setFieldValue } = useFormikContext<{ language: string }>();
 	const [isDropdownOpen, setDropdownOpen] = useState(false);
+	const { t, i18n } = useTranslation();
 
 	const toggleDropdown = () => setDropdownOpen(!isDropdownOpen);
 
@@ -41,15 +44,16 @@ const LanguagePicker: React.FC = () => {
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.label}>Choose your language:</Text>
+			<Text style={styles.label}>{t('languageLabel', 'Language')}</Text>
 			<TouchableOpacity
 				style={styles.dropdown}
 				onPress={toggleDropdown}
 			>
 				<Text style={styles.selectedText}>
 					{languages.find(lang => lang.ISO_Code === values.language)
-						?.name_in_language || 'Select Language'}
+						?.name_in_language || t('components.languagePicker.selectLanguageFallback')}
 				</Text>
+				<MaterialIcons name="arrow-drop-down" size={24} color={COLORS.text} />
 			</TouchableOpacity>
 			{isDropdownOpen && (
 				<FlatList
@@ -80,7 +84,10 @@ const styles = StyleSheet.create({
 		padding: SIZES.small,
 		borderRadius: SIZES.radius,
 		borderWidth: SIZES.borderWidth,
-		borderColor: COLORS.border
+		borderColor: COLORS.border,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between'
 	},
 	selectedText: {
 		...FONTS.body2,

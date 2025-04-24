@@ -1,4 +1,4 @@
-import { Category, Preparation, Dish, MenuSection, Unit, Ingredient, ParsedRecipe, ParsedIngredient } from '../types';
+import { ParsedRecipe, ParsedIngredient, Kitchen } from '../types';
 import { DrawerParamList } from './AppNavigator';
 
 export type RootStackParamList = {
@@ -30,6 +30,10 @@ export type RootStackParamList = {
     scaleMultiplier?: number;
   } | undefined;
   Inventory: undefined;
+  ManageKitchens: undefined;
+  RecipeDetail: { recipe: ParsedRecipe };
+  EditRecipe: { recipe: ParsedRecipe | null };
+  About: undefined;
 };
 
 // Ensure no duplicate DrawerParamList export/declaration exists below

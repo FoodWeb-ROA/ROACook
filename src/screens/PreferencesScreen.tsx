@@ -18,8 +18,11 @@ import AppHeader from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { useUnitSystem } from '../context/UnitSystemContext';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/types';
+import { DrawerActions } from '@react-navigation/native';
 
-// Define navigation prop type
+// Define navigation prop type for the Drawer
 type PreferencesScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Preferences'>;
 
 const PreferencesScreen = () => {
@@ -136,6 +139,8 @@ const PreferencesScreen = () => {
       
       <ScrollView style={styles.container}>
         <View style={styles.section}>
+          {renderActionItem('account-circle-outline', 'navigation.account', '', 
+            () => navigation.getParent<StackNavigationProp<RootStackParamList>>().navigate('Account'))}
           {renderSettingItem('bell-outline', 'notifications', notifications, setNotifications)}
           {renderActionItem('ruler', 'unitSystem', t(`common.${unitSystem}`), showUnitSystemSelector)}
           {renderActionItem('translate', 'language', currentLanguageName, showLanguageSelector)}

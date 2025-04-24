@@ -2,10 +2,12 @@ import { combineReducers, compose, configureStore } from '@reduxjs/toolkit';
 import createSagaMiddleware from 'redux-saga';
 import rootSaga from './sagas/rootSaga';
 import { authReducer } from './slices/authSlice';
+import { kitchensReducer } from './slices/kitchensSlice';
 import devToolsEnhancer from "redux-devtools-expo-dev-plugin";
 
 const rootReducer = combineReducers({
-	auth: authReducer
+	auth: authReducer,
+	kitchens: kitchensReducer
 });
 
 const sagaMiddleware = createSagaMiddleware();

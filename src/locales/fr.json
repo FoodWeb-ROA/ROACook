@@ -48,13 +48,27 @@
       "dishes": "Plats",
       "metric": "Métrique",
       "imperial": "Impérial",
-      "referenceIngredient": "Ingrédient de Référence"
+      "referenceIngredient": "Ingrédient de Référence",
+      "updating": "Mise à jour...",
+      "logout": "Déconnexion",
+      "info": "Info",
+      "update": "Mettre à jour",
+      "unknownIngredient": "Ingrédient Inconnu",
+      "unknownComponent": "Composant Inconnu",
+      "unexpectedError": "Une erreur inattendue s'est produite"
     },
     "validation": {
       "required": "{{field}} est requis",
       "emailPasswordRequired": "Veuillez entrer l'e-mail et le mot de passe",
       "allFieldsRequired": "Veuillez entrer e-mail, mot de passe et nom d'utilisateur",
-      "passwordLength": "Le mot de passe doit comporter au moins 6 caractères"
+      "passwordLength": "Le mot de passe doit comporter au moins 6 caractères",
+      "invalidEmail": "Invalid email address",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "fullnameRequired": "Fullname is required",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "invalidLanguage": "Invalid language",
+      "languageRequired": "Language is required"
     },
     "navigation": {
       "home": "Accueil",
@@ -62,11 +76,13 @@
       "inventory": "Inventaire",
       "allRecipes": "Toutes les Recettes",
       "preparationsList": "Liste des Préparations",
-      "account": "Compte",
+      "account": "Profil",
       "support": "Support",
       "preferences": "Préférences",
       "createEditPreparation": "Créer/Modifier Préparation",
-      "createEditRecipe": "Créer/Modifier Recette"
+      "createEditRecipe": "Créer/Modifier Recette",
+      "manageKitchens": "Gérer les Cuisines",
+      "about": "À Propos"
     },
     "screens": {
       "login": {
@@ -93,11 +109,13 @@
         "signUpSuccessTitle": "Compte Créé",
         "signUpSuccessMessage": "Votre compte a été créé avec succès ! Vérifiez votre e-mail pour la vérification.",
         "signUpErrorTitle": "Erreur d'Inscription",
-        "unexpectedError": "Une erreur inattendue s'est produite",
         "validation": {
           "emailPasswordRequired": "Veuillez entrer l'e-mail et le mot de passe",
           "allFieldsRequired": "Veuillez entrer e-mail, mot de passe et nom d'utilisateur",
           "passwordLength": "Le mot de passe doit comporter au moins 6 caractères"
+        },
+        "placeholders": {
+          "fullName": "Full Name"
         }
       },
       "home": {
@@ -166,7 +184,59 @@
         "title": "Inventaire"
       },
       "account": {
-        "logout": "Déconnexion"
+        "profileInfo": "Informations du profil",
+        "email": "Email",
+        "fullName": "Nom complet",
+        "fullNamePlaceholder": "Entrez votre nom complet",
+        "updateProfile": "Mettre à jour le profil",
+        "security": "Sécurité",
+        "changePassword": "Changer le mot de passe",
+        "currentPassword": "Mot de passe actuel",
+        "currentPasswordPlaceholder": "Entrez le mot de passe actuel",
+        "newPassword": "Nouveau mot de passe",
+        "newPasswordPlaceholder": "Entrez le nouveau mot de passe",
+        "confirmPassword": "Confirmer le nouveau mot de passe",
+        "confirmPasswordPlaceholder": "Confirmez le nouveau mot de passe",
+        "updatePassword": "Mettre à jour le mot de passe",
+        "logout": {
+          "button": "Déconnexion",
+          "title": "Confirmer la déconnexion",
+          "message": "Êtes-vous sûr de vouloir vous déconnecter ?",
+          "error": {
+            "notAuthenticated": "Utilisateur non authentifié.",
+            "updateFailed": "Échec de la mise à jour du profil.",
+            "passwordUpdateFailed": "Échec de la mise à jour du mot de passe.",
+            "passwordsDoNotMatch": "Les nouveaux mots de passe ne correspondent pas.",
+            "currentPasswordRequired": "Le mot de passe actuel est requis pour changer le mot de passe.",
+            "newPasswordRequired": "Le nouveau mot de passe ne peut pas être vide."
+          },
+          "success": {
+            "profileUpdated": "Profil mis à jour avec succès.",
+            "passwordUpdated": "Mot de passe mis à jour avec succès."
+          },
+          "info": {
+            "noChanges": "Aucun changement détecté."
+          }
+        },
+        "error": {
+          "notAuthenticated": "Utilisateur non authentifié.",
+          "updateFailed": "Échec de la mise à jour du profil.",
+          "passwordUpdateFailed": "Échec de la mise à jour du mot de passe.",
+          "passwordsDoNotMatch": "Les nouveaux mots de passe ne correspondent pas.",
+          "currentPasswordRequired": "Le mot de passe actuel est requis pour changer le mot de passe.",
+          "newPasswordRequired": "Le nouveau mot de passe ne peut pas être vide."
+        },
+        "success": {
+          "profileUpdated": "Profil mis à jour avec succès.",
+          "passwordUpdated": "Mot de passe mis à jour avec succès."
+        },
+        "info": {
+          "noChanges": "Aucun changement détecté.",
+          "noEmailChange": "Veuillez entrer une nouvelle adresse e-mail différente de l'actuelle."
+        },
+        "newEmail": "Nouvel E-mail",
+        "newEmailPlaceholder": "Entrez la nouvelle adresse e-mail",
+        "updateEmail": "Mettre à Jour E-mail"
       },
       "dishDetail": {
         "loading": "Chargement du Plat...",
@@ -179,7 +249,8 @@
         "rawIngredientsTitle": "Ingrédients Bruts",
         "noComponents": "Aucun composant listé pour ce plat.",
         "directionsTitle": "Instructions",
-        "notesTitle": "Notes"
+        "notesTitle": "Notes",
+        "errorMessage": "Une erreur est survenue lors de l'envoi de votre commentaire. Veuillez réessayer."
       },
       "preparationDetail": {
         "loading": "Chargement de la Préparation...",
@@ -268,6 +339,18 @@
         "successMessage": "Votre commentaire a été envoyé avec succès.",
         "errorTitle": "Erreur",
         "errorMessage": "Une erreur est survenue lors de l'envoi de votre commentaire. Veuillez réessayer."
+      },
+      "manageKitchens": {
+        "title": "Gérer Vos Cuisines",
+        "noKitchens": "Vous n'êtes membre d'aucune cuisine",
+        "switchKitchenTitle": "Changer de Cuisine",
+        "switchKitchenMessage": "Vous avez changé de cuisine avec succès. L'application va se mettre à jour pour afficher le contenu de cette cuisine.",
+        "leaveKitchenTitle": "Quitter la Cuisine",
+        "leaveKitchenMessage": "Êtes-vous sûr de vouloir quitter \"{{name}}\" ? Vous perdrez l'accès à toutes les recettes de cette cuisine.",
+        "leaveButton": "Quitter"
+      },
+      "about": {
+        "moreToCome": "Plus à venir !"
       }
     },
     "alerts": {
@@ -320,6 +403,13 @@
         "newSection": "Nouvelle Section",
         "addNewSection": "Ajouter Nouvelle Section",
         "sectionName": "Nom de Section"
+      },
+      "languagePicker": {
+        "selectLanguageFallback": "Select Language"
+      },
+      "scaleSlider": {
+        "scaleSuffix": "x échelle",
+        "servingsSuffix": "Portions"
       }
     }
   }

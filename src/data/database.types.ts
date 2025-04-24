@@ -79,38 +79,51 @@ export type Database = {
           directions: string | null
           dish_id: string
           dish_name: string
+          img_url: string | null
+          kitchen_id: string
           menu_section_id: string | null
+          num_servings: number | null
           serving_item: string | null
           serving_size: number
           serving_unit_id: string
           total_time: unknown
-          total_yield: number | null
         }
         Insert: {
           cooking_notes?: string | null
           directions?: string | null
           dish_id?: string
           dish_name: string
+          img_url?: string | null
+          kitchen_id: string
           menu_section_id?: string | null
+          num_servings?: number | null
           serving_item?: string | null
           serving_size?: number
           serving_unit_id: string
           total_time?: unknown
-          total_yield?: number | null
         }
         Update: {
           cooking_notes?: string | null
           directions?: string | null
           dish_id?: string
           dish_name?: string
+          img_url?: string | null
+          kitchen_id?: string
           menu_section_id?: string | null
+          num_servings?: number | null
           serving_item?: string | null
           serving_size?: number
           serving_unit_id?: string
           total_time?: unknown
-          total_yield?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "dishes_kitchen_id_fkey"
+            columns: ["kitchen_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen"
+            referencedColumns: ["kitchen_id"]
+          },
           {
             foreignKeyName: "dishes_serving_unit_fkey"
             columns: ["serving_unit_id"]
@@ -140,6 +153,8 @@ export type Database = {
           cooking_notes: string | null
           created_at: string
           ingredient_id: string
+          item: string | null
+          kitchen_id: string
           name: string
           storage_location: string | null
           synonyms: string[] | null
@@ -151,6 +166,8 @@ export type Database = {
           cooking_notes?: string | null
           created_at?: string
           ingredient_id?: string
+          item?: string | null
+          kitchen_id?: string
           name: string
           storage_location?: string | null
           synonyms?: string[] | null
@@ -162,6 +179,8 @@ export type Database = {
           cooking_notes?: string | null
           created_at?: string
           ingredient_id?: string
+          item?: string | null
+          kitchen_id?: string
           name?: string
           storage_location?: string | null
           synonyms?: string[] | null
@@ -169,6 +188,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ingredients_kitchen_id_fkey"
+            columns: ["kitchen_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen"
+            referencedColumns: ["kitchen_id"]
+          },
           {
             foreignKeyName: "ingredients_unit_id_fkey"
             columns: ["unit_id"]
@@ -210,16 +236,9 @@ export type Database = {
           {
             foreignKeyName: "kitchen_users_kitchen_id_fkey"
             columns: ["kitchen_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "kitchen"
             referencedColumns: ["kitchen_id"]
-          },
-          {
-            foreignKeyName: "kitchen_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -333,36 +352,40 @@ export type Database = {
       }
       preparations: {
         Row: {
+          amount_unit_id: string | null
           directions: string
           preparation_id: string
+          reference_ingredient: string | null
           total_time: number | null
         }
         Insert: {
+          amount_unit_id?: string | null
           directions: string
           preparation_id: string
+          reference_ingredient?: string
           total_time?: number | null
-          yield_unit_id?: string | null
         }
         Update: {
+          amount_unit_id?: string | null
           directions?: string
           preparation_id?: string
+          reference_ingredient?: string | null
           total_time?: number | null
-          yield_unit_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "preparations_amount_unit_id_fkey"
+            columns: ["amount_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["unit_id"]
+          },
           {
             foreignKeyName: "preparations_preparation_id_fkey"
             columns: ["preparation_id"]
             isOneToOne: true
             referencedRelation: "ingredients"
             referencedColumns: ["ingredient_id"]
-          },
-          {
-            foreignKeyName: "preparations_yield_unit_id_fkey"
-            columns: ["yield_unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
-            referencedColumns: ["unit_id"]
           },
         ]
       }
@@ -386,32 +409,6 @@ export type Database = {
           unit_name?: string
         }
         Relationships: []
-      }
-      users: {
-        Row: {
-          user_fullname: string | null
-          user_id: string
-          user_language: string | null
-        }
-        Insert: {
-          user_fullname?: string | null
-          user_id?: string
-          user_language?: string | null
-        }
-        Update: {
-          user_fullname?: string | null
-          user_id?: string
-          user_language?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "users_user_language_fkey"
-            columns: ["user_language"]
-            isOneToOne: false
-            referencedRelation: "languages"
-            referencedColumns: ["ISO_Code"]
-          },
-        ]
       }
     }
     Views: {

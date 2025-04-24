@@ -13,7 +13,6 @@ export async function fetchAllData() {
       dishComponentsResult, 
       // kitchensResult, // Removed
       // kitchenMembersResult, // Removed
-      usersResult
     ] = await Promise.all([
       supabase.from('units').select('*'),
       supabase.from('ingredients').select('*'),
@@ -24,7 +23,6 @@ export async function fetchAllData() {
       supabase.from('dish_components').select('*'), 
       // supabase.from('kitchens').select('*'), // Removed
       // supabase.from('kitchen_users').select('*'), // Removed
-      supabase.from('users').select('*')
     ]);
 
     // Compile results
@@ -38,7 +36,6 @@ export async function fetchAllData() {
       dishComponents: dishComponentsResult.data || [], 
       // Removed kitchens
       // Removed kitchenUsers
-      users: usersResult.data || []
     };
     
     // Log errors
@@ -51,7 +48,6 @@ export async function fetchAllData() {
       dishesResult.error, 
       dishComponentsResult.error, 
       // Removed errors for kitchens, kitchen_users
-      usersResult.error
     ].filter(error => error !== null);
     
     if (errors.length > 0) {

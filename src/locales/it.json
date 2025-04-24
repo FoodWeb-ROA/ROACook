@@ -48,13 +48,27 @@
       "metric": "Metrico",
       "imperial": "Imperiale",
       "preparations": "Preparazioni",
-      "referenceIngredient": "Ingrediente di Riferimento"
+      "referenceIngredient": "Ingrediente di Riferimento",
+      "updating": "Aggiornamento...",
+      "logout": "Esci",
+      "info": "Info",
+      "update": "Aggiorna",
+      "unknownIngredient": "Ingrediente Sconosciuto",
+      "unknownComponent": "Componente Sconosciuto",
+      "unexpectedError": "Si è verificato un errore imprevisto"
     },
     "validation": {
       "required": "{{field}} è richiesto",
       "emailPasswordRequired": "Inserisci email e password",
       "allFieldsRequired": "Inserisci email, password e nome utente",
-      "passwordLength": "La password deve contenere almeno 6 caratteri"
+      "passwordLength": "La password deve contenere almeno 6 caratteri",
+      "invalidEmail": "Invalid email address",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "fullnameRequired": "Fullname is required",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "invalidLanguage": "Invalid language",
+      "languageRequired": "Language is required"
     },
     "navigation": {
       "home": "Home",
@@ -62,11 +76,13 @@
       "inventory": "Inventario",
       "allRecipes": "Tutte le Ricette",
       "preparationsList": "Lista Preparazioni",
-      "account": "Account",
+      "account": "Profilo",
       "support": "Supporto",
       "preferences": "Preferenze",
       "createEditPreparation": "Crea/Modifica Preparazione",
-      "createEditRecipe": "Crea/Modifica Ricetta"
+      "createEditRecipe": "Crea/Modifica Ricetta",
+      "manageKitchens": "Gestisci Cucine",
+      "about": "Informazioni"
     },
     "screens": {
       "login": {
@@ -93,11 +109,13 @@
         "signUpSuccessTitle": "Account Creato",
         "signUpSuccessMessage": "Il tuo account è stato creato con successo! Controlla la tua email per la verifica.",
         "signUpErrorTitle": "Errore di Registrazione",
-        "unexpectedError": "Si è verificato un errore imprevisto",
         "validation": {
           "emailPasswordRequired": "Inserisci email e password",
           "allFieldsRequired": "Inserisci email, password e nome utente",
           "passwordLength": "La password deve contenere almeno 6 caratteri"
+        },
+        "placeholders": {
+          "fullName": "Full Name"
         }
       },
       "home": {
@@ -166,7 +184,44 @@
         "title": "Inventario"
       },
       "account": {
-        "logout": "Logout"
+        "profileInfo": "Informazioni profilo",
+        "email": "Email",
+        "fullName": "Nome completo",
+        "fullNamePlaceholder": "Inserisci il tuo nome completo",
+        "updateProfile": "Aggiorna profilo",
+        "security": "Sicurezza",
+        "changePassword": "Cambia password",
+        "currentPassword": "Password attuale",
+        "currentPasswordPlaceholder": "Inserisci la password attuale",
+        "newPassword": "Nuova password",
+        "newPasswordPlaceholder": "Inserisci la nuova password",
+        "confirmPassword": "Conferma nuova password",
+        "confirmPasswordPlaceholder": "Conferma la nuova password",
+        "updatePassword": "Aggiorna password",
+        "logout": {
+          "button": "Esci",
+          "title": "Conferma uscita",
+          "message": "Sei sicuro di voler uscire?"
+        },
+        "error": {
+          "notAuthenticated": "Utente non autenticato.",
+          "updateFailed": "Aggiornamento profilo fallito.",
+          "passwordUpdateFailed": "Aggiornamento password fallito.",
+          "passwordsDoNotMatch": "Le nuove password non coincidono.",
+          "currentPasswordRequired": "La password attuale è richiesta per cambiare la password.",
+          "newPasswordRequired": "La nuova password non può essere vuota."
+        },
+        "success": {
+          "profileUpdated": "Profilo aggiornato con successo.",
+          "passwordUpdated": "Password aggiornata con successo."
+        },
+        "info": {
+          "noChanges": "Nessuna modifica rilevata.",
+          "noEmailChange": "Inserisci un nuovo indirizzo email diverso da quello attuale."
+        },
+        "newEmail": "Nuova Email",
+        "newEmailPlaceholder": "Inserisci il nuovo indirizzo email",
+        "updateEmail": "Aggiorna Email"
       },
       "dishDetail": {
         "loading": "Caricamento Piatto...",
@@ -179,7 +234,8 @@
         "rawIngredientsTitle": "Ingredienti Crudi",
         "noComponents": "Nessun componente elencato per questo piatto.",
         "directionsTitle": "Istruzioni",
-        "notesTitle": "Note"
+        "notesTitle": "Note",
+        "errorMessage": "Si è verificato un errore durante l'invio del feedback. Riprova."
       },
       "preparationDetail": {
         "loading": "Caricamento Preparazione...",
@@ -268,6 +324,18 @@
         "successMessage": "Il tuo feedback è stato inviato con successo.",
         "errorTitle": "Errore",
         "errorMessage": "Si è verificato un errore durante l'invio del feedback. Riprova."
+      },
+      "manageKitchens": {
+        "title": "Gestisci le Tue Cucine",
+        "noKitchens": "Non sei membro di nessuna cucina",
+        "switchKitchenTitle": "Cambia Cucina",
+        "switchKitchenMessage": "Hai cambiato cucina con successo. L'app si aggiornerà per mostrare i contenuti di questa cucina.",
+        "leaveKitchenTitle": "Lascia Cucina",
+        "leaveKitchenMessage": "Sei sicuro di voler lasciare \"{{name}}\"? Perderai l'accesso a tutte le ricette di questa cucina.",
+        "leaveButton": "Lascia"
+      },
+      "about": {
+        "moreToCome": "Altro in arrivo!"
       }
     },
     "alerts": {
@@ -320,6 +388,13 @@
         "newSection": "Nuova Sezione",
         "addNewSection": "Aggiungi Nuova Sezione",
         "sectionName": "Nome Sezione"
+      },
+      "languagePicker": {
+        "selectLanguageFallback": "Select Language"
+      },
+      "scaleSlider": {
+        "scaleSuffix": "x scala",
+        "servingsSuffix": "Porzioni"
       }
     }
   }

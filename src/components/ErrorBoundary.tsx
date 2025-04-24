@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
 import { submitErrorReport } from '../services/notionApi';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   children: ReactNode;
@@ -14,16 +15,25 @@ interface State {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+interface ErrorBoundaryProps extends Props {
+  t: (key: string) => string;
+}
+
+interface ErrorBoundaryState extends State {
+  t: (key: string) => string;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { 
       hasError: false,
-      error: null
+      error: null,
+      t: props.t
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     // Update state so the next render will show the fallback UI
     return { hasError: true, error };
   }
@@ -50,6 +60,8 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   render(): ReactNode {
+    const { t } = this.props;
+
     if (this.state.hasError) {
       // Custom fallback UI
       if (this.props.fallback) {
@@ -59,9 +71,9 @@ class ErrorBoundary extends Component<Props, State> {
       // Default fallback UI
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>Something went wrong</Text>
+          <Text style={styles.title}>{t('common.error', 'Error')}</Text>
           <Text style={styles.message}>
-            {this.state.error?.message || 'An unexpected error occurred'}
+            {this.state.error?.message || t('common.unexpectedError')}
           </Text>
           <TouchableOpacity style={styles.button} onPress={this.resetError}>
             <Text style={styles.buttonText}>Try Again</Text>
@@ -106,4 +118,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ErrorBoundary; 
+const ErrorBoundaryWrapper: React.FC<ErrorBoundaryProps> = (props) => {
+  const { t } = useTranslation();
+  return <ErrorBoundary {...props} t={t} />;
+}
+
+export default ErrorBoundaryWrapper; 
