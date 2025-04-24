@@ -11,12 +11,30 @@ import { AuthProvider } from './src/context/AuthContext';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { UnitSystemProvider } from './src/context/UnitSystemContext';
+import { Provider } from 'react-redux';
+import store from './src/store';
+import { DeepLinkHandler, useDeepLinking } from './src/hooks/useDeepLinking';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
+	return (
+		<Provider store={store}>
+			<DeepLinkIntersepter />
+		</Provider>
+	);
+}
+
+function DeepLinkIntersepter() {
   const [appIsReady, setAppIsReady] = useState(false);
+
+  const handleDeepLink: DeepLinkHandler = (url, parsed) => {
+		console.log('--- Received deep link in App:', url);
+		console.log('--- Parsed deep link:', parsed);
+	};
+
+	useDeepLinking(handleDeepLink);
 
   useEffect(() => {
     async function prepare() {

@@ -155,3 +155,16 @@ export type ComponentInput = {
     item?: string | null; // ADDED: To store item description (e.g., "cloves")
     reference_ingredient?: string | null; // Store reference ingredient for preparations
 }; 
+
+export interface IUser {
+  user_id: string;
+  user_fullname: string | null;
+  user_language: ILanguage['ISO_Code'] | null;
+  user_email: string | null;
+}
+
+export interface ILanguage {
+  ISO_Code: 'EN' | 'ES' | 'FR' | 'IT';
+  name_english: 'English' | 'Spanish' | 'French' | 'Italian';
+  name_in_language: 'English' | 'Español' | 'Français' | 'Italiano';
+}

@@ -18,8 +18,9 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
-import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useTypedDispatch } from '../hooks/useTypedDispatch';
+import { logoutWatch } from '../slices/authSlice';
 
 // Define composite navigation prop type
 type AccountScreenNavigationProp = CompositeNavigationProp<
@@ -29,8 +30,8 @@ type AccountScreenNavigationProp = CompositeNavigationProp<
 
 const AccountScreen = () => {
   const navigation = useNavigation<AccountScreenNavigationProp>();
-  const { user } = useAuth();
   const { t } = useTranslation();
+  const typedDispatch = useTypedDispatch();
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
@@ -48,10 +49,9 @@ const AccountScreen = () => {
         {
           text: 'Logout',
           onPress: () => {
-            // Implement actual logout logic (e.g., call auth context logout)
-            console.log("Logout Pressed");
-            // Navigate to Login screen after logout
-            navigation.navigate('Login');
+            typedDispatch(
+              logoutWatch()
+            );
           },
           style: 'destructive',
         },
