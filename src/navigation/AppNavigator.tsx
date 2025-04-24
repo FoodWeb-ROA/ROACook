@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, View, TouchableOpacity, Dimensions, Text } from 'react-native';
 import { useNavigation, NavigationProp, RouteProp } from '@react-navigation/native';
 import Sidebar from '../components/Sidebar';
-import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 // Screens
@@ -26,6 +25,7 @@ import HelpScreen from '../screens/HelpScreen';
 // Types
 import { RootStackParamList } from './types';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
+import { useTypedSelector } from '../hooks/useTypedSelector';
 
 // Define DrawerParamList type
 export type DrawerParamList = {
@@ -125,8 +125,9 @@ const DrawerNavigator = () => {
 };
 
 const AppNavigator = () => {
-  const { user, loading } = useAuth();
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const session = useTypedSelector(state => state.auth.session);
+  const loading = useTypedSelector(state => state.auth.loading);
 
   if (loading) {
     return (
@@ -139,14 +140,14 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={user ? "MainDrawer" : "Login"}
+        initialRouteName={session ? "MainDrawer" : "Login"}
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: COLORS.background },
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         }}
       >
-        {user ? (
+        {session ? (
           <>
             <Stack.Screen
               name="MainDrawer"

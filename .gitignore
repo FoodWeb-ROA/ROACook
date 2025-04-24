@@ -37,3 +37,7 @@ yarn-error.*
 
 # Supabase
 .supabase/
+
+#build
+ios/
+android/
