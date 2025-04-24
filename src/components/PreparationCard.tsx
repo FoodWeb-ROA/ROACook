@@ -11,9 +11,10 @@ interface PreparationCardProps {
   onPress: () => void;
   scaleMultiplier?: number;
   amountLabel?: string;
+  hideReferenceIngredient?: boolean;
 }
 
-const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, scaleMultiplier = 1, amountLabel }) => {
+const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, scaleMultiplier = 1, amountLabel, hideReferenceIngredient = false }) => {
   const preparation = component.preparationDetails;
   const { t } = useTranslation();
 
@@ -65,6 +66,16 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
            </View>
         )}
       </View>
+      
+      {/* Display reference ingredient if available and not hidden */}
+      {preparation.reference_ingredient && !hideReferenceIngredient && (
+        <View style={styles.referenceIngredientContainer}>
+          <MaterialCommunityIcons name="relation-one-to-one" size={16} color={COLORS.textLight} />
+          <Text style={styles.referenceIngredientText}>
+            {t('components.preparationCard.referenceIngredient')} for proportions: {preparation.reference_ingredient}
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.subTitle}>{t('components.preparationCard.subTitle')}</Text>
       {preparation.ingredients && preparation.ingredients.length > 0 ? (
@@ -115,6 +126,21 @@ const styles = StyleSheet.create({
     ...FONTS.body3,
     color: COLORS.textLight,
     marginLeft: SIZES.base / 2,
+  },
+  referenceIngredientContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius / 2,
+    paddingHorizontal: SIZES.base,
+    paddingVertical: SIZES.base / 2,
+    marginBottom: SIZES.base,
+  },
+  referenceIngredientText: {
+    ...FONTS.body3,
+    color: COLORS.textLight,
+    marginLeft: SIZES.base / 2,
+    fontStyle: 'italic',
   },
   subTitle: {
     ...FONTS.h4,

@@ -15,15 +15,13 @@ import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
 import PreferencesScreen from '../screens/PreferencesScreen';
 import SupportScreen from '../screens/SupportScreen';
-import PrepListScreen from '../screens/PrepListScreen';
 import DishDetailScreen from '../screens/DishDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
 import CreateRecipeScreen from '../screens/CreateRecipeScreen';
 import CreatePreparationScreen from '../screens/CreatePreparationScreen';
-// @ts-ignore next-line
-import InventoryScreen from '../screens/InventoryScreen';
 import AllRecipesScreen from '../screens/AllRecipesScreen';
+import HelpScreen from '../screens/HelpScreen';
 
 // Types
 import { RootStackParamList } from './types';
@@ -36,8 +34,6 @@ export type DrawerParamList = {
   Account: undefined;
   Preferences: undefined;
   Support: undefined;
-  PrepList: undefined;
-  Inventory: undefined;
 };
 
 // Define the navigation prop type for the Drawer
@@ -98,15 +94,6 @@ const DrawerNavigator = () => {
         }}
       />
       <Drawer.Screen 
-        name="Inventory" 
-        component={InventoryScreen} 
-        options={{
-          drawerLabel: ({ focused, color }) => (
-            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.inventory')}</Text>
-          )
-        }}
-      />
-      <Drawer.Screen 
         name="Account" 
         component={AccountScreen} 
         options={{
@@ -130,15 +117,6 @@ const DrawerNavigator = () => {
         options={{
           drawerLabel: ({ focused, color }) => (
             <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.support')}</Text>
-          )
-        }}
-      />
-      <Drawer.Screen 
-        name="PrepList" 
-        component={PrepListScreen} 
-        options={{
-          drawerLabel: ({ focused, color }) => (
-            <Text style={{ color, fontFamily: 'Poppins', fontSize: SIZES.font }}>{t('navigation.preparationsList')}</Text>
           )
         }}
       />
@@ -176,11 +154,6 @@ const AppNavigator = () => {
               options={{ cardStyleInterpolator: CardStyleInterpolators.forNoAnimation }}
             />
             <Stack.Screen
-              name="Inventory"
-              component={InventoryScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
               name="DishDetails"
               component={DishDetailScreen}
               options={{ headerShown: false }}
@@ -205,6 +178,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="CreatePreparation"
               component={CreatePreparationScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="HelpScreen"
+              component={HelpScreen}
               options={{ headerShown: false }}
             />
           </>

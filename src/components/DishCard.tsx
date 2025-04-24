@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 interface DishCardProps {
   dish: Dish;
   onPress: (dish: Dish) => void;
+  onPreparationPress?: (preparationId: string) => void;
 }
 
 const formatTime = (interval: string | null): string => {
@@ -31,10 +32,11 @@ const formatTime = (interval: string | null): string => {
   return interval;
 };
 
-const DishCard: React.FC<DishCardProps> = ({ dish, onPress }) => {
+const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress }) => {
   const { t } = useTranslation();
   
-  console.log('Dish card components:', dish.components);
+  // Filter to only include preparations
+  const preparations = dish.components ? dish.components.filter(comp => comp.isPreparation) : [];
   
   return (
     <TouchableOpacity 
@@ -64,32 +66,34 @@ const DishCard: React.FC<DishCardProps> = ({ dish, onPress }) => {
           )}
         </View>
         
-        <View style={styles.componentsContainer}>
-          <Text style={styles.componentsTitle}>{t('components.dishCard.componentsTitle')}</Text>
-          {dish.components && dish.components.length > 0 ? (
-            <View style={styles.componentsList}>
-              {dish.components.slice(0, 4).map((component, index) => (
-                <View 
-                  key={`${component.ingredient_id}-${index}`} 
-                  style={styles.componentPill}
+        <View style={styles.preparationsContainer}>
+          <Text style={styles.preparationsTitle}>{t('components.dishCard.preparationsTitle', 'Preparations')}</Text>
+          {preparations.length > 0 ? (
+            <View style={styles.preparationsList}>
+              {preparations.slice(0, 4).map((preparation, index) => (
+                <TouchableOpacity 
+                  key={`${preparation.ingredient_id}-${index}`} 
+                  style={styles.preparationPill}
+                  onPress={() => onPreparationPress && onPreparationPress(preparation.ingredient_id)}
+                  disabled={!onPreparationPress}
                 >
-                  <Text style={styles.componentText}>
-                    {component.name}
+                  <Text style={styles.preparationText}>
+                    {preparation.name}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
-              {dish.components.length > 4 && (
+              {preparations.length > 4 && (
                 <View 
-                  style={[styles.componentPill, styles.morePill]}
+                  style={[styles.preparationPill, styles.morePill]}
                 >
-                  <Text style={styles.componentText}>
-                    +{dish.components.length - 4} more
+                  <Text style={styles.preparationText}>
+                    +{preparations.length - 4} more
                   </Text>
                 </View>
               )}
             </View>
           ) : (
-            <Text style={styles.noComponentsText}>{t('components.dishCard.noComponentsText')}</Text>
+            <Text style={styles.noPreparationsText}>{t('components.dishCard.noPreparationsText', 'No preparations')}</Text>
           )}
         </View>
       </View>
@@ -134,22 +138,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textLight,
   },
-  componentsContainer: {
+  preparationsContainer: {
     marginTop: 12,
   },
-  componentsTitle: {
+  preparationsTitle: {
     fontSize: 14,
     fontWeight: '500',
     color: COLORS.white,
     marginBottom: 8,
   },
-  componentsList: {
+  preparationsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'flex-start',
     marginHorizontal: -4,
   },
-  componentPill: {
+  preparationPill: {
     backgroundColor: COLORS.tertiary,
     borderRadius: 16,
     paddingHorizontal: 10,
@@ -157,7 +161,7 @@ const styles = StyleSheet.create({
     margin: 4,
     ...SHADOWS.small,
   },
-  componentText: {
+  preparationText: {
     color: COLORS.white,
     fontSize: 12,
     fontWeight: '500',
@@ -165,7 +169,7 @@ const styles = StyleSheet.create({
   morePill: {
     backgroundColor: COLORS.primary,
   },
-  noComponentsText: {
+  noPreparationsText: {
     fontStyle: 'italic',
     fontSize: 14,
     color: COLORS.textLight,

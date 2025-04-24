@@ -40,29 +40,8 @@ const CategoryRecipesScreen = () => {
     navigation.navigate('PreparationDetails', { preparationId });
   };
   
-  // Helper function to render preparations for a dish
-  const renderPreparations = (dish: Dish) => {
-    const preparations = dish.components?.filter(comp => comp.isPreparation) || [];
-    
-    if (preparations.length === 0) return null;
-    
-    return (
-      <View style={styles.preparationsContainer}>
-        <Text style={styles.preparationsTitle}>{t('screens.categoryRecipes.preparationsTitle')}</Text>
-        {preparations.map((prep: DishComponent) => (
-          <TouchableOpacity 
-            key={prep.ingredient_id}
-            style={styles.preparationItem}
-            onPress={() => handlePreparationPress(prep.ingredient_id)}
-          >
-            <MaterialCommunityIcons name="chef-hat" size={16} color={COLORS.primary} />
-            <Text style={styles.preparationName}>{prep.name}</Text>
-            <MaterialCommunityIcons name="chevron-right" size={16} color={COLORS.textLight} />
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  // Helper function to render preparations for a dish - removed since DishCard already shows preparations
+  // This helps eliminate duplicate "Preparations" sections
 
   if (loadingDishes) {
     return (
@@ -99,8 +78,9 @@ const CategoryRecipesScreen = () => {
               <DishCard
                 dish={item}
                 onPress={handleDishPress}
+                onPreparationPress={handlePreparationPress}
               />
-              {renderPreparations(item)}
+              {/* Removed the renderPreparations call to avoid duplicate sections */}
             </View>
           )}
           keyExtractor={(item) => item.dish_id}

@@ -38,6 +38,7 @@ export type FetchedIngredientDetail = DbIngredient & {
 // Type for preparation details fetched separately
 export type FetchedPreparationDetail = DbPreparation & { 
     yield_unit: DbUnit | null; // Joined yield unit
+    reference_ingredient?: string | null; // Add reference_ingredient property as optional
 };
 
 // Type for preparation ingredients fetched separately
@@ -127,6 +128,7 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
       total_time: null,
       yield_unit: transformUnit(null),
       yield_amount: null, // Add default yield_amount
+      reference_ingredient: null, // Add default reference_ingredient
       ingredients: [],
       cooking_notes: null 
     };
@@ -138,6 +140,7 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
     total_time: combinedData.total_time || 0, 
     yield_unit: transformUnit(combinedData.yield_unit), 
     yield_amount: combinedData.amount, // Get yield amount from ingredient data
+    reference_ingredient: (combinedData as any).reference_ingredient || null, // Access reference_ingredient with type assertion
     ingredients: [], 
     cooking_notes: combinedData.cooking_notes, 
   };

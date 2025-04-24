@@ -360,10 +360,10 @@ const CreatePreparationScreen = () => {
                              component={{ // Construct necessary DishComponent props
                                dish_id: '',
                                ingredient_id: item.ingredient_id || item.key,
-                               name: item.name,
+                            name: item.name,
                                amount: isNaN(baseAmountNum) ? null : baseAmountNum, // Pass base amount
-                               unit: units.find(u => u.unit_id === item.unitId) || null,
-                               isPreparation: true,
+                            unit: units.find(u => u.unit_id === item.unitId) || null,
+                            isPreparation: true,
                                preparationDetails: { // Construct minimal Preparation details
                                  preparation_id: item.ingredient_id || item.key,
                                  name: item.name,
@@ -372,9 +372,9 @@ const CreatePreparationScreen = () => {
                                  // Add other known details if available from 'item'
                                  directions: null, total_time: null, reference_ingredient: null, ingredients: [], cooking_notes: null,
                                },
-                               rawIngredientDetails: null,
+                            rawIngredientDetails: null,
                              }}
-                             onPress={() => handleSubPreparationPress(item)}
+                              onPress={() => handleSubPreparationPress(item)}
                              scaleMultiplier={scaleMultiplier} // Pass scale multiplier
                              amountLabel={t('common.amount')} // Label as Amount
                            />
@@ -387,15 +387,18 @@ const CreatePreparationScreen = () => {
                         <>
                           <Text style={styles.componentNameText}>{capitalizeWords(item.name)}</Text>
                           <View style={styles.componentControlsContainer}>
-                             {/* Display Scaled Amount (Non-Editable) */}
-                             <TextInput
-                                style={[styles.componentInputAmount, styles.readOnlyInput, { minWidth: 50 }]}
-                                value={formattedDisplay.amount}
-                                editable={false}
-                             />
+                            {/* Editable Base Amount Input */}
+                            <TextInput
+                                style={[styles.componentInputAmount, { minWidth: 60 }]} // Removed marginLeft
+                                placeholder={t('screens.createPreparation.amountPlaceholder')}
+                                placeholderTextColor={COLORS.placeholder}
+                                value={item.amountStr}
+                                onChangeText={(value) => handleIngredientUpdate(item.key, 'amountStr', value)}
+                                keyboardType="numeric"
+                            />
                              {/* Unit Selector */}
                             <TouchableOpacity
-                              style={[styles.componentUnitTrigger, { minWidth: 60 }]}
+                              style={[styles.componentUnitTrigger, { minWidth: 60, marginLeft: SIZES.base }]} // Added marginLeft
                               onPress={() => openUnitModal(item.key)}
                             >
                               <Text style={[styles.pickerText, !item.unitId && styles.placeholderText]}>
@@ -407,7 +410,7 @@ const CreatePreparationScreen = () => {
                             {/* Conditionally Render Item Input */}
                             {item.unitId === pieceUnitId && (
                                <TextInput
-                                  style={styles.itemInput} // Use the same style as CreateRecipe
+                                  style={styles.itemInput} // Style includes marginLeft/marginRight
                                   placeholder="(e.g., large)"
                                   placeholderTextColor={COLORS.placeholder}
                                   value={item.item || ''}
@@ -415,16 +418,7 @@ const CreatePreparationScreen = () => {
                                />
                             )}
 
-                             {/* Editable Base Amount Input */}
-                             <TextInput
-                                style={[styles.componentInputAmount, { marginLeft: SIZES.base, minWidth: 60 }]} 
-                                placeholder={t('screens.createPreparation.amountPlaceholder')}
-                                placeholderTextColor={COLORS.placeholder}
-                                value={item.amountStr}
-                                onChangeText={(value) => handleIngredientUpdate(item.key, 'amountStr', value)}
-                                keyboardType="numeric"
-                             />
-                             {/* Remove Button */}
+                            {/* Remove Button */}
                             <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButton}>
                                 <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
                             </TouchableOpacity>
@@ -462,8 +456,8 @@ const CreatePreparationScreen = () => {
                       multiline
                     />
                     {instructions.length > 1 && (
-                      <TouchableOpacity
-                        onPress={() => handleRemoveInstructionStep(index)}
+                      <TouchableOpacity 
+                        onPress={() => handleRemoveInstructionStep(index)} 
                         style={styles.removeStepButton}
                       >
                         <MaterialCommunityIcons name="close-circle-outline" size={22} color={COLORS.textLight} />
@@ -474,8 +468,8 @@ const CreatePreparationScreen = () => {
               ) : (
                 <Text style={styles.itemText}>{t('screens.createPreparation.noInstructions')}</Text>
               )}
-              <TouchableOpacity
-                onPress={handleAddInstructionStep}
+              <TouchableOpacity 
+                onPress={handleAddInstructionStep} 
                 style={styles.addStepButton}
               >
                  {/* Reuse translation key */}
@@ -634,12 +628,12 @@ const CreatePreparationScreen = () => {
                     <TouchableOpacity
                         style={styles.closeButton}
                         onPress={() => setComponentSearchModalVisible(false)}
-                    >
-                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
+                   >
+                       <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+                   </TouchableOpacity>
+               </View>
+           </View>
+       </Modal>
 
     </SafeAreaView>
   );
@@ -649,10 +643,10 @@ const CreatePreparationScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
   container: { flex: 1 },
-  contentContainer: {
+  contentContainer: { 
     paddingHorizontal: SIZES.padding * 1.5, // Adjusted padding
     paddingTop: SIZES.padding, // Added top padding
-    paddingBottom: SIZES.padding * 4
+    paddingBottom: SIZES.padding * 4 
   },
   prepName: { ...FONTS.h2, color: COLORS.white, marginBottom: SIZES.padding },
   refIngredientContainer: {

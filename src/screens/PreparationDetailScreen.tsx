@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -17,13 +17,13 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
-import { Preparation, PreparationIngredient } from '../types';
+import { Preparation, PreparationIngredient, Unit, DishComponent } from '../types';
 import AppHeader from '../components/AppHeader';
-import { usePreparationDetail } from '../hooks/useSupabase';
-import { formatQuantityAuto } from '../utils/textFormatters';
+import { usePreparationDetail, PreparationComponentDetail } from '../hooks/useSupabase';
+import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
 import ScaleSliderInput from '../components/ScaleSliderInput';
 import { useTranslation } from 'react-i18next';
-import { capitalizeWords } from '../utils/textFormatters';
+import PreparationCard from '../components/PreparationCard';
 
 type PreparationDetailRouteProp = RouteProp<RootStackParamList, 'PreparationDetails'>;
 type PreparationDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -37,7 +37,7 @@ const PreparationDetailScreen = () => {
   
   const { preparation, ingredients, loading, error } = usePreparationDetail(preparationId) as { 
       preparation: Preparation | null, 
-      ingredients: PreparationIngredient[], 
+      ingredients: PreparationComponentDetail[], 
       loading: boolean, 
       error: Error | null 
   };
@@ -120,6 +120,16 @@ const PreparationDetailScreen = () => {
 
   const { t } = useTranslation();
 
+  // Separate components into nested preparations and raw ingredients
+  const nestedPreparations = useMemo(() => 
+    ingredients?.filter(c => c.isPreparation) || [], 
+    [ingredients]
+  );
+  const rawIngredients = useMemo(() => 
+    ingredients?.filter(c => !c.isPreparation) || [], 
+    [ingredients]
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
@@ -147,6 +157,10 @@ const PreparationDetailScreen = () => {
   const baseYieldAmount = preparation.yield_amount;
   const currentYieldAmount = typeof baseYieldAmount === 'number' ? baseYieldAmount * amountScale : null;
   const yieldUnitAbbreviation = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
+
+  const handleNestedPreparationPress = (nestedPrepId: string) => {
+    navigation.push('PreparationDetails', { preparationId: nestedPrepId, recipeServingScale: amountScale });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -219,51 +233,100 @@ const PreparationDetailScreen = () => {
             </View>
           )}
           
-          <View style={styles.ingredientsContainer}>
-            <Text style={styles.sectionTitle}>{t('screens.preparationDetail.ingredientsTitle')}</Text>
-            {ingredients.map((ingredient) => {
-              const unitKey = (ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
-              const isToggleable = ingredient.unit && (unitOptions[unitKey]?.length || 0) > 1;
-              const displayUnit = (selectedUnit[ingredient.ingredient_id] || ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
-
-              return (
-                <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
-                  <Text style={styles.ingredientName}>{capitalizeWords(ingredient.name)}</Text>
-                  <TouchableOpacity 
-                    style={styles.ingredientQuantity}
-                    onPress={() => toggleUnit(ingredient.ingredient_id, ingredient.unit)}
-                    disabled={!isToggleable}
-                  >
-                    <Text style={styles.ingredientQuantityText}>
-                      {getDisplayValue(ingredient.amount, ingredient.unit, ingredient.ingredient_id)} {displayUnit}
-                    </Text>
-                    {isToggleable && (
-                      <MaterialCommunityIcons 
-                        name="swap-horizontal" 
-                        size={16} 
-                        color={COLORS.primary} 
-                      />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </View>
+          {/* --- Raw Ingredients Section --- */}
+          {rawIngredients.length > 0 && (
+            <View style={styles.sectionContainer}> 
+              <Text style={styles.sectionTitle}>{t('screens.preparationDetail.rawIngredientsTitle')}</Text>
+              {rawIngredients.map((ingredient) => {
+                const unitKey = (ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
+                const isToggleable = ingredient.unit && (unitOptions[unitKey]?.length || 0) > 1;
+                const displayUnit = (selectedUnit[ingredient.id] || ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
+                
+                return (
+                  <View key={ingredient.id} style={styles.ingredientItem}>
+                    <Text style={styles.ingredientName}>{capitalizeWords(ingredient.name)}</Text>
+                    <TouchableOpacity 
+                      style={styles.ingredientQuantity}
+                      onPress={() => toggleUnit(ingredient.id, ingredient.unit)}
+                      disabled={!isToggleable}
+                    >
+                      <Text style={styles.ingredientQuantityText}>
+                        {getDisplayValue(ingredient.amount, ingredient.unit, ingredient.id)} {displayUnit}
+                      </Text>
+                      {isToggleable && (
+                        <MaterialCommunityIcons 
+                          name="swap-horizontal" 
+                          size={16} 
+                          color={COLORS.primary} 
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          )}
           
-          <View style={styles.instructionsContainer}>
-            <Text style={styles.sectionTitle}>{t('screens.preparationDetail.instructionsTitle')}</Text>
-            {directions.map((instruction: string, index: number) => (
-              <View key={`instruction-${index}`} style={styles.instructionItem}>
-                <View style={styles.instructionNumber}>
-                  <Text style={styles.instructionNumberText}>{index + 1}</Text>
-                </View>
-                <Text style={styles.instructionText}>{instruction}</Text>
-              </View>
-            ))}
-          </View>
+          {/* --- Preparations Section --- */}
+          {nestedPreparations.length > 0 && (
+            <View style={styles.sectionContainer}> 
+              <Text style={styles.sectionTitle}>{t('screens.preparationDetail.preparationsTitle')}</Text>
+              {nestedPreparations.map((component) => {
+                 // Construct the DishComponent like object for PreparationCard
+                 const prepComponent: DishComponent = {
+                   dish_id: '', 
+                   ingredient_id: component.id,
+                   name: component.name,
+                   amount: component.amount,
+                   unit: component.unit,
+                   isPreparation: true,
+                   preparationDetails: component.preparationDetails ? {
+                        ...component.preparationDetails, // Spread existing details (includes ingredients, time, yield)
+                        preparation_id: component.id, // Add necessary ID
+                        name: component.name // Add necessary name
+                     } as any : null,
+                     rawIngredientDetails: null
+                   };
+                return (
+                  <View key={component.id} style={styles.componentWrapper}> 
+                    <PreparationCard
+                      component={prepComponent}
+                      scaleMultiplier={amountScale}
+                      onPress={() => handleNestedPreparationPress(component.id)}
+                      amountLabel={t('common.amount')}
+                      hideReferenceIngredient={true}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          )}
           
+          {/* Show message if NO components exist at all */}
+          {nestedPreparations.length === 0 && rawIngredients.length === 0 && (
+             <View style={styles.sectionContainer}> 
+                <Text style={styles.noIngredientsText}>{t('screens.preparationDetail.noComponents', 'No components listed for this preparation.')}</Text>
+             </View>
+          )}
+          
+          {/* --- Instructions Section --- */}
+          {directions.length > 0 && (
+            <View style={styles.sectionContainer}> 
+              <Text style={styles.sectionTitle}>{t('screens.preparationDetail.directionsTitle')}</Text>
+              {directions.map((instruction: string, index: number) => (
+                <View key={`instruction-${index}`} style={styles.instructionItem}>
+                  <View style={styles.instructionNumber}>
+                    <Text style={styles.instructionNumberText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.instructionText}>{instruction}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          
+          {/* --- Notes Section --- */}
           {preparation.cooking_notes && (
-            <View style={styles.notesContainer}>
+            <View style={styles.sectionContainer}> 
               <Text style={styles.sectionTitle}>{t('screens.preparationDetail.cookingNotesTitle')}</Text>
               <Text style={styles.notesText}>
                 {preparation.cooking_notes}
@@ -308,7 +371,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   contentContainer: {
-    paddingHorizontal: SIZES.padding * 2,
+    paddingHorizontal: SIZES.padding,
     paddingTop: SIZES.padding * 2,
   },
   headerContainer: {
@@ -335,6 +398,23 @@ const styles = StyleSheet.create({
     ...FONTS.body3,
     color: COLORS.textLight,
     marginLeft: 4,
+  },
+  referenceIngredientContainer: {
+    marginBottom: SIZES.padding,
+    backgroundColor: COLORS.tertiary,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    ...SHADOWS.small,
+  },
+  referenceIngredientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  referenceIngredientText: {
+    ...FONTS.body2,
+    color: COLORS.white,
+    marginLeft: SIZES.base,
+    flex: 1,
   },
   amountAdjustContainer: {
     marginVertical: SIZES.padding,
@@ -371,6 +451,9 @@ const styles = StyleSheet.create({
     ...FONTS.h2,
     color: COLORS.white,
     marginBottom: SIZES.padding,
+    paddingBottom: SIZES.base,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   ingredientsContainer: {
     marginVertical: SIZES.padding,
@@ -379,14 +462,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SIZES.padding,
+    paddingVertical: SIZES.padding * 0.75,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.tertiary,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: SIZES.padding,
   },
   ingredientName: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     flex: 1,
+    marginRight: SIZES.base,
   },
   ingredientQuantity: {
     flexDirection: 'row',
@@ -401,43 +486,40 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginRight: 4,
   },
-  instructionsContainer: {
-    marginVertical: SIZES.padding,
-  },
   instructionItem: {
     flexDirection: 'row',
-    marginBottom: SIZES.padding,
+    marginBottom: SIZES.padding * 1.5,
+    alignItems: 'flex-start',
   },
   instructionNumber: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SIZES.padding,
+    marginRight: SIZES.padding * 0.75,
     marginTop: 2,
   },
   instructionNumberText: {
-    ...FONTS.body2,
+    ...FONTS.body3,
     color: COLORS.white,
     fontWeight: 'bold',
   },
   instructionText: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     flex: 1,
-  },
-  notesContainer: {
-    marginVertical: SIZES.padding,
+    lineHeight: FONTS.body2.fontSize * 1.5,
   },
   notesText: {
     ...FONTS.body2,
-    color: COLORS.white,
+    color: COLORS.text,
     backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
     ...SHADOWS.small,
+    lineHeight: FONTS.body2.fontSize * 1.5,
   },
   editButton: {
     padding: SIZES.base,
@@ -450,6 +532,15 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     marginVertical: SIZES.padding,
+    paddingHorizontal: SIZES.padding,
+  },
+  componentWrapper: {
+    marginBottom: SIZES.base,
+  },
+  noIngredientsText: {
+    ...FONTS.body2,
+    color: COLORS.textLight,
+    textAlign: 'center',
   },
 });
 

@@ -8,10 +8,10 @@
     "changeToFrench": "Change to French",
     "changeToItalian": "Change to Italian",
     "preferencesTitle": "Preferences",
-    "darkMode": "Dark Mode",
     "notifications": "Notifications",
-    "autoSync": "Auto-sync recipes",
     "metricUnits": "Use metric units",
+    "imperialUnits": "Use imperial units",
+    "unitSystem": "Unit System",
     "language": "Language",
     "selectLanguage": "Select Language",
     "cancel": "Cancel",
@@ -38,11 +38,17 @@
       "ok": "OK",
       "dish": "Dish",
       "preparation": "Preparation",
+      "preparations": "Preparations",
       "ingredients": "Ingredients",
       "servings": "Servings",
       "yield": "Yield",
       "success": "Success",
-      "warning": "Warning"
+      "warning": "Warning",
+      "recipes": "Recipes",
+      "dishes": "Dishes",
+      "metric": "Metric",
+      "imperial": "Imperial",
+      "referenceIngredient": "Reference Ingredient"
     },
     "validation": {
       "required": "{{field}} is required"
@@ -182,13 +188,17 @@
         "loading": "Loading Preparation...",
         "ingredientsTitle": "Ingredients",
         "instructionsTitle": "Instructions",
+        "directionsTitle": "Directions",
         "cookingNotesTitle": "Cooking Notes",
         "error": "Error Loading Preparation",
         "errorNotFound": "Preparation not found",
         "titleFallback": "Preparation",
         "minutesSuffix": "min",
         "adjustScaleLabel": "Adjust Scale (Base Yield: {{amount}} {{unit}})",
-        "scaleSuffix": "x scale"
+        "scaleSuffix": "x scale",
+        "preparationsTitle": "Preparations",
+        "rawIngredientsTitle": "Raw Ingredients",
+        "noComponents": "No components listed for this preparation."
       },
       "createRecipe": {
         "nameLabel": "Recipe Name *",
@@ -246,6 +256,22 @@
         "noInstructions": "No instructions provided.",
         "selectUnitModalTitle": "Select Unit",
         "selectPrepUnitModalTitle": "Select Preparation Unit"
+      },
+      "support": {
+        "title": "Support",
+        "helpAndSupport": "Help & Support",
+        "about": "About"
+      },
+      "help": {
+        "title": "Help & Support",
+        "feedbackTitle": "Send Feedback",
+        "feedbackLabel": "Your Feedback",
+        "feedbackPlaceholder": "How can we improve ROACook?",
+        "submitButton": "Submit Feedback",
+        "successTitle": "Thank You!",
+        "successMessage": "Your feedback has been submitted successfully.",
+        "errorTitle": "Error",
+        "errorMessage": "There was an error submitting your feedback. Please try again."
       }
     },
     "alerts": {
@@ -287,8 +313,10 @@
       "preparationCard": {
         "detailsMissingError": "Preparation details missing.",
         "ingredientsTitle": "Ingredients",
-        "noIngredients": "No ingredients listed.",
-        "subTitle": "Ingredients"
+        "noIngredientsText": "No ingredients listed.",
+        "subTitle": "Ingredients",
+        "errorText": "Error loading preparation details",
+        "referenceIngredient": "Reference ingredient"
       },
       "addCategoryCard": {
         "addButton": "Add",

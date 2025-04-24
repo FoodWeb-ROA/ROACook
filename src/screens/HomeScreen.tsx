@@ -56,11 +56,11 @@ const CATEGORIES_PER_PAGE = 4;
 const CATEGORY_NUM_COLUMNS = 2;
 // Make category padding match recipe padding initially, then reduce slightly
 const RECIPE_PADDING = SIZES.padding;
-const BASE_CAT_PADDING = RECIPE_PADDING; // Start with recipe padding
+const BASE_CAT_PADDING = RECIPE_PADDING * 0.8; // Reduced padding to allow cards to fill more width
 const CAT_PADDING = BASE_CAT_PADDING; // Reduce category padding slightly
 const CAT_ITEM_SPACING = SIZES.padding / 2; // Keep item spacing relative to base padding perhaps?
 // Recalculate available width based on the updated padding
-const catAvailableWidthInPage = 0.95*(screenWidth - CAT_PADDING * 2); 
+const catAvailableWidthInPage = (screenWidth - CAT_PADDING * 2); // Increased from 0.95 to 0.98
 const categoryItemWidth = (catAvailableWidthInPage - CAT_ITEM_SPACING * (CATEGORY_NUM_COLUMNS - 1)) / CATEGORY_NUM_COLUMNS;
 const CAT_PAGE_WIDTH = screenWidth;
 
@@ -82,6 +82,9 @@ const CATEGORY_SECTION_HEIGHT = 300; // Example height, adjust as needed
 // Define a height for the recipe section content area
 const RECIPE_SECTION_HEIGHT = 250; // Example height for recipes, adjust as needed
 
+// Define a height for the central separating container
+const CENTRAL_SEPARATOR_HEIGHT = SIZES.padding/4;
+
 // Define the composite navigation prop type
 type HomeScreenNavigationProp = CompositeNavigationProp<
   DrawerNavigationProp<DrawerParamList, 'Home'>, // Specify 'Home' as the current screen in the drawer
@@ -93,6 +96,9 @@ const HEADER_HEIGHT = 60; // Approximate height of AppHeader
 const SECTION_HEADER_HEIGHT = 40; // Approximate height of section headers
 const PAGINATION_HEIGHT = 30; // Approximate height of pagination dots
 const FAB_CONTAINER_HEIGHT = 70; // Approximate height of the floating action button container
+
+// Add extra bottom padding so content is not hidden behind FAB
+const SCROLL_EXTRA_PADDING = FAB_CONTAINER_HEIGHT + SIZES.padding/4;
 
 // Calculate available space for content sections
 // ... existing code ...
@@ -401,6 +407,7 @@ const HomeScreen = () => {
 
       <ScrollView 
         style={styles.container}
+        contentContainerStyle={{ paddingBottom: SCROLL_EXTRA_PADDING }}
         refreshControl={
           <RefreshControl refreshing={loadingCategories || loadingDishes} onRefresh={refreshMenuSections} />
         }
@@ -461,7 +468,7 @@ const HomeScreen = () => {
               <Text style={[styles.viewAllText, { fontSize: SIZES.small }]}>{t('screens.home.viewAll')}</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ height: RECIPE_SECTION_HEIGHT }}>
+          <View>
             {loadingDishes ? (
               <ActivityIndicator color={COLORS.primary} size="large" style={styles.loader} />
             ) : dishesError ? (
@@ -654,7 +661,7 @@ const styles = StyleSheet.create({
   },
   recipeSectionContainer: {
     flex: 1, // Restore flex: 1 to ensure it fills parent space
-    height: undefined,
+    // height: undefined, // No fixed height needed if parent is ScrollView
   },
   
   recipePage: { // Style for recipe pages
@@ -683,16 +690,15 @@ const styles = StyleSheet.create({
   },
   // New style for the dot separator containers
   dotSeparatorContainer: {
-    height: 5, // Restore height to create space
-    // Removed paddingVertical to center dots in the new margin space
+    height: CENTRAL_SEPARATOR_HEIGHT, // Use the constant for height
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    // Remove paddingVertical if added by user
   },
   sectionContainer: {
     flex: 1,
-    padding: SIZES.padding/4,
+    paddingHorizontal: SIZES.padding/4,
+    marginBottom: SIZES.padding, // Reduced to make spacing equidistant
   },
   loader: {
     flex: 1,
@@ -721,6 +727,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: SIZES.padding,
+    paddingBottom: SIZES.padding,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

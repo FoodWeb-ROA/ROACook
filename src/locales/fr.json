@@ -8,10 +8,10 @@
     "changeToFrench": "Changer en français",
     "changeToItalian": "Changer en italien",
     "preferencesTitle": "Préférences",
-    "darkMode": "Mode Sombre",
     "notifications": "Notifications",
-    "autoSync": "Synchro auto des recettes",
     "metricUnits": "Utiliser les unités métriques",
+    "imperialUnits": "Utiliser les unités impériales",
+    "unitSystem": "Système d'unités",
     "language": "Langue",
     "selectLanguage": "Choisir la Langue",
     "cancel": "Annuler",
@@ -38,11 +38,17 @@
       "ok": "OK",
       "dish": "Plat",
       "preparation": "Préparation",
+      "preparations": "Préparations",
       "ingredients": "Ingrédients",
       "servings": "Portions",
       "yield": "Rendement",
       "success": "Succès",
-      "warning": "Avertissement"
+      "warning": "Avertissement",
+      "recipes": "Recettes",
+      "dishes": "Plats",
+      "metric": "Métrique",
+      "imperial": "Impérial",
+      "referenceIngredient": "Ingrédient de Référence"
     },
     "validation": {
       "required": "{{field}} est requis",
@@ -185,7 +191,10 @@
         "titleFallback": "Préparation",
         "minutesSuffix": "min",
         "adjustScaleLabel": "Ajuster l'Échelle (Rendement de Base : {{amount}} {{unit}})",
-        "scaleSuffix": "x échelle"
+        "scaleSuffix": "x échelle",
+        "preparationsUsedTitle": "Préparations Utilisées",
+        "rawIngredientsTitle": "Ingrédients Bruts",
+        "noComponents": "Aucun composant listé pour cette préparation."
       },
       "createRecipe": {
         "nameLabel": "Nom de la Recette *",
@@ -243,6 +252,22 @@
         "noInstructions": "Aucune instruction fournie.",
         "selectUnitModalTitle": "Sélectionner Unité",
         "selectPrepUnitModalTitle": "Sélectionner Unité de Préparation"
+      },
+      "support": {
+        "title": "Support",
+        "helpAndSupport": "Aide & Support",
+        "about": "À Propos"
+      },
+      "help": {
+        "title": "Aide & Support",
+        "feedbackTitle": "Envoyer un Commentaire",
+        "feedbackLabel": "Votre Avis",
+        "feedbackPlaceholder": "Comment pouvons-nous améliorer ROACook?",
+        "submitButton": "Envoyer le Commentaire",
+        "successTitle": "Merci!",
+        "successMessage": "Votre commentaire a été envoyé avec succès.",
+        "errorTitle": "Erreur",
+        "errorMessage": "Une erreur est survenue lors de l'envoi de votre commentaire. Veuillez réessayer."
       }
     },
     "alerts": {
@@ -284,8 +309,10 @@
       "preparationCard": {
         "detailsMissingError": "Détails de préparation manquants.",
         "ingredientsTitle": "Ingrédients",
-        "noIngredients": "Aucun ingrédient listé.",
-        "subTitle": "Ingrédients"
+        "noIngredientsText": "Aucun ingrédient listé.",
+        "subTitle": "Ingrédients",
+        "errorText": "Erreur de chargement des détails de préparation",
+        "referenceIngredient": "Ingrédient de référence"
       },
       "addCategoryCard": {
         "addButton": "Ajouter",

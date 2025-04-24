@@ -8,10 +8,10 @@
     "changeToFrench": "Cambiar a Francés",
     "changeToItalian": "Cambiar a Italiano",
     "preferencesTitle": "Preferencias",
-    "darkMode": "Modo Oscuro",
     "notifications": "Notificaciones",
-    "autoSync": "Sincronización automática",
     "metricUnits": "Usar unidades métricas",
+    "imperialUnits": "Usar unidades imperiales",
+    "unitSystem": "Sistema de Unidades",
     "language": "Idioma",
     "selectLanguage": "Seleccionar Idioma",
     "cancel": "Cancelar",
@@ -24,7 +24,7 @@
       "error": "Error",
       "retry": "Reintentar",
       "close": "Cerrar",
-      "back": "Atrás",
+      "back": "Volver",
       "add": "Añadir",
       "save": "Guardar",
       "edit": "Editar",
@@ -38,11 +38,17 @@
       "ok": "OK",
       "dish": "Plato",
       "preparation": "Preparación",
+      "preparations": "Preparaciones",
       "ingredients": "Ingredientes",
       "servings": "Porciones",
       "yield": "Rendimiento",
       "success": "Éxito",
-      "warning": "Advertencia"
+      "warning": "Advertencia",
+      "recipes": "Recetas",
+      "dishes": "Platos",
+      "metric": "Métrico",
+      "imperial": "Imperial",
+      "referenceIngredient": "Ingrediente de Referencia"
     },
     "validation": {
       "required": "{{field}} es obligatorio",
@@ -251,6 +257,22 @@
         "noInstructions": "No se proporcionaron instrucciones.",
         "selectUnitModalTitle": "Seleccionar Unidad",
         "selectPrepUnitModalTitle": "Seleccionar Unidad de Preparación"
+      },
+      "support": {
+        "title": "Soporte",
+        "helpAndSupport": "Ayuda y Soporte",
+        "about": "Acerca de"
+      },
+      "help": {
+        "title": "Ayuda y Soporte",
+        "feedbackTitle": "Enviar Comentarios",
+        "feedbackLabel": "Tu Opinión",
+        "feedbackPlaceholder": "¿Cómo podemos mejorar ROACook?",
+        "submitButton": "Enviar Comentarios",
+        "successTitle": "¡Gracias!",
+        "successMessage": "Tu comentario ha sido enviado exitosamente.",
+        "errorTitle": "Error",
+        "errorMessage": "Hubo un error al enviar tu comentario. Por favor, inténtalo de nuevo."
       }
     },
     "components": {
@@ -264,10 +286,12 @@
         "servings_other": "{{count}} porciones"
       },
       "preparationCard": {
-        "detailsMissingError": "Faltan detalles de la preparación.",
+        "detailsMissingError": "Detalles de preparación faltantes.",
         "ingredientsTitle": "Ingredientes",
-        "noIngredients": "No hay ingredientes listados.",
-        "subTitle": "Ingredientes"
+        "noIngredientsText": "No hay ingredientes listados.",
+        "subTitle": "Ingredientes",
+        "errorText": "Error cargando detalles de preparación",
+        "referenceIngredient": "Ingrediente de referencia"
       },
       "addCategoryCard": {
         "addButton": "Añadir",

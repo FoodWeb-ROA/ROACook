@@ -9,6 +9,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { AuthProvider } from './src/context/AuthContext';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import { UnitSystemProvider } from './src/context/UnitSystemContext';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -49,16 +51,20 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <SafeAreaProvider>
-        <PaperProvider theme={theme}>
-          <AuthProvider>
-            <ActionSheetProvider>
-              <AppNavigator />
-            </ActionSheetProvider>
-          </AuthProvider>
-        </PaperProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary componentName="App">
+      <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <SafeAreaProvider>
+          <PaperProvider theme={theme}>
+            <AuthProvider>
+              <UnitSystemProvider>
+                <ActionSheetProvider>
+                  <AppNavigator />
+                </ActionSheetProvider>
+              </UnitSystemProvider>
+            </AuthProvider>
+          </PaperProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

@@ -12,20 +12,28 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { DrawerParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import AppHeader from '../components/AppHeader';
 import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-// Define navigation prop type
+// Define navigation prop types
 type SupportScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Support'>;
+type StackNavigationPropType = StackNavigationProp<RootStackParamList>;
 
 const SupportScreen = () => {
   const navigation = useNavigation<SupportScreenNavigationProp>();
+  const stackNavigation = useNavigation<StackNavigationPropType>();
   const { t } = useTranslation();
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
+  };
+
+  const navigateToHelpScreen = () => {
+    stackNavigation.navigate('HelpScreen');
   };
 
   const renderSettingItem = (
@@ -61,9 +69,8 @@ const SupportScreen = () => {
       
       <ScrollView style={styles.container}>
         <View style={styles.section}>
-          {renderSettingItem('help-circle-outline', 'Help & Support', () => console.log('Help & Support'))}
-          {renderSettingItem('information-outline', 'About', () => console.log('About'))}
-          {renderSettingItem('message-outline', 'Send Feedback', () => console.log('Send Feedback'))}
+          {renderSettingItem('help-circle-outline', t('screens.support.helpAndSupport'), navigateToHelpScreen)}
+          {renderSettingItem('information-outline', t('screens.support.about'), () => console.log('About'))}
         </View>
       </ScrollView>
     </SafeAreaViewRN>

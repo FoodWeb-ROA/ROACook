@@ -16,6 +16,7 @@ export type RootStackParamList = {
   Account: undefined;
   Preferences: undefined;
   Support: undefined;
+  HelpScreen: undefined;
   MainDrawer: { screen: keyof DrawerParamList };
   CreateRecipe: { 
     dishId?: string; 

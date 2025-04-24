@@ -104,6 +104,21 @@ const DishDetailScreen = () => {
     );
   }
 
+  // Final check to ensure dish is not null before rendering main content
+  if (!dish) {
+    // This case should ideally be caught by the error check above,
+    // but adding for extra safety.
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title={t('common.error')} showBackButton={true} />
+        <Text style={styles.errorText}>
+          {t('screens.dishDetail.notFound', 'Dish not found')}
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   const directions = dish.directions ? dish.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
 
   const formatTime = (interval: string | null): string => {
@@ -213,21 +228,6 @@ const DishDetailScreen = () => {
             </View>
           )}
           
-          {/* --- Preparations Section --- */}
-          {preparationComponents.length > 0 && (
-            <View style={styles.sectionContainer}> 
-              <Text style={styles.sectionTitle}>{t('screens.dishDetail.preparationsTitle')}</Text>
-              {preparationComponents.map((component) => (
-                <PreparationCard 
-                  key={component.ingredient_id} 
-                  component={component}
-                  scaleMultiplier={servingScale}
-                  onPress={() => handlePreparationPress(component.ingredient_id)}
-                />
-              ))}
-            </View>
-          )}
-
           {/* --- Ingredients Section --- */}
           {RawIngredients.length > 0 && (
             <View style={styles.sectionContainer}> 
@@ -252,6 +252,21 @@ const DishDetailScreen = () => {
             </View>
           )}
 
+          {/* --- Preparations Section --- */}
+          {preparationComponents.length > 0 && (
+            <View style={styles.sectionContainer}> 
+              <Text style={styles.sectionTitle}>{t('screens.dishDetail.preparationsTitle')}</Text>
+              {preparationComponents.map((preparation) => (
+                <PreparationCard
+                  key={preparation.ingredient_id}
+                  component={preparation}
+                  onPress={() => handlePreparationPress(preparation.ingredient_id)}
+                  scaleMultiplier={servingScale}
+                />
+              ))}
+            </View>
+          )}
+
           {/* Show message if NO components exist at all */}
           {preparationComponents.length === 0 && RawIngredients.length === 0 && (
              <View style={styles.sectionContainer}> 
@@ -261,7 +276,7 @@ const DishDetailScreen = () => {
           
           {/* --- Directions Section --- */}
           {directions.length > 0 && (
-            <View style={styles.instructionsContainer}> 
+            <View style={styles.sectionContainer}> 
               <Text style={styles.sectionTitle}>{t('screens.dishDetail.directionsTitle')}</Text>
               {directions.map((step: string, index: number) => (
                 <View key={`direction-${index}`} style={styles.instructionItem}>
@@ -367,6 +382,7 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     marginVertical: SIZES.padding,
+    paddingHorizontal: SIZES.padding,
   },
   sectionTitle: {
     ...FONTS.h2,
@@ -404,15 +420,10 @@ const styles = StyleSheet.create({
     ...FONTS.body3,
     color: COLORS.textLight,
   },
-  instructionsContainer: {
-    marginVertical: SIZES.padding,
-    paddingHorizontal: SIZES.padding,
-  },
   instructionItem: {
     flexDirection: 'row',
     marginBottom: SIZES.padding * 1.5,
     alignItems: 'flex-start',
-    paddingHorizontal: SIZES.padding,
   },
   instructionNumber: {
     width: 24,

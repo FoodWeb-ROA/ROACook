@@ -6,8 +6,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import { RootStackParamList } from '../navigation/types';
-import { useDishes } from '../hooks/useSupabase';
-import { Dish } from '../types';
+import { useDishes, usePreparations } from '../hooks/useSupabase';
+import { Dish, Preparation } from '../types';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,63 +17,100 @@ import { useTranslation } from 'react-i18next';
 const AllRecipesScreen = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const drawerNav = useNavigation<DrawerNavigationProp<DrawerParamList>>();
-  const { dishes, loading, error } = useDishes();
+  const { dishes, loading: loadingDishes, error: errorDishes } = useDishes();
+  const { preparations, loading: loadingPreps, error: errorPreps } = usePreparations();
   const { t } = useTranslation();
   
+  const [activeTab, setActiveTab] = useState<'recipes' | 'preparations'>('recipes');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'newest'>('name');
   
   const openDrawerMenu = () => drawerNav.openDrawer();
   
-  const filteredDishes = useMemo(() => {
-    if (!dishes) return [];
+  const filteredData = useMemo(() => {
+    const sourceData = activeTab === 'recipes' ? dishes : preparations;
+    if (!sourceData) return [];
     
-    let filtered = [...dishes];
+    let filtered = [...sourceData];
     
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(dish => 
-        dish.dish_name?.toLowerCase().includes(query)
+      filtered = filtered.filter(item => {
+        // For Preparation, the name comes directly from the type definition now
+        const itemName = ('dish_id' in item ? item.dish_name : item.name)?.toLowerCase();
+        return itemName?.includes(query);
+      }
       );
     }
     
-    // Apply sorting
+    // Apply sorting (Only applying name sort for simplicity)
     if (sortBy === 'name') {
-      filtered.sort((a, b) => (a.dish_name || '').localeCompare(b.dish_name || ''));
-    } else if (sortBy === 'newest') {
-      // Assuming there's some field that indicates creation time
-      // This is a placeholder - replace with actual field if available
       filtered.sort((a, b) => {
-        return (b.created_at as any) - (a.created_at as any);
+        // For Preparation, the name comes directly from the type definition now
+        const nameA = ('dish_id' in a ? a.dish_name : a.name) || '';
+        const nameB = ('dish_id' in b ? b.dish_name : b.name) || '';
+        return nameA.localeCompare(nameB);
       });
     }
     
     return filtered;
-  }, [dishes, searchQuery, sortBy]);
+  }, [dishes, preparations, searchQuery, sortBy, activeTab]);
   
   const handleDishPress = (dish: Dish) => {
     navigation.navigate('DishDetails', { dishId: dish.dish_id });
   };
   
-  const renderDishItem = ({ item }: { item: Dish }) => (
-    <TouchableOpacity 
-      style={styles.dishItem}
-      onPress={() => handleDishPress(item)}
-    >
-      <View style={styles.dishContent}>
-        <Text style={styles.dishName}>{capitalizeWords(item.dish_name)}</Text>
-        <Text style={styles.servingInfo}>
-          {item.num_servings} {item.serving_unit ? t('screens.allRecipes.servings', 'servings') : t('screens.allRecipes.servings', 'servings')}
-        </Text>
-      </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.primary} />
-    </TouchableOpacity>
-  );
+  const handlePreparationPress = (prep: Preparation) => {
+    navigation.navigate('PreparationDetails', { preparationId: prep.preparation_id });
+  };
+  
+  const renderItem = ({ item }: { item: Dish | Preparation }) => {
+    const isDish = 'dish_id' in item;
+    const itemName = isDish ? (item as Dish).dish_name : (item as Preparation).name; // Use correct name property
+    
+    return (
+      <TouchableOpacity 
+        style={styles.itemRow}
+        onPress={() => isDish ? handleDishPress(item as Dish) : handlePreparationPress(item as Preparation)}
+      >
+        <View style={styles.itemContent}>
+          <Text style={styles.itemName}>{capitalizeWords(itemName)}</Text>
+          {isDish && (item as Dish).num_servings && (
+            <Text style={styles.itemSubInfo}>
+              {(item as Dish).num_servings} {t('screens.allRecipes.servings', 'servings')}
+            </Text>
+          )}
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.primary} />
+      </TouchableOpacity>
+    );
+  };
+
+  const loading = activeTab === 'recipes' ? loadingDishes : loadingPreps;
+  const error = activeTab === 'recipes' ? errorDishes : errorPreps;
+
+  // Keep title static as "All Recipes"
+  const screenTitle = t('screens.allRecipes.title', 'All Recipes');
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title={t('screens.allRecipes.title', 'All Recipes')} showMenuButton={true} onMenuPress={openDrawerMenu} />
+      <AppHeader title={screenTitle} showMenuButton={true} onMenuPress={openDrawerMenu} />
+      
+      {/* Tab Selector */}
+      <View style={styles.toggleContainer}>
+        {(['recipes', 'preparations'] as const).map(tab => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.toggleBtn, activeTab === tab && styles.toggleBtnActive]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <Text style={[styles.toggleText, activeTab === tab && styles.toggleTextActive]}>
+              {t(tab === 'recipes' ? 'common.dishes' : 'common.preparations')}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
       
       <View style={styles.searchContainer}>
         <TextInput
@@ -93,12 +130,6 @@ const AllRecipesScreen = () => {
         >
           <Text style={[styles.sortButtonText, sortBy === 'name' && styles.sortButtonTextActive]}>{t('screens.allRecipes.sortByName')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.sortButton, sortBy === 'newest' && styles.sortButtonActive]}
-          onPress={() => setSortBy('newest')}
-        >
-          <Text style={[styles.sortButtonText, sortBy === 'newest' && styles.sortButtonTextActive]}>{t('screens.allRecipes.sortByNewest')}</Text>
-        </TouchableOpacity>
       </View>
       
       {loading ? (
@@ -106,19 +137,22 @@ const AllRecipesScreen = () => {
       ) : error ? (
         <View style={styles.centerContent}>
           <Text style={styles.errorText}>{error.message}</Text>
-          <TouchableOpacity style={styles.retryButton}>
+          <TouchableOpacity style={styles.retryButton} onPress={activeTab === 'recipes' ? () => {} : () => {}}>
             <Text style={styles.retryText}>{t('screens.allRecipes.retry', 'Retry')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={filteredDishes}
-          keyExtractor={(item) => item.dish_id}
-          renderItem={renderDishItem}
-          contentContainerStyle={filteredDishes.length === 0 ? styles.centerContent : styles.listContent}
+          data={filteredData}
+          keyExtractor={(item) => ('dish_id' in item ? item.dish_id : item.preparation_id)}
+          renderItem={renderItem}
+          contentContainerStyle={filteredData.length === 0 ? styles.centerContent : styles.listContent}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              {searchQuery ? t('screens.allRecipes.noSearchResults', 'No recipes match your search') : t('screens.allRecipes.noRecipesFound', 'No recipes found')}
+              {searchQuery 
+                ? t('screens.allRecipes.noSearchResultsGeneric', 'No items match your search') 
+                : (activeTab === 'recipes' ? t('screens.allRecipes.noRecipesFound', 'No recipes found') : t('screens.allRecipes.noPreparationsFound', 'No preparations found'))
+              }
             </Text>
           }
         />
@@ -131,6 +165,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: SIZES.padding,
+    paddingTop: SIZES.padding,
+    paddingBottom: SIZES.base,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: SIZES.padding * 0.75,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginHorizontal: SIZES.base,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+  },
+  toggleBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  toggleText: {
+    ...FONTS.body3,
+    color: COLORS.text,
+  },
+  toggleTextActive: {
+    color: COLORS.white,
+    fontWeight: '600',
   },
   searchContainer: {
     paddingHorizontal: SIZES.padding * 2,
@@ -174,7 +236,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: '600',
   },
-  dishItem: {
+  itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -183,15 +245,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  dishContent: {
+  itemContent: {
     flex: 1,
+    marginRight: SIZES.base,
   },
-  dishName: {
+  itemName: {
     ...FONTS.h4,
     color: COLORS.white,
     marginBottom: SIZES.base / 2,
   },
-  servingInfo: {
+  itemSubInfo: {
     ...FONTS.body3,
     color: COLORS.textLight,
   },

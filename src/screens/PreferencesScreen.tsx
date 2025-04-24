@@ -17,6 +17,7 @@ import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
 import { useActionSheet } from '@expo/react-native-action-sheet';
+import { useUnitSystem } from '../context/UnitSystemContext';
 
 // Define navigation prop type
 type PreferencesScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Preferences'>;
@@ -25,10 +26,9 @@ const PreferencesScreen = () => {
   const navigation = useNavigation<PreferencesScreenNavigationProp>();
   const { t, i18n } = useTranslation();
   const { showActionSheetWithOptions } = useActionSheet();
-  const [darkMode, setDarkMode] = useState(false);
+  const { unitSystem, toggleUnitSystem, isMetric } = useUnitSystem();
   const [notifications, setNotifications] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
-  const [metricUnits, setMetricUnits] = useState(true);
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
@@ -57,6 +57,26 @@ const PreferencesScreen = () => {
         if (selectedIndex !== undefined && selectedIndex !== cancelButtonIndex) {
           const selectedLanguage = availableLanguages[selectedIndex];
           i18n.changeLanguage(selectedLanguage.code);
+        }
+      }
+    );
+  };
+
+  const showUnitSystemSelector = () => {
+    const options = [t('common.metric'), t('common.imperial'), t('cancel')];
+    const cancelButtonIndex = options.length - 1;
+
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        title: t('unitSystem'),
+      },
+      (selectedIndex?: number) => {
+        if (selectedIndex !== undefined && selectedIndex !== cancelButtonIndex) {
+          if ((selectedIndex === 0 && !isMetric) || (selectedIndex === 1 && isMetric)) {
+            toggleUnitSystem();
+          }
         }
       }
     );
@@ -116,10 +136,8 @@ const PreferencesScreen = () => {
       
       <ScrollView style={styles.container}>
         <View style={styles.section}>
-          {renderSettingItem('theme-light-dark', 'darkMode', darkMode, setDarkMode)}
           {renderSettingItem('bell-outline', 'notifications', notifications, setNotifications)}
-          {renderSettingItem('sync', 'autoSync', autoSync, setAutoSync)}
-          {renderSettingItem('ruler', 'metricUnits', metricUnits, setMetricUnits)}
+          {renderActionItem('ruler', 'unitSystem', t(`common.${unitSystem}`), showUnitSystemSelector)}
           {renderActionItem('translate', 'language', currentLanguageName, showLanguageSelector)}
         </View>
       </ScrollView>
