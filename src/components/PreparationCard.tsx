@@ -52,6 +52,9 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
     yieldText += ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`;
   }
 
+  // Ensure preparation.ingredients exists and is an array before using it
+  const ingredients = preparation.ingredients || [];
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.title}>{preparation.name || component.name}</Text>
@@ -77,8 +80,8 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
       {/* REMOVED reference ingredient section */}
 
       <Text style={styles.subTitle}>{t('components.preparationCard.subTitle')}</Text>
-      {preparation.ingredients && preparation.ingredients.length > 0 ? (
-        preparation.ingredients.slice(0, 3).map((ing: PreparationIngredient) => {
+      {ingredients.length > 0 ? (
+        ingredients.slice(0, 3).map((ing: PreparationIngredient) => {
           const scaledIngAmount = ing.amount ? ing.amount * scaleMultiplier : null;
           const ingUnitAbbr = ing.unit?.abbreviation || ing.unit?.unit_name || '';
           const formattedIng = formatQuantityAuto(scaledIngAmount, ingUnitAbbr);
@@ -94,7 +97,7 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
       ) : (
         <Text style={styles.noIngredientsText}>{t('components.preparationCard.noIngredientsText')}</Text>
       )}
-      {preparation.ingredients && preparation.ingredients.length > 3 && <Text style={styles.ellipsisText}>...</Text>}
+      {ingredients.length > 3 && <Text style={styles.ellipsisText}>...</Text>}
     </TouchableOpacity>
   );
 };

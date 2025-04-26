@@ -14,14 +14,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../data/supabaseClient';
 import { Dish, DishComponent, Ingredient, Unit, MenuSection, Preparation, PreparationIngredient } from '../types';
-import { transformDish, transformDishComponent, transformPreparation, transformMenuSection, transformPreparationIngredient, transformUnit, transformIngredient, FetchedDishData, DbMenuSection, FetchedBaseComponent, FetchedIngredientDetail, FetchedPreparationDetail, FetchedPreparationIngredient, AssembledComponentData, DbDishComponent, DbUnit } from '../utils/transforms';
+import { transformDish, transformDishComponent, transformPreparation, transformMenuSection, transformPreparationIngredient, transformUnit, transformIngredient, FetchedDishData, DbMenuSection, FetchedBaseComponent, FetchedIngredientDetail, FetchedPreparationDetail, FetchedPreparationIngredient, AssembledComponentData, DbDishComponent, DbUnit, FetchedPreparationDataCombined } from '../utils/transforms';
 import { useAuth } from '../context/AuthContext'; // Import useAuth
+// ADDED: Import offline caching helpers
+import { getOfflineRecipe, saveOfflineRecipe, OfflineDishPayload, OfflinePreparationPayload } from '../persistence/offlineRecipes';
+// ADDED: Import useQuery and QueryClient
+import { useQuery } from '@tanstack/react-query'; 
+import { queryClient } from '../components/ReactQueryClientProvider'; // Shared client
 
 /**
  * Custom hook to get the current kitchen ID for the authenticated user.
  * Fetches the kitchen_id from the kitchen_users table based on auth.users.id.
  */
-function useCurrentKitchenId(): string | null {
+export function useCurrentKitchenId(): string | null {
   const [kitchenId, setKitchenId] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
 
@@ -82,28 +87,25 @@ function useCurrentKitchenId(): string | null {
 
 /**
  * Hook to fetch all dishes for the current kitchen, with optional filter by menu section.
+ * REFACTORED: Uses TanStack Query (useQuery) for caching and automatic updates.
  */
 export function useDishes(menuSectionId?: string) {
-  const [dishes, setDishes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  // Define kitchenId using the new hook
+  // Define kitchenId using the hook
   const kitchenId = useCurrentKitchenId();
 
-  useEffect(() => {
-    // kitchenId is now available from the outer scope
-    async function fetchDishes() {
+  // Define the query key - includes table name and filters
+  const queryKey = ['dishes', { kitchen_id: kitchenId, menu_section_id: menuSectionId }];
+
+  // Define the asynchronous fetch function
+  const fetchDishes = async () => {
       if (!kitchenId) {
-        setError(new Error("Kitchen ID not available. Cannot fetch dishes."));
-        setLoading(false);
-        setDishes([]);
-        return;
-      }
+      // Throw an error or return empty array if kitchenId is not available
+      // useQuery's `enabled` option handles this better
+      // throw new Error("Kitchen ID not available. Cannot fetch dishes.");
+      return []; // Return empty array if kitchenId is null/undefined
+    }
 
-      try {
-        setLoading(true);
-        setError(null); // Reset error on new fetch
-
+    // Moved the existing fetch logic here
         let query = supabase
           .from('dishes')
           .select(`
@@ -118,7 +120,7 @@ export function useDishes(menuSectionId?: string) {
             menu_section:recipe_menu_section_id_fkey (*),
             serving_unit:units!dishes_serving_unit_fkey (*)
           `)
-          .eq('kitchen_id', kitchenId); // Filter by kitchen ID
+      .eq('kitchen_id', kitchenId);
 
         if (menuSectionId) {
           query = query.eq('menu_section_id', menuSectionId);
@@ -127,12 +129,9 @@ export function useDishes(menuSectionId?: string) {
         const { data: dishesData, error: dishesError } = await query.order('dish_name') as { data: FetchedDishData[] | null, error: any };
 
         if (dishesError) throw dishesError;
-        if (!dishesData) {
-            setDishes([]);
-            setLoading(false);
-            return;
-        }
+    if (!dishesData) return []; // Return empty array if no data
 
+    // Fetch and include components (this part remains largely the same)
         const dishesWithComponents = await Promise.all(dishesData.map(async (dish) => {
           const { data: dishComponents, error: componentsError } = await supabase
             .from('dish_components')
@@ -142,16 +141,13 @@ export function useDishes(menuSectionId?: string) {
               ingredient:fk_components_ing (
                 *,
                 base_unit:ingredients_unit_id_fkey ( * ),
-                preparation:preparations!preparation_id (
-                    *
-                )
+            preparation:preparations!preparation_id (*)
               )
             `)
             .eq('dish_id', dish.dish_id) as { data: (DbDishComponent & { unit: DbUnit | null, ingredient: (FetchedIngredientDetail & { preparation: FetchedPreparationDetail | null }) | null })[] | null, error: any };
 
           if (componentsError) {
             console.error(`Error fetching components for dish ${dish.dish_id}:`, componentsError);
-            // Return dish data even if components fail to load for that specific dish
             return { ...transformDish(dish as FetchedDishData), components: [] };
           }
 
@@ -163,12 +159,13 @@ export function useDishes(menuSectionId?: string) {
                 baseComponent: {
                     ingredient_id: comp.ingredient_id,
                     unit_id: comp.unit_id,
-                    amount: comp.amount
-                },
+                    amount: comp.amount,
+                    piece_type: comp.piece_type
+                } as FetchedBaseComponent,
                 ingredient: ingredientData ?? undefined,
                 preparation: ingredientData?.preparation ?? undefined,
                 componentUnit: comp.unit ?? undefined,
-                prepIngredients: undefined // Prep ingredients are fetched in usePreparationDetail if needed
+            prepIngredients: undefined
             };
             return transformDishComponent(assembledData);
           }) : [];
@@ -176,21 +173,26 @@ export function useDishes(menuSectionId?: string) {
           return { ...transformDish(dish as FetchedDishData), components: transformedComponents };
         }));
 
-        setDishes(dishesWithComponents || []);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error(String(err)));
-        console.error('Error fetching dishes:', err);
-        setDishes([]); // Clear dishes on error
-      } finally {
-        setLoading(false);
-      }
-    }
+    return dishesWithComponents || [];
+  };
 
-    fetchDishes();
-    // Dependency array can now correctly reference kitchenId from the outer scope
-  }, [menuSectionId, kitchenId]);
+  // Use the useQuery hook from TanStack Query
+  const { 
+    data: dishes, 
+    isLoading: loading, // Renamed from isLoading
+    error, 
+    // refetch // Can be returned if manual refetch is needed
+  } = useQuery({
+    queryKey: queryKey,
+    queryFn: fetchDishes,
+    enabled: !!kitchenId, // Only run the query if kitchenId is available
+    // staleTime: 5 * 60 * 1000, // Optional: 5 minutes stale time
+    // gcTime: 30 * 60 * 1000, // Optional: 30 minutes garbage collection time
+  });
 
-  return { dishes, loading, error };
+  // Return the data, loading state, and error in a compatible format
+  // Ensure dishes is always an array, even if data is undefined initially
+  return { dishes: dishes ?? [], loading, error }; 
 }
 
 /**
@@ -201,16 +203,14 @@ export type DishWithDetails = Dish & {
     components: DishComponent[];
 };
 
-export function useDishDetail(dishId: string | undefined) {
+export function useDishDetail(dishId: string | undefined, kitchenId: string | null) {
   const [dish, setDish] = useState<DishWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  // Define kitchenId using the new hook
-  const kitchenId = useCurrentKitchenId();
   
   useEffect(() => {
     async function fetchDishDetail() {
-      // Handle undefined dishId or missing kitchenId
+      // Handle undefined dishId
       if (!dishId) {
         setLoading(false);
         setDish(null);
@@ -218,16 +218,56 @@ export function useDishDetail(dishId: string | undefined) {
         return;
       }
 
+      // Attempt to load from offline cache first
+      setLoading(true);
+      setError(null);
+      setDish(null); // Clear previous state
+      let loadedFromCache = false; // Flag to track cache hydration
+      try {
+        const cachedPayload = await getOfflineRecipe(dishId, 'dish');
+        // Use type guard based on the 'kind' used in getOfflineRecipe
+        if (cachedPayload && 'dish_id' in cachedPayload) { // Check if it's actually a dish payload
+           const cachedDish = cachedPayload as OfflineDishPayload;
+           console.log(`[useDishDetail] Hydrating dish ${dishId} from offline cache.`);
+           // Explicitly map from cached payload to DishWithDetails
+           setDish({
+               dish_id: cachedDish.dish_id,
+               dish_name: cachedDish.dish_name,
+               directions: cachedDish.directions,
+               total_time: cachedDish.total_time,
+               serving_size: cachedDish.serving_size,
+               serving_unit: cachedDish.serving_unit ?? null, // Ensure null if undefined
+               num_servings: cachedDish.num_servings, // ADDED: Map num_servings
+               cooking_notes: cachedDish.cooking_notes,
+               serving_item: cachedDish.serving_item,
+               components: cachedDish.components,
+               // Fields not in cache need default/null values if required by DishWithDetails
+               menu_section: null, // Example: menu_section not cached
+           });
+           setLoading(false); // Show cached data immediately
+           loadedFromCache = true;
+        }
+      } catch (cacheError) {
+        console.error(`[useDishDetail] Error reading offline cache for dish ${dishId}:`, cacheError);
+        // Proceed to fetch from network
+      }
+
+      // Check kitchenId *after* attempting cache load
       if (!kitchenId) {
-        setError(new Error("Kitchen ID not available. Cannot fetch dish details."));
-        setLoading(false);
-        setDish(null);
+        if (!loadedFromCache) { // Only set error if not hydrated from cache
+          setError(new Error("Kitchen ID not provided. Cannot fetch dish details."));
+           setLoading(false); // Stop loading if we can't fetch
+        } else {
+           console.warn("[useDishDetail] Kitchen ID not available, cannot refresh from network.");
+           setLoading(false); // Stop loading indicator if showing cached data
+        }
         return;
       }
 
+      // If cache load failed, ensure loading is true.
+      if (!loadedFromCache) {
       setLoading(true);
-      setError(null);
-      setDish(null);
+      }
 
       try {
         // Fetch the dish, ensuring it belongs to the current kitchen
@@ -247,136 +287,150 @@ export function useDishDetail(dishId: string | undefined) {
           // Handle case where dish exists but doesn't belong to this kitchen (returns error)
           // or other select errors
           console.error('Error fetching dish details:', dishError);
-          throw dishError;
+          // If we loaded from cache, don't clear it on network error
+          if (!dish) {
+             setDish(null);
+             setError(dishError);
+          } else {
+             console.warn(`[useDishDetail] Network fetch failed for ${dishId}, showing cached version.`);
+          }
+          return; // Keep existing state (cached or null)
         }
-        // If data is null after a single() call without error, it means the dish wasn't found (or didn't match kitchen_id)
-        if (!dishData) throw new Error('Dish not found or access denied.');
 
-        // Fetching components, ingredients, units etc. continues as before,
-        // implicitly scoped by the already validated dish_id.
-        const { data: baseComponents, error: baseCompError } = await supabase
+        if (!dishData) {
+          // Dish not found or doesn't belong to this kitchen
+          console.warn(`Dish ${dishId} not found or access denied.`);
+          // If we have a cached version, maybe we should purge it? Or keep showing it?
+          // Let's purge it for consistency.
+          // await purgeOfflineRecipe(dishId, 'dish'); // Need purge function here
+          setDish(null);
+          setError(new Error(`Dish ${dishId} not found.`)); // Set specific error
+          return;
+        }
+
+
+        // Fetch components for the dish
+        const { data: dishComponentsData, error: componentsError } = await supabase
           .from('dish_components')
-          .select('ingredient_id, unit_id, amount, piece_type')
-          .eq('dish_id', dishId) as { data: FetchedBaseComponent[] | null, error: any };
+            .select(`
+                *,
+                unit:fk_components_unit(*),
+                ingredient:fk_components_ing (
+                  *,
+                  base_unit:ingredients_unit_id_fkey ( * ),
+                  preparation:preparations!preparation_id (
+                      *,                             
+                      amount_unit:amount_unit_id(*)
+                  )
+                )
+             `)
+          .eq('dish_id', dishId) as { data: (DbDishComponent & { unit: DbUnit | null, ingredient: (FetchedIngredientDetail & { preparation: FetchedPreparationDetail | null }) | null })[] | null, error: any };
 
-        if (baseCompError) throw baseCompError;
 
-        let finalComponents: DishComponent[] = [];
-
-        if (baseComponents && baseComponents.length > 0) {
-            const ingredientIds = [...new Set(baseComponents.map(c => c.ingredient_id).filter(id => id != null))] as string[];
-            const unitIds = [...new Set(baseComponents.map(c => c.unit_id).filter(id => id != null))] as string[];
-
-            const servingUnitId = (dishData.serving_unit as DbUnit | null)?.unit_id;
-            if (servingUnitId && !unitIds.includes(servingUnitId)) unitIds.push(servingUnitId);
-
-            const { data: ingredientDetails, error: ingredientError } = await supabase
-              .from('ingredients')
-              .select('*, base_unit:ingredients_unit_id_fkey(*)')
-              .in('ingredient_id', ingredientIds) as { data: FetchedIngredientDetail[] | null, error: any };
-            if (ingredientError) throw ingredientError;
-            const typedIngredientDetails = ingredientDetails as FetchedIngredientDetail[] | null;
-            typedIngredientDetails?.forEach(ing => {
-                const baseUnitId = (ing.base_unit as DbUnit | null)?.unit_id;
-                if (baseUnitId && !unitIds.includes(baseUnitId)) unitIds.push(baseUnitId);
-            });
-
-            const { data: preparationDetails, error: prepError } = await supabase
-              .from('preparations')
-              .select('*, yield_unit:preparations_amount_unit_id_fkey(*)')
-              .in('preparation_id', ingredientIds) as { data: FetchedPreparationDetail[] | null, error: any };
-            if (prepError) throw prepError;
-            const typedPreparationDetails = preparationDetails as FetchedPreparationDetail[] | null;
-            typedPreparationDetails?.forEach(prep => {
-              const yieldUnitId = (prep.yield_unit as DbUnit | null)?.unit_id;
-              if (yieldUnitId && !unitIds.includes(yieldUnitId)) unitIds.push(yieldUnitId);
-            });
-
-            const preparationIds = typedPreparationDetails?.map(p => p.preparation_id) || [];
-            let prepIngredientsData: FetchedPreparationIngredient[] = [];
-            if (preparationIds.length > 0) {
-              const { data: fetchedPrepIngredients, error: prepIngError } = await supabase
-                .from('preparation_ingredients')
-                .select('*, unit:preparation_ingredients_unit_id_fkey(*), ingredient:preparation_ingredients_ingredient_id_fkey(*)')
-                .in('preparation_id', preparationIds) as { data: FetchedPreparationIngredient[] | null, error: any };
-              if (prepIngError) throw prepIngError;
-              prepIngredientsData = (fetchedPrepIngredients as FetchedPreparationIngredient[] | null) || [];
-              prepIngredientsData.forEach(pi => {
-                const unitId = (pi.unit as DbUnit | null)?.unit_id;
-                if (unitId && !unitIds.includes(unitId)) unitIds.push(unitId);
-              });
-            }
-
-            const uniqueUnitIds = [...new Set(unitIds)];
-            let unitsMap = new Map<string, DbUnit>();
-            if (uniqueUnitIds.length > 0) {
-                const { data: unitDetails, error: unitError } = await supabase
-                  .from('units')
-                  .select('*')
-                  .in('unit_id', uniqueUnitIds) as { data: DbUnit[] | null, error: any };
-                if (unitError) throw unitError;
-                unitsMap = new Map(unitDetails?.map(unit => [unit.unit_id, unit]));
-            }
-
-            const ingredientsMap = new Map(typedIngredientDetails?.map(ing => [ing.ingredient_id, ing]));
-            const preparationsMap = new Map(typedPreparationDetails?.map(prep => [prep.preparation_id, prep]));
-
-            const prepIngredientsMap = new Map<string, PreparationIngredient[]>();
-            prepIngredientsData.forEach(pi => {
-                const transformedPi = transformPreparationIngredient(pi);
-                if (!prepIngredientsMap.has(pi.preparation_id)) {
-                    prepIngredientsMap.set(pi.preparation_id, []);
-                }
-                prepIngredientsMap.get(pi.preparation_id)?.push(transformedPi);
-            });
-
-            finalComponents = baseComponents.map(baseComp => {
-              const ingredient = ingredientsMap.get(baseComp.ingredient_id);
-              const preparation = preparationsMap.get(baseComp.ingredient_id);
-              const componentUnit = baseComp.unit_id ? unitsMap.get(baseComp.unit_id) : undefined;
-
-              // Ensure FetchedBaseComponent type includes piece_type if not already there
-              // You might need to update the type definition elsewhere
-              const assembledData: AssembledComponentData = {
-                  dish_id: dish?.dish_id || dishId || '', // Add fallback to dishId or empty string if dish is null
-                  baseComponent: baseComp, // baseComp now includes piece_type
-                  ingredient: ingredient,
-                  preparation: preparation,
-                  componentUnit: componentUnit,
-                  prepIngredients: preparation ? prepIngredientsMap.get(preparation.preparation_id) : undefined
-              };
-              // Ensure transformDishComponent handles the piece_type from baseComponent
-              return transformDishComponent(assembledData); 
-            });
+        if (componentsError) {
+          console.error(`Error fetching components for dish ${dishId}:`, componentsError);
+          // If we loaded from cache, don't overwrite with incomplete data
+          if (!dish) {
+            setError(componentsError); // Set error only if not showing cached data
+            setDish(null); // Clear dish if network fetch failed partially
+          }
+          return; // Keep existing state (cached or null)
         }
 
-        const transformedDish = transformDish(dishData as FetchedDishData);
-        const finalDish: DishWithDetails = {
-          ...transformedDish,
-          serving_unit: dishData ? transformUnit(dishData.serving_unit as DbUnit | null) : null, // Revert to null check
-          components: finalComponents,
+
+        // Transform fetched data
+        const transformedDishBase = transformDish(dishData as FetchedDishData);
+        const typedComponents = dishComponentsData || [];
+        const transformedComponents = await Promise.all(typedComponents.map(async comp => {
+            const ingredientData = comp.ingredient as (FetchedIngredientDetail & { preparation: FetchedPreparationDetail | null }) | null;
+            
+            // If this is a preparation, fetch its ingredients
+            let prepIngredients: PreparationIngredient[] = [];
+            if (ingredientData?.preparation) {
+                const { data: prepIngredientsData, error: prepIngredientsError } = await supabase
+                    .from('preparation_ingredients')
+                    .select(`
+                        *,
+                        unit:unit_id(*),
+                        ingredient:ingredient_id(*)
+                    `)
+                    .eq('preparation_id', ingredientData.ingredient_id) as { 
+                        data: FetchedPreparationIngredient[] | null, 
+                        error: any 
+                    };
+                    
+                if (!prepIngredientsError && prepIngredientsData) {
+                    prepIngredients = prepIngredientsData.map(transformPreparationIngredient);
+                }
+            }
+            
+            const assembledData: AssembledComponentData = {
+                dish_id: dishId!, // Use dishId which is guaranteed non-null here
+                baseComponent: {
+                    ingredient_id: comp.ingredient_id,
+                    unit_id: comp.unit_id,
+                    amount: comp.amount,
+                    piece_type: comp.piece_type
+                } as FetchedBaseComponent,
+                ingredient: ingredientData ?? undefined,
+                preparation: ingredientData?.preparation ?? undefined,
+                componentUnit: comp.unit ?? undefined,
+                prepIngredients: prepIngredients
+            };
+            return transformDishComponent(assembledData); 
+        }));
+
+        const finalDishData: DishWithDetails = {
+          ...transformedDishBase,
+          serving_unit: dishData.serving_unit ? transformUnit(dishData.serving_unit) : null,
+          components: transformedComponents,
+          serving_item: dishData.serving_item ?? null,
+          num_servings: dishData.num_servings ?? 1,
+          menu_section: dishData.menu_section ? transformMenuSection(dishData.menu_section) : null,
         };
 
-        setDish(finalDish);
+        // Set final state
+        setDish(finalDishData);
+        setError(null); // Clear any previous errors
+
+        // Save the fetched data to offline cache
+        const payloadToCache: OfflineDishPayload = {
+            schemaVersion: 1,
+            fetchedAt: 0,
+            dish_id: finalDishData.dish_id,
+            dish_name: finalDishData.dish_name,
+            directions: finalDishData.directions,
+            total_time: finalDishData.total_time,
+            serving_size: finalDishData.serving_size,
+            serving_unit_id: finalDishData.serving_unit?.unit_id ?? null,
+            serving_unit: finalDishData.serving_unit ?? null,
+            num_servings: finalDishData.num_servings ?? 1,
+            cooking_notes: finalDishData.cooking_notes,
+            serving_item: finalDishData.serving_item ?? null,
+            components: finalDishData.components,
+        };
+        await saveOfflineRecipe(dishId, 'dish', payloadToCache);
 
       } catch (err) {
+        console.error(`Unexpected error fetching dish ${dishId}:`, err);
+        // Only update state if not showing cached data
+        if (!dish) {
         setError(err instanceof Error ? err : new Error(String(err)));
-        console.error('Error fetching dish details:', err);
         setDish(null);
+        }
       } finally {
+         if (!loadedFromCache || error) { // Adjust condition based on flag
         setLoading(false);
+        }
       }
     }
 
     fetchDishDetail();
-  }, [dishId, kitchenId]); // Both dishId and kitchenId as dependencies
+    // Dependency array should include kitchenId to refetch if it changes
+    // Also include dishId to refetch if the target dish changes
+  }, [dishId, kitchenId]);
 
-  const refresh = useCallback(async () => {
-    // Reuse the fetchDishDetail logic by triggering a re-render
-    setLoading(true);
-  }, []);
-
-  return { dish, loading, error, refresh };
+  return { dish, loading, error };
 }
 
 /**
@@ -396,37 +450,38 @@ export function useMenuSections() {
 
   useEffect(() => {
     async function fetchMenuSections() {
-      if (!kitchenId) {
-        setError(new Error("Kitchen ID not available. Cannot fetch menu sections."));
-        setLoading(false);
-        setMenuSections([]);
-        return;
-      }
+        if (!kitchenId) {
+            // This is the state we want:
+            setError(new Error("Kitchen ID not available. Cannot fetch menu sections."));
+            // setLoading(false); // This line should be removed/commented out
+            setMenuSections([]);
+            return;
+        }
 
-      try {
-        setLoading(true);
-        setError(null); // Reset error on new fetch
+        try {
+          setLoading(true);
+          setError(null);
 
-        const { data, error } = await supabase
-          .from('menu_section')
-          .select('menu_section_id, name')
-          .eq('kitchen_id', kitchenId) // Filter by kitchen ID
-          .order('name') as { data: DbMenuSection[] | null, error: any };
+          const { data, error } = await supabase
+            .from('menu_section')
+            .select('menu_section_id, name')
+            .eq('kitchen_id', kitchenId) // Filter by kitchen ID
+            .order('name') as { data: DbMenuSection[] | null, error: any };
 
-        if (error) throw error;
+          if (error) throw error;
 
-        setMenuSections(data ? data.map(d => transformMenuSection(d as DbMenuSection)) : []);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error(String(err)));
-        console.error('Error fetching menu sections:', err);
-        setMenuSections([]); // Clear sections on error
-      } finally {
-        setLoading(false);
-      }
+          setMenuSections(data ? data.map(d => transformMenuSection(d as DbMenuSection)) : []);
+        } catch (err) {
+          setError(err instanceof Error ? err : new Error(String(err)));
+          console.error('Error fetching menu sections:', err);
+          setMenuSections([]); // Clear sections on error
+        } finally {
+          setLoading(false);
+        }
     }
 
     fetchMenuSections();
-  }, [refreshTrigger, kitchenId]);
+  }, [kitchenId]); // Dependency array
 
   return { menuSections, loading, error, refresh };
 }
@@ -436,7 +491,7 @@ export function useMenuSections() {
  */
 export function usePreparationDetail(preparationId: string | undefined) {
   const [preparation, setPreparation] = useState<Preparation | null>(null);
-  const [ingredients, setIngredients] = useState<PreparationComponentDetail[]>([]);
+  const [ingredients, setIngredients] = useState<PreparationIngredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const kitchenId = useCurrentKitchenId();
@@ -445,277 +500,207 @@ export function usePreparationDetail(preparationId: string | undefined) {
     async function fetchPreparationDetails() {
       if (!preparationId) {
         setLoading(false);
+        setPreparation(null);
+        setIngredients([]);
+        setError(null);
         return;
       }
 
-      if (!kitchenId) {
-        setError(new Error("Kitchen ID not available. Cannot fetch preparation details."));
-        setLoading(false);
-        return;
-      }
-
-      // Reset state
+      // Attempt to load from offline cache first
       setLoading(true);
       setError(null);
-      setPreparation(null);
+      setPreparation(null); // Clear previous state
       setIngredients([]);
+      let loadedFromCache = false; // Flag
+      try {
+        const cachedPayload = await getOfflineRecipe(preparationId, 'prep');
+        // Use type guard based on the 'kind' used in getOfflineRecipe
+        if (cachedPayload && 'preparation_id' in cachedPayload) { // Check if it's a prep payload
+          const cachedPrep = cachedPayload as OfflinePreparationPayload;
+          console.log(`[usePreparationDetail] Hydrating prep ${preparationId} from offline cache.`);
+
+          // Map from cached payload to Preparation state object
+          setPreparation({
+              preparation_id: cachedPrep.preparation_id,
+              name: cachedPrep.name,
+              directions: cachedPrep.directions,
+              total_time: cachedPrep.total_time,
+              yield_amount: cachedPrep.yield_amount,
+              yield_unit: cachedPrep.yield_unit ?? null, // Ensure null if undefined
+              cooking_notes: cachedPrep.cooking_notes,
+              reference_ingredient: cachedPrep.reference_ingredient,
+              ingredients: [], // ingredients are handled by the separate state
+          });
+          setIngredients(cachedPrep.ingredients || []);
+          setLoading(false); // Show cached data immediately
+          loadedFromCache = true;
+        }
+      } catch (cacheError) {
+         console.error(`[usePreparationDetail] Error reading offline cache for prep ${preparationId}:`, cacheError);
+         // Proceed to fetch from network
+      }
+
+       // Check kitchenId *after* attempting cache load
+      if (!kitchenId) {
+         if (!loadedFromCache) { // Only set error if not hydrated from cache
+        setError(new Error("Kitchen ID not available. Cannot fetch preparation details."));
+           setLoading(false); // Stop loading if we can't fetch
+         } else {
+           console.warn("[usePreparationDetail] Kitchen ID not available, cannot refresh from network.");
+           setLoading(false); // Stop loading indicator if showing cached data
+         }
+        return;
+      }
+
+      // Ensure loading is true if cache read failed
+      if (!loadedFromCache) {
+      setLoading(true);
+      }
 
       try {
-        // 1. Fetch the base ingredient details for the main preparation ID
-        // Now ensure the ingredient belongs to this kitchen
-        const { data: mainIngredientData, error: mainIngredientError } = await supabase
+        // Fetch the base ingredient details (which includes yield amount/unit)
+        const { data: ingredientData, error: ingredientError } = await supabase
             .from('ingredients')
-            .select('ingredient_id, name, cooking_notes, storage_location, unit_id, amount, base_unit:ingredients_unit_id_fkey(*)')
+            .select(`
+              *,
+              unit:unit_id(*)
+            `)
             .eq('ingredient_id', preparationId)
-            .maybeSingle(); // Use maybeSingle in case it's only in preparations table
+          .eq('kitchen_id', kitchenId) // Ensure it belongs to the correct kitchen
+          .single() as { data: FetchedIngredientDetail | null, error: any };
 
-        if (mainIngredientError) throw mainIngredientError;
-        // Ingredient data might be null if it's a preparation created without a base ingredient row first
 
-        // 2. Fetch the main preparation details (yield amount comes from mainIngredientData)
-        // Note: We're selecting reference_ingredient, even if it might not exist in older databases
+        if (ingredientError || !ingredientData) {
+          console.error('Error fetching base ingredient details for preparation:', ingredientError);
+          if (!preparation) { // Only update state if not showing cache
+             setPreparation(null);
+             setIngredients([]);
+             setError(ingredientError || new Error(`Preparation base ingredient ${preparationId} not found.`));
+          } else {
+             console.warn(`[usePreparationDetail] Network fetch failed for prep base ${preparationId}, showing cached version.`);
+          }
+          return;
+        }
+
+        // Fetch the preparation-specific details
         const { data: prepData, error: prepError } = await supabase
           .from('preparations')
           .select(`
-            preparation_id,
-            directions,
-            total_time,
-            yield_unit:units!preparations_amount_unit_id_fkey ( * )
+              *,
+              amount_unit:amount_unit_id(*)
           `)
           .eq('preparation_id', preparationId)
-          .single(); // Preparation MUST exist
+          .single() as { data: FetchedPreparationDetail | null, error: any };
 
-        if (prepError) throw prepError; // Throw error if main preparation doesn't exist
-        if (!prepData) throw new Error('Preparation core data not found');
 
-        // Try to fetch reference_ingredient separately to handle potential schema differences
-        let referenceIngredient: string | null = null;
-        try {
-          const { data: refIngData, error: refIngError } = await supabase
-            .from('preparations')
-            .select('reference_ingredient')
-            .eq('preparation_id', preparationId)
-            .single();
-          
-          // Check for error first, then access data
-          if (refIngError) {
-            console.warn('Could not fetch reference_ingredient, query failed:', refIngError);
-          } else if (refIngData) {
-            referenceIngredient = refIngData.reference_ingredient; 
+        if (prepError || !prepData) {
+          console.error('Error fetching preparation details:', prepError);
+           if (!preparation) { // Only update state if not showing cache
+              setPreparation(null);
+              setIngredients([]);
+              setError(prepError || new Error(`Preparation details ${preparationId} not found.`));
           } else {
-            // Handle case where data is null without an error (e.g., not found)
-             console.warn('Reference ingredient data not found for preparation:', preparationId);
+              console.warn(`[usePreparationDetail] Network fetch failed for prep details ${preparationId}, showing cached version.`);
           }
-        } catch (catchErr) {
-          // Catch any unexpected errors during the fetch itself
-          console.error('Unexpected error fetching reference_ingredient:', catchErr);
+          return;
         }
 
-        // 3. Fetch the ingredients used *in* this preparation
+
+        // Fetch the ingredients used in the preparation
         const { data: prepIngredientsData, error: prepIngredientsError } = await supabase
           .from('preparation_ingredients')
           .select(`
-            preparation_id,
-            ingredient_id,
-            amount,
-            unit:units!preparation_ingredients_unit_id_fkey(*),
-            ingredient:ingredients!preparation_ingredients_ingredient_id_fkey (
-              ingredient_id,
-              name,
-              cooking_notes
-            )
+              *,
+              unit:unit_id(*),
+              ingredient:ingredient_id(*)
           `)
           .eq('preparation_id', preparationId) as { data: FetchedPreparationIngredient[] | null, error: any };
 
-        if (prepIngredientsError) throw prepIngredientsError;
 
-        let finalIngredients: PreparationComponentDetail[] = [];
-
-        if (prepIngredientsData && prepIngredientsData.length > 0) {
-          const ingredientIds = prepIngredientsData.map(pi => pi.ingredient_id);
-          const potentialNestedPrepIds = ingredientIds; // Keep track of IDs that *could* be preparations
-
-          // 4a. Fetch basic details for potential nested preparations
-          // Basic nested preparations query that will work on all schemas
-          const { data: nestedPrepBaseData, error: nestedPrepError1 } = await supabase
-            .from('preparations') // Still query preparations table
-            .select(`
-              preparation_id,
-              total_time,
-              amount_unit_id
-            `)
-            .in('preparation_id', potentialNestedPrepIds);
-
-          if (nestedPrepError1) {
-            console.warn("Error fetching nested preparation base details:", nestedPrepError1);
-            // Decide how to handle this - maybe proceed without nested details?
-          }
-
-          // Try to fetch nested preparations' reference_ingredient
-          let nestedPrepRefIngredients = new Map<string, string | null>();
-          try {
-            const { data: nestedRefIngData, error: nestedRefIngError } = await supabase
-              .from('preparations')
-              .select('preparation_id, reference_ingredient')
-              .in('preparation_id', potentialNestedPrepIds);
-            
-            // Check for error first
-            if (nestedRefIngError) {
-              console.warn('Could not fetch nested reference_ingredient, query failed:', nestedRefIngError);
-            } else if (nestedRefIngData) {
-              // Ensure data is an array before mapping
-              if(Array.isArray(nestedRefIngData)) {
-                nestedPrepRefIngredients = new Map(
-                  nestedRefIngData.map(item => [item.preparation_id, item.reference_ingredient])
-                );
+        if (prepIngredientsError) {
+          console.error(`Error fetching preparation ingredients for ${preparationId}:`, prepIngredientsError);
+           if (!preparation) { // Only update state if not showing cache
+               setPreparation(null); // Clear potentially incomplete data
+               setIngredients([]);
+               setError(prepIngredientsError);
               } else {
-                 console.warn('Nested reference ingredient data is not an array:', nestedRefIngData);
-              }
-            }
-          } catch (nestedCatchErr) {
-            console.error('Unexpected error fetching nested reference_ingredient:', nestedCatchErr);
-          }
-
-          // 4b. Fetch yield amounts for these preparations from the ingredients table
-          const actualNestedPrepIds = nestedPrepBaseData?.map(p => p.preparation_id) || [];
-          const { data: nestedPrepYieldData, error: nestedPrepError2 } = await supabase
-            .from('ingredients')
-            .select(`ingredient_id, amount`)
-            .in('ingredient_id', actualNestedPrepIds);
-
-          if (nestedPrepError2) {
-            console.warn("Error fetching nested preparation yield amounts:", nestedPrepError2);
-          }
-
-          // --- Combine Base Data and Yield Amounts (No reference_ingredient here yet) ---
-          const nestedPrepBaseYieldMap = new Map(nestedPrepBaseData?.map(p => {
-            const yieldInfo = nestedPrepYieldData?.find(y => y.ingredient_id === p.preparation_id);
-            return [p.preparation_id, { 
-              ...p, // preparation_id, total_time, amount_unit_id
-              yield_amount: yieldInfo?.amount ?? null,
-            }];
-          }));
-
-          // --- Fetch ingredients FOR the nested preparations ---
-          let nestedPrepIngredientsMap = new Map<string, PreparationIngredient[]>();
-
-          if (actualNestedPrepIds.length > 0) {
-            const { data: nestedIngredientsData, error: nestedIngError } = await supabase
-              .from('preparation_ingredients')
-              .select(`
-                preparation_id,
-                amount,
-                unit:units!preparation_ingredients_unit_id_fkey(*),
-                ingredient:ingredients!preparation_ingredients_ingredient_id_fkey (ingredient_id, name)
-              `)
-              .in('preparation_id', actualNestedPrepIds) as { data: FetchedPreparationIngredient[] | null, error: any };
-
-            if (nestedIngError) {
-              console.warn("Error fetching ingredients for nested preparations:", nestedIngError);
-            } else if (nestedIngredientsData) {
-              nestedIngredientsData.forEach(nestedIng => {
-                const transformedIng = transformPreparationIngredient(nestedIng);
-                if (!nestedPrepIngredientsMap.has(nestedIng.preparation_id)) {
-                  nestedPrepIngredientsMap.set(nestedIng.preparation_id, []);
-                }
-                nestedPrepIngredientsMap.get(nestedIng.preparation_id)?.push(transformedIng);
-              });
-            }
-          }
-
-          // --- Fetch Units for nested prep yield units --- 
-          // Fetch units based on the IDs we just fetched
-          const nestedPrepUnitIds = nestedPrepBaseData?.map(p => p.amount_unit_id).filter(id => id != null) as string[] || [];
-          let nestedUnitsMap = new Map<string, DbUnit>();
-          if (nestedPrepUnitIds.length > 0) {
-            const { data: nestedPrepUnits, error: nestedUnitsError } = await supabase
-              .from('units')
-              .select('*')
-              .in('unit_id', nestedPrepUnitIds);
-
-            if (nestedUnitsError) console.warn("Error fetching units for nested prep yields:", nestedUnitsError);
-            else nestedUnitsMap = new Map(nestedPrepUnits?.map(u => [u.unit_id, u]));
-          }
-
-          // Create map for faster lookup of nested prep core details
-          const nestedPreparationsMap = nestedPrepBaseYieldMap; // Use the combined map
-          // ----------------------------------------------------
-
-          // 5. Transform the ingredients list
-          finalIngredients = prepIngredientsData.map((pi): PreparationComponentDetail => {
-            const ingredientInfo = pi.ingredient as FetchedIngredientDetail | null; // Base ingredient details
-            const nestedPrepBaseInfo = nestedPrepBaseYieldMap.get(pi.ingredient_id); // Use the map without reference_ingredient
-            const unitInfo = pi.unit as DbUnit | null;
-
-            if (!ingredientInfo) {
-              console.warn(`Missing base ingredient data for ID: ${pi.ingredient_id} in preparation ${pi.preparation_id}`);
-              // Return default structure
-              return {
-                isPreparation: false,
-                id: pi.ingredient_id,
-                name: 'Unknown Ingredient',
-                amount: pi.amount,
-                unit: transformUnit(unitInfo),
-                rawIngredientDetails: null,
-                preparationDetails: null,
-              };
-            }
-
-            const isNestedPrep = !!nestedPrepBaseInfo;
-            const nestedReferenceIngredient = isNestedPrep ? nestedPrepRefIngredients.get(pi.ingredient_id) : undefined;
-
-            // Safely get the yield unit for nested preps
-            let nestedYieldUnit: Unit | null = null;
-            if (isNestedPrep && nestedPrepBaseInfo.amount_unit_id) {
-              // Ensure amount_unit_id is not null before using it as map key
-              const unitIdKey = nestedPrepBaseInfo.amount_unit_id;
-              if (unitIdKey) { // Explicit check for non-null string
-                nestedYieldUnit = transformUnit(nestedUnitsMap.get(unitIdKey) as DbUnit | null);
-              }
-            }
-
-            return {
-              isPreparation: isNestedPrep,
-              id: ingredientInfo.ingredient_id,
-              name: ingredientInfo.name,
-              amount: pi.amount, 
-              unit: transformUnit(unitInfo),
-              preparationDetails: isNestedPrep ? {
-                total_time: nestedPrepBaseInfo.total_time,
-                yield_amount: nestedPrepBaseInfo.yield_amount,
-                yield_unit: nestedYieldUnit, // Use the safely retrieved unit
-                ingredients: nestedPrepIngredientsMap.get(nestedPrepBaseInfo.preparation_id) || [],
-                reference_ingredient: nestedReferenceIngredient !== undefined ? nestedReferenceIngredient : null 
-              } : null,
-              rawIngredientDetails: !isNestedPrep ? {
-                cooking_notes: ingredientInfo.cooking_notes,
-              } : null,
-            };
-          });
+               console.warn(`[usePreparationDetail] Network fetch failed for prep ingredients ${preparationId}, showing cached version.`);
+           }
+          return;
         }
 
-        // 6. Assemble the main preparation object
-        const mainPrepName = mainIngredientData?.name || prepData.preparation_id; // Fallback name
-        const transformedPreparation: Preparation = {
-          preparation_id: prepData.preparation_id,
-          name: mainPrepName,
-          directions: prepData.directions,
-          total_time: prepData.total_time,
-          yield_unit: transformUnit(Array.isArray(prepData.yield_unit) ? prepData.yield_unit[0] : prepData.yield_unit as DbUnit | null),
-          yield_amount: mainIngredientData?.amount ?? null,
-          reference_ingredient: referenceIngredient,
-          ingredients: [], // This is now handled by the separate 'ingredients' state
-          cooking_notes: mainIngredientData?.cooking_notes || null, // Notes from base ingredient if available
+        // Prepare the single COMBINED object argument for transformPreparation
+        const combinedDataForTransform: FetchedPreparationDataCombined = {
+            // Fields from FetchedIngredientDetail (Omit created_at, updated_at)
+            ...(ingredientData as FetchedIngredientDetail),
+            // Fields from FetchedPreparationDetail (Omit created_at)
+            ...(prepData as FetchedPreparationDetail),
+            amount: (ingredientData as FetchedIngredientDetail).amount ?? 0, 
+            created_at: (ingredientData as FetchedIngredientDetail).created_at ?? null,
+            updated_at: (ingredientData as FetchedIngredientDetail).updated_at ?? null,
         };
 
+        // Call transformPreparation with the correctly structured single object
+        const transformedPreparation = transformPreparation(combinedDataForTransform);
+
+        const transformedIngredients = (prepIngredientsData || []).map(transformPreparationIngredient);
+
+        // Check if any ingredients are also preparations
+        if (transformedIngredients.length > 0) {
+          const ingredientIds = transformedIngredients.map(ing => ing.ingredient_id);
+          
+          // Fetch any ingredient ids that match preparations
+          const { data: prepMatchData, error: prepMatchError } = await supabase
+            .from('preparations')
+            .select('preparation_id')
+            .in('preparation_id', ingredientIds);
+          
+          if (!prepMatchError && prepMatchData) {
+            // Create a set of preparation IDs for quick lookup
+            const preparationIds = new Set(prepMatchData.map(p => p.preparation_id));
+            
+            // Mark ingredients that are preparations
+            transformedIngredients.forEach(ing => {
+              // @ts-ignore - Adding isPreparation property to match expected format
+              ing.isPreparation = preparationIds.has(ing.ingredient_id);
+            });
+          }
+        }
+
+        // Set final state
         setPreparation(transformedPreparation);
-        setIngredients(finalIngredients);
+        setIngredients(transformedIngredients);
+        setError(null); // Clear previous errors
+
+        // Save the combined fetched data to offline cache
+        const payloadToCache: OfflinePreparationPayload = {
+           schemaVersion: 1,
+           fetchedAt: 0,
+           preparation_id: transformedPreparation.preparation_id,
+           name: transformedPreparation.name,
+           directions: transformedPreparation.directions,
+           total_time: transformedPreparation.total_time,
+           yield_amount: transformedPreparation.yield_amount,
+           yield_unit_id: transformedPreparation.yield_unit?.unit_id ?? null,
+           yield_unit: transformedPreparation.yield_unit ?? null,
+           cooking_notes: transformedPreparation.cooking_notes,
+           reference_ingredient: transformedPreparation.reference_ingredient,
+           ingredients: transformedIngredients,
+           fingerprint: (prepData as any)?.fingerprint ?? null
+        };
+        await saveOfflineRecipe(preparationId, 'prep', payloadToCache);
 
       } catch (err) {
+        console.error(`Unexpected error fetching preparation ${preparationId}:`, err);
+         if (!preparation) { // Only update state if not showing cache
         setError(err instanceof Error ? err : new Error(String(err)));
-        console.error('Error fetching preparation details:', err);
+            setPreparation(null);
+            setIngredients([]);
+         }
       } finally {
+         if (!loadedFromCache || error) { // Adjust condition
         setLoading(false);
+         }
       }
     }
 

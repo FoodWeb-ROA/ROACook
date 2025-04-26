@@ -37,7 +37,7 @@ const PreparationDetailScreen = () => {
   
   const { preparation, ingredients, loading, error } = usePreparationDetail(preparationId) as { 
       preparation: Preparation | null, 
-      ingredients: PreparationComponentDetail[], 
+      ingredients: PreparationIngredient[], 
       loading: boolean, 
       error: Error | null 
   };
@@ -119,14 +119,37 @@ const PreparationDetailScreen = () => {
 
   const { t } = useTranslation();
 
-  // Separate components into nested preparations and raw ingredients
+  // Modified: Transform ingredients into PreparationComponentDetail objects
+  const transformedIngredients = useMemo(() => {
+    if (!ingredients || ingredients.length === 0) return [];
+    
+    return ingredients.map(ing => {
+      const componentDetail: PreparationComponentDetail = {
+        // Check if this is a preparation by looking at the ingredient data in usePreparationDetail hook
+        isPreparation: false, // Default to false, we'll check with kitchen to get this info
+        id: ing.ingredient_id,
+        name: ing.name,
+        amount: ing.amount,
+        unit: ing.unit,
+        // Placeholder for preparation details - will be populated later as needed
+        preparationDetails: null,
+        // Default raw ingredient details
+        rawIngredientDetails: {
+          cooking_notes: null // We don't have this information at this level
+        }
+      };
+      return componentDetail;
+    });
+  }, [ingredients]);
+  
+  // Use transformedIngredients instead of ingredients directly
   const nestedPreparations = useMemo(() => 
-    ingredients?.filter(c => c.isPreparation) || [], 
-    [ingredients]
+    transformedIngredients?.filter(c => c.isPreparation) || [], 
+    [transformedIngredients]
   );
   const rawIngredients = useMemo(() => 
-    ingredients?.filter(c => !c.isPreparation) || [], 
-    [ingredients]
+    transformedIngredients?.filter(c => !c.isPreparation) || [], 
+    [transformedIngredients]
   );
 
   if (loading) {
@@ -253,7 +276,7 @@ const PreparationDetailScreen = () => {
             <View style={styles.sectionContainer}> 
               <Text style={styles.sectionTitle}>{t('screens.preparationDetail.preparationsTitle')}</Text>
               {nestedPreparations.map((component) => {
-                 // Construct the DishComponent like object for PreparationCard
+                 // For nested preparations, we need to fetch their details when clicked
                  const prepComponent: DishComponent = {
                    dish_id: '', 
                    ingredient_id: component.id,
@@ -261,20 +284,26 @@ const PreparationDetailScreen = () => {
                    amount: component.amount,
                    unit: component.unit,
                    isPreparation: true,
-                   preparationDetails: component.preparationDetails ? {
-                        ...component.preparationDetails, // Spread existing details (includes ingredients, time, yield)
-                        preparation_id: component.id, // Add necessary ID
-                        name: component.name // Add necessary name
-                     } as any : null,
-                     rawIngredientDetails: null
-                   };
+                   preparationDetails: {
+                     preparation_id: component.id,
+                     name: component.name,
+                     directions: null,
+                     total_time: component.preparationDetails?.total_time ?? null,
+                     yield_unit: component.preparationDetails?.yield_unit ?? null,
+                     yield_amount: component.preparationDetails?.yield_amount ?? null,
+                     cooking_notes: null,
+                     reference_ingredient: component.preparationDetails?.reference_ingredient ?? null,
+                     ingredients: component.preparationDetails?.ingredients ?? [],
+                   },
+                   rawIngredientDetails: null
+                 };
                 return (
                   <View key={component.id} style={styles.componentWrapper}> 
                     <PreparationCard
                       component={prepComponent}
                       onPress={() => handleNestedPreparationPress(component.id)}
                       amountLabel={t('common.amount')}
-                      hideReferenceIngredient={true}
+                      hideReferenceIngredient={false}
                       scaleMultiplier={currentServingScale}
                     />
                   </View>
