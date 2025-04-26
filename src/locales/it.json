@@ -55,7 +55,8 @@
       "update": "Aggiorna",
       "unknownIngredient": "Ingrediente Sconosciuto",
       "unknownComponent": "Componente Sconosciuto",
-      "unexpectedError": "Si è verificato un errore imprevisto"
+      "unexpectedError": "Si è verificato un errore imprevisto",
+      "ofReferenceIngredient": "di {{ingredient}}"
     },
     "validation": {
       "required": "{{field}} è richiesto",
@@ -228,7 +229,7 @@
         "notFound": "Piatto non trovato",
         "servingsLabel": "Porzioni",
         "servingSizeLabel": "Dimensione Porzione",
-        "adjustServingsLabel": "Regola Porzioni Obiettivo (Base: {{baseServings}})",
+        "adjustServingsLabel": "Regola Porzioni Obiettivo",
         "servingsSuffix": "Porzioni",
         "preparationsTitle": "Preparazioni",
         "rawIngredientsTitle": "Ingredienti Crudi",
@@ -258,8 +259,8 @@
         "servingSizeLabel": "Dimensione Porzione",
         "servingSizePlaceholder": "es., 4",
         "servingUnitLabel": "Unità di Porzione *",
-        "servingIngredientLabel": "Ingrediente Porzione (es., \"petto\", \"involtini\", \"salsiccia\")",
-        "servingIngredientPlaceholder": "Descrizione manuale o seleziona...",
+        "servingItemLabel": "Elemento Porzione (es., \"petto\", \"involtino\", \"fetta\")",
+        "servingItemPlaceholder": "Descrizione manuale o seleziona...",
         "ingredientsTitle": "Ingredienti",
         "noRawIngredients": "Nessun ingrediente crudo aggiunto ancora.",
         "preparationsTitle": "Preparazioni",
@@ -300,10 +301,11 @@
         "title": "Modifica Preparazione",
         "loadingUnits": "Caricamento unità...",
         "refIngredientLabel": "Ingrediente di Riferimento",
+        "refIngredientAmountLabel": "Quantità di ingrediente usata nella ricetta",
         "scaledAmountLabel": "Quantità Usata in Ricetta (Scalata)",
         "ingredientsTitle": "Ingredienti",
-        "amountPlaceholder": "Qtà",
-        "noSubIngredients": "Nessun sotto-ingrediente elencato.",
+        "amountPlaceholder": "Quantità",
+        "noSubIngredients": "Nessun ingrediente elencato.",
         "instructionsTitle": "Istruzioni",
         "noInstructions": "Nessuna istruzione fornita.",
         "selectUnitModalTitle": "Seleziona Unità",
@@ -362,7 +364,8 @@
       "dishCreateSuccess": "Piatto creato con successo!",
       "prepCreateSuccess": "Preparazione creata con successo!",
       "errorSavingRecipeTitle": "Errore nel Salvataggio della Ricetta",
-      "errorSavingRecipeDefault": "Si è verificato un errore imprevisto. Riprova."
+      "errorSavingRecipeDefault": "Si è verificato un errore imprevisto. Riprova.",
+      "errorSavingRecipeKitchenIdMissing": "Impossibile salvare la ricetta: Nessuna cucina attiva selezionata."
     },
     "components": {
       "sidebar": {

@@ -23,7 +23,6 @@ ROACook/
 │   └── ...
 ├── src/               # Main application source code
 │   ├── components/    # Reusable UI components
-│   │   ├── ErrorBoundary.tsx # Global error boundary component
 │   │   ├── UnitDisplay.tsx   # Component for displaying units with proper conversion
 │   │   └── RecipeImage.tsx   # Component for displaying and managing recipe images
 │   ├── constants/     # Constant values (theme, dimensions, etc.)
@@ -183,49 +182,6 @@ The application supports both metric and imperial units with seamless conversion
 
 The user can toggle between metric and imperial units from the Preferences screen. This preference is stored locally and applies throughout the app.
 
-## Error Handling & Reporting
-
-The application includes a comprehensive error handling and reporting system that captures both caught and uncaught errors and submits them to a Notion database for tracking:
-
-*   **`src/components/ErrorBoundary.tsx`:** React error boundary component that catches unhandled errors in the component tree, displays a fallback UI, and reports errors to Notion.
-*   **`src/utils/errorReporting.ts`:** Provides utility functions and hooks for handling and reporting errors from anywhere in the application:
-    *   `handleError`: Global error handler function for use outside of React components
-    *   `useErrorHandler`: React hook for error handling within functional components
-    *   `createErrorHandler`: Creates higher-order functions to handle API call errors
-    *   `withErrorHandling`: Utility to wrap async functions with error handling
-*   **`src/services/notionApi.ts`:** Provides functions to submit both user feedback and error reports to Notion:
-    *   `submitFeedback`: Submits user feedback from the help screen
-    *   `submitErrorReport`: Submits error reports with stack traces and additional context
-    *   `reportError`: Utility for creating component-specific error handlers
-*   **`src/services/api.ts`:** Handles direct communication with the Notion API:
-    *   `submitToNotion`: Core function that formats and submits data to the Notion database
-
-To use error reporting in your code:
-
-```typescript
-// In functional components:
-const { handleError } = useErrorHandler();
-
-try {
-  // Risky operation
-} catch (error) {
-  handleError(error, {
-    componentName: 'YourComponent', 
-    showAlert: true, 
-    severity: 'medium'
-  });
-}
-
-// Or with higher-order functions:
-const apiWithErrorHandling = createErrorHandler('ApiService')(yourApiCall);
-
-// Or by wrapping async functions:
-const safeFunction = withErrorHandling(riskyFunction, {
-  componentName: 'ServiceName',
-  showAlert: false,
-  severity: 'high'
-});
-```
 
 ## Data Fetching, Caching, and Realtime Updates
 
@@ -395,3 +351,23 @@ To verify that your Supabase Edge Functions can access Secret Manager, deploy th
 - **Rotation**: Secrets can be rotated without application changes
 
 For more information on Google Cloud Secret Manager, see the [official documentation](https://cloud.google.com/secret-manager/docs/overview).
+
+## Local Persistence (React Query & Redux)
+
+As of 2024-07-25 the app now features **offline-first** behaviour with on-disk caching.
+
+### React Query (Server State)
+1.  Implemented via `PersistQueryClientProvider` in `src/components/ReactQueryClientProvider.tsx`.
+2.  Data fetched from Supabase is persisted to `AsyncStorage` under the key `rq-cache`.
+3.  Hydration occurs on cold start, followed by silent background re-validation.
+4.  Cache limits: `staleTime` 5 min, `gcTime` 30 min, persister throttled at 1 s.
+5.  On user sign-out we purge the persisted query cache (see `authSlice` sign-out thunk).
+
+### Redux (UI/Auth State)
+1.  `redux-persist` added with an `AsyncStorage` backend.
+2.  Only the `auth` and `kitchens` slices are whitelisted.
+3.  `persistGate` wraps the root of the component tree in `App.tsx`.
+4.  Store creation lives in `src/store.ts` with `persistor` export.
+5.  Logout action triggers `persistor.purge()` to wipe sensitive data.
+
+These changes allow navigation between screens without hitting the network when data is fresh and provide a usable offline mode (read-only at this stage).

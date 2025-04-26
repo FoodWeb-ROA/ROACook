@@ -31,8 +31,7 @@ export function stripDirections(text: string | string[] | null | undefined): str
  * (like SHA-1 or MD5 if crypto is available and suitable) on the sorted, normalized data
  * would be more robust against reordering and minor variations.
  *
- * We will sort components by name primarily, and ingredient_id secondarily if names match,
- * to ensure consistent ordering.
+ * We will sort components by ingredient ID primarily and name secondarily in fingerprintPreparation.
  */
 export function fingerprintPreparation(
   components: ComponentInput[],
@@ -42,18 +41,19 @@ export function fingerprintPreparation(
   const sortedNormalizedComponents = components
     .slice() // Create a shallow copy to avoid mutating the original array
     .sort((a, b) => {
+      // Sort primarily by ingredient_id (existing first, then null/empty)
+      const idA = a.ingredient_id || 'zzzz'; // Treat null/empty as last
+      const idB = b.ingredient_id || 'zzzz';
+      if (idA < idB) return -1;
+      if (idA > idB) return 1;
+      // If IDs are the same (or both missing), sort by name
       const nameA = slug(a.name);
       const nameB = slug(b.name);
       if (nameA < nameB) return -1;
       if (nameA > nameB) return 1;
-      // If names are the same, sort by ingredient_id (if available) as a tie-breaker
-      const idA = a.ingredient_id || '';
-      const idB = b.ingredient_id || '';
-      if (idA < idB) return -1;
-      if (idA > idB) return 1;
       return 0;
     })
-    .map(c => `${slug(c.name)}:${c.amount}:${c.unit_id || 'null'}`) // Normalize relevant fields
+    .map(c => `${c.ingredient_id || 'new'}:${slug(c.name)}:${c.amount}:${c.unit_id || 'null'}`) // Include ID in map
     .join('|'); // Join components with a delimiter
 
   // 2. Normalize directions

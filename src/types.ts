@@ -143,18 +143,39 @@ export interface ParsedRecipe {
 
 // --- End Recipe Parser Types ---
 
+// Type for managing ingredients within CreatePreparationScreen state
+export type EditablePrepIngredient = {
+    key: string; // Unique key for lists
+    ingredient_id?: string | null; // Keep track of existing ID
+    name: string;
+    amountStr: string; // Keep original (base) amount as string for TextInput
+    unitId: string | null; // Store matched unit ID
+    isPreparation?: boolean;
+    // Carry over other potentially useful fields from ParsedIngredient if needed
+    unit?: string | null; // Original unit string for reference
+    item?: string | null; // Item description
+    reference_ingredient?: string | null;
+    matched?: boolean; // Flag to indicate ingredient was auto-matched
+};
+
 export type ComponentInput = {
     key: string; // Unique key for FlatList/mapping
     ingredient_id: string;
     name: string; // Store name for display convenience
-    amount: string; // Keep as string for input field
-    unit_id: string | null;
+    amount: string; // Keep as string for input field (BASE amount)
+    unit_id: string | null; // Preparation's YIELD unit id
     isPreparation: boolean;
     originalPrep?: ParsedIngredient; // keep full parsed preparation when confirming
     subIngredients?: ParsedIngredient[] | null; // Store parsed sub-ingredients
-    item?: string | null; // ADDED: To store item description (e.g., "cloves")
+    item?: string | null; // Item description (e.g., "cloves") for raw ingredients
     reference_ingredient?: string | null; // Store reference ingredient for preparations
-    matched?: boolean; // ADDED: Flag to indicate this component was auto-matched to a database entry
+    matched?: boolean; // Flag if auto-matched to a database entry
+
+    // --- State Persistence for CreatePreparationScreen ---
+    prepStateEditableIngredients?: EditablePrepIngredient[] | null; // Stores sub-ingredients state
+    prepStatePrepUnitId?: string | null; // Stores the preparation's own unit id (distinct from yield unit)
+    prepStateInstructions?: string[] | null; // Stores instructions state
+    prepStateIsDirty?: boolean; // <-- ADDED
 }; 
 
 export interface IUser {

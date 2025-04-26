@@ -56,7 +56,8 @@
       "cancel": "Cancel",
       "unknownIngredient": "Unknown Ingredient",
       "unknownComponent": "Unknown Component",
-      "unexpectedError": "An unexpected error occurred"
+      "unexpectedError": "An unexpected error occurred",
+      "ofReferenceIngredient": "of {{ingredient}}"
     },
     "validation": {
       "required": "{{field}} is required",
@@ -235,7 +236,7 @@
         "notFound": "Dish not found",
         "servingsLabel": "Servings",
         "servingSizeLabel": "Serving Size",
-        "adjustServingsLabel": "Adjust Target Servings (Base: {{baseServings}})",
+        "adjustServingsLabel": "Adjust Target Servings",
         "servingsSuffix": "Servings",
         "preparationsTitle": "Preparations",
         "rawIngredientsTitle": "Raw Ingredients",
@@ -270,8 +271,8 @@
         "servingSizeLabel": "Serving Size",
         "servingSizePlaceholder": "e.g., 4",
         "servingUnitLabel": "Serving Unit *",
-        "servingIngredientLabel": "Serving Ingredient (e.g., \"breast\", \"rolls\", \"sausage\")",
-        "servingIngredientPlaceholder": "Manual description or select...",
+        "servingItemLabel": "Serving Item (e.g., \"breast\", \"roll\", \"slice\")",
+        "servingItemPlaceholder": "Manual description or select...",
         "ingredientsTitle": "Ingredients",
         "noRawIngredients": "No raw ingredients added yet.",
         "preparationsTitle": "Preparations",
@@ -312,17 +313,17 @@
         }
       },
       "createPreparation": {
-        "title": "Edit Preparation",
-        "loadingUnits": "Loading units...",
+        "title": "Create Preparation",
+        "scaledAmountLabel": "Amount used in recipe (scaled)",
+        "refIngredientAmountLabel": "Amount of ingredient used in recipe",
+        "amountPlaceholder": "Amount",
         "refIngredientLabel": "Reference Ingredient",
-        "scaledAmountLabel": "Amount Used in Recipe (Scaled)",
         "ingredientsTitle": "Ingredients",
-        "amountPlaceholder": "Amt",
-        "noSubIngredients": "No sub-ingredients listed.",
-        "instructionsTitle": "Instructions",
+        "noIngredients": "No ingredients listed.",
+        "instructionsTitle": "Preparation Instructions",
         "noInstructions": "No instructions provided.",
-        "selectUnitModalTitle": "Select Unit",
-        "selectPrepUnitModalTitle": "Select Preparation Unit"
+        "selectUnitModalTitle": "Select Unit for Ingredient",
+        "selectPrepUnitModalTitle": "Select Unit for Preparation Yield"
       },
       "support": {
         "title": "Support",
@@ -377,7 +378,8 @@
       "dishCreateSuccess": "Dish created successfully!",
       "prepCreateSuccess": "Preparation created successfully!",
       "errorSavingRecipeTitle": "Error Saving Recipe",
-      "errorSavingRecipeDefault": "An unexpected error occurred. Please try again."
+      "errorSavingRecipeDefault": "An unexpected error occurred. Please try again.",
+      "errorSavingRecipeKitchenIdMissing": "Cannot save recipe: No active kitchen selected."
     },
     "components": {
       "sidebar": {

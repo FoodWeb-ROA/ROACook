@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 	StyleSheet,
 	View,
@@ -18,6 +18,12 @@ import { MaterialIcons, FontAwesome5, AntDesign } from '@expo/vector-icons';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import LanguagePicker from '../components/LanguagePicker';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/types';
+import { RootState } from '../store';
+
+type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
 interface SignInValues {
 	email: string;
@@ -33,12 +39,21 @@ interface SignUpValues {
 
 const LoginScreen = () => {
 	const dispatch = useDispatch();
+	const navigation = useNavigation<LoginScreenNavigationProp>();
 	const [selectedForm, setSelectedForm] = useState<'SignIn' | 'SignUp'>(
 		'SignIn'
 	);
 
 	const errorSelector = useTypedSelector(state => state.auth.error);
+	const session = useTypedSelector(state => state.auth.session);
 	const { t } = useTranslation();
+
+	useEffect(() => {
+		if (session) {
+			console.log("Session detected in LoginScreen, navigating to MainDrawer...");
+			navigation.replace('MainDrawer');
+		}
+	}, [session, navigation]);
 
 	const signInValidationSchema = Yup.object().shape({
 		email: Yup.string()

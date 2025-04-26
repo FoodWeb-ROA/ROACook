@@ -144,7 +144,12 @@ const AccountScreen = () => {
       t('screens.account.logout.message'),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.logout'), onPress: signOut, style: 'destructive' },
+        { text: t('common.logout'), onPress: async () => {
+            await signOut();
+            // Ensure navigation happens after sign out is complete
+            // Resetting navigation stack might be better, but simple navigate for now
+            navigation.navigate('Login'); 
+          }, style: 'destructive' },
       ],
     );
   };

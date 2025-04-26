@@ -55,7 +55,8 @@
       "update": "Mettre à jour",
       "unknownIngredient": "Ingrédient Inconnu",
       "unknownComponent": "Composant Inconnu",
-      "unexpectedError": "Une erreur inattendue s'est produite"
+      "unexpectedError": "Une erreur inattendue s'est produite",
+      "ofReferenceIngredient": "de {{ingredient}}"
     },
     "validation": {
       "required": "{{field}} est requis",
@@ -243,7 +244,7 @@
         "notFound": "Plat non trouvé",
         "servingsLabel": "Portions",
         "servingSizeLabel": "Taille de Portion",
-        "adjustServingsLabel": "Ajuster Portions Cibles (Base : {{baseServings}})",
+        "adjustServingsLabel": "Ajuster Portions Cibles",
         "servingsSuffix": "Portions",
         "preparationsTitle": "Préparations",
         "rawIngredientsTitle": "Ingrédients Bruts",
@@ -273,8 +274,8 @@
         "servingSizeLabel": "Taille de Portion",
         "servingSizePlaceholder": "ex., 4",
         "servingUnitLabel": "Unité de Portion *",
-        "servingIngredientLabel": "Ingrédient de Portion (ex., \"poitrine\", \"rouleaux\", \"saucisse\")",
-        "servingIngredientPlaceholder": "Description manuelle ou sélectionner...",
+        "servingItemLabel": "Élément de Portion (ex., \"poitrine\", \"rouleau\", \"tranche\")",
+        "servingItemPlaceholder": "Description manuelle ou sélectionner...",
         "ingredientsTitle": "Ingrédients",
         "noRawIngredients": "Aucun ingrédient brut ajouté pour le moment.",
         "preparationsTitle": "Préparations",
@@ -312,17 +313,17 @@
         "prepSuffix": "(Prépa)"
       },
       "createPreparation": {
-        "title": "Modifier la Préparation",
-        "loadingUnits": "Chargement des unités...",
+        "title": "Créer une Préparation",
+        "scaledAmountLabel": "Quantité utilisée dans la recette (mise à l'échelle)",
+        "refIngredientAmountLabel": "Quantité d'ingrédient utilisée dans la recette",
+        "amountPlaceholder": "Quantité",
         "refIngredientLabel": "Ingrédient de Référence",
-        "scaledAmountLabel": "Quantité Utilisée dans Recette (Mise à l'échelle)",
         "ingredientsTitle": "Ingrédients",
-        "amountPlaceholder": "Qté",
-        "noSubIngredients": "Aucun sous-ingrédient listé.",
-        "instructionsTitle": "Instructions",
+        "noSubIngredients": "Aucun ingrédient répertorié.",
+        "instructionsTitle": "Instructions de Préparation",
         "noInstructions": "Aucune instruction fournie.",
-        "selectUnitModalTitle": "Sélectionner Unité",
-        "selectPrepUnitModalTitle": "Sélectionner Unité de Préparation"
+        "selectUnitModalTitle": "Sélectionner l'Unité pour l'Ingrédient",
+        "selectPrepUnitModalTitle": "Sélectionner l'Unité pour le Rendement de la Préparation"
       },
       "support": {
         "title": "Support",
@@ -377,7 +378,8 @@
       "dishCreateSuccess": "Plat créé avec succès !",
       "prepCreateSuccess": "Préparation créée avec succès !",
       "errorSavingRecipeTitle": "Erreur lors de l'enregistrement de la recette",
-      "errorSavingRecipeDefault": "Une erreur inattendue s'est produite. Veuillez réessayer."
+      "errorSavingRecipeDefault": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+      "errorSavingRecipeKitchenIdMissing": "Impossible d'enregistrer la recette : Aucune cuisine active sélectionnée."
     },
     "components": {
       "sidebar": {

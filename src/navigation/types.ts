@@ -1,5 +1,13 @@
-import { ParsedRecipe, ParsedIngredient, Kitchen } from '../types';
+import { ParsedRecipe, ParsedIngredient, Kitchen, EditablePrepIngredient } from '../types';
 import { DrawerParamList } from './AppNavigator';
+
+// Define the callback type CreatePreparationScreen will use
+export type OnUpdatePrepAmountCallback = (prepKey: string, updatedState: {
+  editableIngredients: EditablePrepIngredient[];
+  prepUnitId: string | null;
+  instructions: string[];
+  isDirty: boolean;
+}) => void;
 
 export type RootStackParamList = {
   Login: undefined;
@@ -12,7 +20,18 @@ export type RootStackParamList = {
   DishDetails: { dishId: string };
   CategoryRecipes: { categoryId: string; categoryName: string };
   PreparationDetails: { preparationId: string, recipeServingScale?: number };
-  CreatePreparation: { preparation: ParsedIngredient; scaleMultiplier?: number };
+  CreatePreparation: {
+    preparation: ParsedIngredient;
+    scaleMultiplier?: number;
+    prepKey?: string; // Key of the component in the parent screen's state
+    onUpdatePrepAmount?: OnUpdatePrepAmountCallback; // Callback function
+    // --- Initial State Params ---
+    initialEditableIngredients?: EditablePrepIngredient[] | null;
+    initialPrepUnitId?: string | null;
+    initialInstructions?: string[] | null;
+    // --- ADDED: Specific amount used in parent dish ---
+    dishComponentScaledAmount?: number | null; // The actual amount used in the parent recipe
+  };
   Account: undefined;
   Preferences: undefined;
   Support: undefined;

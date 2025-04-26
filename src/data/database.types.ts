@@ -12,21 +12,33 @@ export type Database = {
       dish_components: {
         Row: {
           amount: number | null
+          created_at: string | null
+          deleted: boolean | null
           dish_id: string
           ingredient_id: string
+          piece_type: string | null
           unit_id: string | null
+          updated_at: string | null
         }
         Insert: {
           amount?: number | null
+          created_at?: string | null
+          deleted?: boolean | null
           dish_id: string
           ingredient_id: string
+          piece_type?: string | null
           unit_id?: string | null
+          updated_at?: string | null
         }
         Update: {
           amount?: number | null
+          created_at?: string | null
+          deleted?: boolean | null
           dish_id?: string
           ingredient_id?: string
+          piece_type?: string | null
           unit_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -76,6 +88,8 @@ export type Database = {
       dishes: {
         Row: {
           cooking_notes: string | null
+          created_at: string | null
+          deleted: boolean | null
           directions: string | null
           dish_id: string
           dish_name: string
@@ -87,9 +101,12 @@ export type Database = {
           serving_size: number
           serving_unit_id: string
           total_time: unknown
+          updated_at: string | null
         }
         Insert: {
           cooking_notes?: string | null
+          created_at?: string | null
+          deleted?: boolean | null
           directions?: string | null
           dish_id?: string
           dish_name: string
@@ -101,9 +118,12 @@ export type Database = {
           serving_size?: number
           serving_unit_id: string
           total_time?: unknown
+          updated_at?: string | null
         }
         Update: {
           cooking_notes?: string | null
+          created_at?: string | null
+          deleted?: boolean | null
           directions?: string | null
           dish_id?: string
           dish_name?: string
@@ -115,6 +135,7 @@ export type Database = {
           serving_size?: number
           serving_unit_id?: string
           total_time?: unknown
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -152,8 +173,8 @@ export type Database = {
           amount: number
           cooking_notes: string | null
           created_at: string
+          deleted: boolean | null
           ingredient_id: string
-          item: string | null
           kitchen_id: string
           name: string
           storage_location: string | null
@@ -165,8 +186,8 @@ export type Database = {
           amount?: number
           cooking_notes?: string | null
           created_at?: string
+          deleted?: boolean | null
           ingredient_id?: string
-          item?: string | null
           kitchen_id?: string
           name: string
           storage_location?: string | null
@@ -178,8 +199,8 @@ export type Database = {
           amount?: number
           cooking_notes?: string | null
           created_at?: string
+          deleted?: boolean | null
           ingredient_id?: string
-          item?: string | null
           kitchen_id?: string
           name?: string
           storage_location?: string | null
@@ -289,21 +310,30 @@ export type Database = {
       preparation_ingredients: {
         Row: {
           amount: number | null
+          created_at: string | null
+          deleted: boolean | null
           ingredient_id: string
           preparation_id: string
           unit_id: string | null
+          updated_at: string | null
         }
         Insert: {
           amount?: number | null
+          created_at?: string | null
+          deleted?: boolean | null
           ingredient_id: string
           preparation_id: string
           unit_id?: string | null
+          updated_at?: string | null
         }
         Update: {
           amount?: number | null
+          created_at?: string | null
+          deleted?: boolean | null
           ingredient_id?: string
           preparation_id?: string
           unit_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -353,24 +383,36 @@ export type Database = {
       preparations: {
         Row: {
           amount_unit_id: string | null
+          created_at: string | null
+          deleted: boolean | null
           directions: string
+          fingerprint: string | null
           preparation_id: string
           reference_ingredient: string | null
           total_time: number | null
+          updated_at: string | null
         }
         Insert: {
           amount_unit_id?: string | null
+          created_at?: string | null
+          deleted?: boolean | null
           directions: string
+          fingerprint?: string | null
           preparation_id: string
-          reference_ingredient?: string
+          reference_ingredient?: string | null
           total_time?: number | null
+          updated_at?: string | null
         }
         Update: {
           amount_unit_id?: string | null
+          created_at?: string | null
+          deleted?: boolean | null
           directions?: string
+          fingerprint?: string | null
           preparation_id?: string
           reference_ingredient?: string | null
           total_time?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -415,7 +457,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_dish: {
+        Args: { p_dish_id: string }
+        Returns: undefined
+      }
+      delete_preparation: {
+        Args: { p_preparation_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       IngredientType: "Preparation" | "RawIngredient"

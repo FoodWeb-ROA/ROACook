@@ -23,6 +23,10 @@ export const ReactQueryClientProvider = ({ children }: { children: React.ReactNo
             staleTime: 1000 * 60 * 5, // 5 minutes
             gcTime: 1000 * 60 * 30, // 30 minutes
             retry: 1, // Retry failed requests once
+            networkMode: 'offlineFirst',
+          },
+          mutations: {
+            networkMode: 'offlineFirst',
           },
         },
       })

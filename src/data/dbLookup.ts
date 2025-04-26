@@ -33,7 +33,6 @@ export const checkIngredientNameExists = async (name: string): Promise<string | 
 /**
  * Finds ingredients with names similar to the query (case-insensitive prefix/suffix match).
  * Also flags if the ingredient is a preparation.
- * NOTE: For better fuzzy matching, consider using pg_trgm functions via Supabase RPC.
  */
 export const findCloseIngredient = async (
     name: string,
@@ -43,33 +42,51 @@ export const findCloseIngredient = async (
     const searchTerm = `%${name.trim()}%`;
 
     try {
-        // Query ingredients table with a join to preparations to check if it's a prep
-        const { data, error } = await supabase
+        // Step 1: Find ingredients matching the name
+        const { data: ingredientsData, error: ingredientsError } = await supabase
             .from('ingredients')
             .select(`
                 ingredient_id,
                 name,
                 unit_id,
                 amount,
-                item,
                 synonyms,
                 cooking_notes,
-                storage_location,
-                preparations ( preparation_id ) 
+                storage_location
             `)
             .ilike('name', searchTerm)
             .limit(limit);
 
-        if (error) {
-            console.error('Error finding close ingredients:', error);
-            throw error;
+        if (ingredientsError) {
+            console.error('Error finding close ingredients (step 1):', ingredientsError);
+            throw ingredientsError;
         }
 
-        // Map results and add the isPreparation flag
-        const results = data?.map((ing: any) => ({
+        if (!ingredientsData || ingredientsData.length === 0) {
+            return [];
+        }
+
+        // Step 2: Check which of these ingredients are also preparations
+        const ingredientIds = ingredientsData.map(ing => ing.ingredient_id);
+        const { data: preparationsData, error: preparationsError } = await supabase
+            .from('preparations')
+            .select('preparation_id')
+            .in('preparation_id', ingredientIds);
+
+        if (preparationsError) {
+            console.error('Error checking preparations link (step 2):', preparationsError);
+            // Decide how to handle this - return partial results or throw?
+            // For now, let's return ingredients without the isPreparation flag set correctly.
+            return ingredientsData.map(ing => ({ ...(ing as Ingredient), isPreparation: false }));
+        }
+
+        const preparationIds = new Set(preparationsData?.map(p => p.preparation_id) || []);
+
+        // Step 3: Combine results
+        const results = ingredientsData.map((ing: any) => ({
             ...(ing as Ingredient),
-            isPreparation: !!ing.preparations, // Check if the join returned a preparation_id
-        })) || [];
+            isPreparation: preparationIds.has(ing.ingredient_id),
+        }));
 
         return results;
 
@@ -115,26 +132,35 @@ export const findPreparationByFingerprint = async (fingerprint: string): Promise
 export const checkPreparationNameExists = async (name: string): Promise<string | null> => {
   if (!name?.trim()) return null;
   try {
-    // Preparations are also in the ingredients table, so we check there.
-    // We also need to ensure the found ingredient IS a preparation.
-    const { data, error } = await supabase
+    // 1. Find ingredient by name (case-insensitive)
+    const { data: ing, error: ingErr } = await supabase
       .from('ingredients')
-      .select(`
-        ingredient_id,
-        preparations ( preparation_id )
-      `)
+      .select('ingredient_id')
       .ilike('name', name.trim())
-      .not('preparations', 'is', null) // Ensure it has a corresponding row in preparations
       .limit(1)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-        console.error('Error checking preparation name:', error);
-        throw error;
+    if (ingErr && ingErr.code !== 'PGRST116') {
+      console.error('Error checking ingredient for preparation name:', ingErr);
+      throw ingErr;
     }
 
-    // Ensure the join confirmed it's a preparation before returning the ID
-    return data?.preparations ? data.ingredient_id : null;
+    if (!ing) return null; // No ingredient with that name
+
+    // 2. Check if that ingredient has a matching row in preparations table
+    const { data: prep, error: prepErr } = await supabase
+      .from('preparations')
+      .select('preparation_id')
+      .eq('preparation_id', ing.ingredient_id)
+      .limit(1)
+      .single();
+
+    if (prepErr && prepErr.code !== 'PGRST116') {
+      console.error('Error checking preparations link:', prepErr);
+      throw prepErr;
+    }
+
+    return prep ? ing.ingredient_id : null;
 
   } catch (error) {
     console.error('Supabase call failed (checkPreparationNameExists):', error);

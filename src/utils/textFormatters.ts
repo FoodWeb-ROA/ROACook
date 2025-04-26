@@ -65,9 +65,10 @@ export const formatQuantityAuto = (
 
   let adjustedQuantity = quantity;
   let adjustedUnit = unitAbbr;
+  const lowerUnitAbbr = unitAbbr?.toLowerCase(); // Convert to lowercase for comparisons
 
   // Special handling for counts ('x') with an item
-  if (unitAbbr === 'x' && item) {
+  if (lowerUnitAbbr === 'x' && item) {
     let pluralizedItem = item;
     // Simple pluralization: add 's' if quantity is not 1 and item doesn't end in 's'
     if (quantity !== 1 && !item.toLowerCase().endsWith('s')) {
@@ -92,18 +93,22 @@ export const formatQuantityAuto = (
       lb: { limit: 1, newUnit: 'oz' },
   };
 
+  const epsilon = 1e-9; // Small value for float comparisons
+
   // Scale Up (e.g., g to kg)
-  if (unitAbbr && thresholds[unitAbbr] && quantity >= thresholds[unitAbbr].limit) {
-    adjustedQuantity = quantity / thresholds[unitAbbr].limit;
-    adjustedUnit = thresholds[unitAbbr].newUnit;
+  if (lowerUnitAbbr && thresholds[lowerUnitAbbr] && quantity >= thresholds[lowerUnitAbbr].limit - epsilon) {
+    adjustedQuantity = quantity / thresholds[lowerUnitAbbr].limit;
+    adjustedUnit = thresholds[lowerUnitAbbr].newUnit;
   } 
   // Scale Down (e.g., 0.5 kg to 500 g)
-  else if (unitAbbr && inverseThresholds[unitAbbr] && quantity < inverseThresholds[unitAbbr].limit) {
+  else if (lowerUnitAbbr && inverseThresholds[lowerUnitAbbr] && quantity < inverseThresholds[lowerUnitAbbr].limit - epsilon) {
       // Use the conversion factor from the base unit threshold (e.g., 1000 for g from kg)
-      const conversionFactor = thresholds[inverseThresholds[unitAbbr].newUnit]?.limit; 
+      const baseUnit = inverseThresholds[lowerUnitAbbr].newUnit;
+      // Use lowercase base unit for lookup in thresholds
+      const conversionFactor = thresholds[baseUnit.toLowerCase()]?.limit; 
       if (conversionFactor) {
           adjustedQuantity = quantity * conversionFactor;
-          adjustedUnit = inverseThresholds[unitAbbr].newUnit;
+          adjustedUnit = inverseThresholds[lowerUnitAbbr].newUnit;
       }
   }
 

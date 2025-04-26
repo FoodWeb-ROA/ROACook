@@ -45,6 +45,13 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
   const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
   const formattedYield = formatQuantityAuto(scaledYieldAmount, yieldUnitAbbr);
 
+  // Construct yield text, conditionally adding reference ingredient
+  let yieldText = `${formattedYield.amount} ${formattedYield.unit}`;
+  if (preparation.reference_ingredient && !hideReferenceIngredient) {
+    // Use the new localization key with interpolation
+    yieldText += ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`;
+  }
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.title}>{preparation.name || component.name}</Text>
@@ -56,26 +63,18 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
             <Text style={styles.infoText}>{formatTime(preparation.total_time)}</Text>
           </View>
         )}
-        {/* Only show Yield/Amount if available and time is also shown OR if time is not shown */}
+        {/* Only show Yield/Amount if available */}
         {formattedYield.amount !== 'N/A' && (
            <View style={styles.infoItem}> 
             <MaterialCommunityIcons name="scale-balance" size={16} color={COLORS.textLight} />
             <Text style={styles.infoText}>
-              {displayLabel}: {formattedYield.amount} {formattedYield.unit}
+              {displayLabel}: {yieldText} {/* Use combined yield text */}
             </Text>
            </View>
         )}
       </View>
       
-      {/* Display reference ingredient if available and not hidden */}
-      {preparation.reference_ingredient && !hideReferenceIngredient && (
-        <View style={styles.referenceIngredientContainer}>
-          <MaterialCommunityIcons name="relation-one-to-one" size={16} color={COLORS.textLight} />
-          <Text style={styles.referenceIngredientText}>
-            {t('components.preparationCard.referenceIngredient')} for proportions: {preparation.reference_ingredient}
-          </Text>
-        </View>
-      )}
+      {/* REMOVED reference ingredient section */}
 
       <Text style={styles.subTitle}>{t('components.preparationCard.subTitle')}</Text>
       {preparation.ingredients && preparation.ingredients.length > 0 ? (
@@ -117,31 +116,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: SIZES.base,
+    flexWrap: 'wrap', // Allow wrapping if content is too long
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: SIZES.padding, // Add spacing between items
+    marginBottom: SIZES.base / 2, // Add spacing if items wrap
   },
   infoText: {
     ...FONTS.body3,
     color: COLORS.textLight,
     marginLeft: SIZES.base / 2,
+    flexShrink: 1, // Allow text to shrink if needed
   },
-  referenceIngredientContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius / 2,
-    paddingHorizontal: SIZES.base,
-    paddingVertical: SIZES.base / 2,
-    marginBottom: SIZES.base,
-  },
-  referenceIngredientText: {
-    ...FONTS.body3,
-    color: COLORS.textLight,
-    marginLeft: SIZES.base / 2,
-    fontStyle: 'italic',
-  },
+  // REMOVED referenceIngredientContainer and referenceIngredientText styles
   subTitle: {
     ...FONTS.h4,
     color: COLORS.text,

@@ -146,78 +146,73 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={session ? "MainDrawer" : "Login"}
+        initialRouteName={"Login"}
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: COLORS.background },
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         }}
       >
-        {session ? (
-          <>
-            <Stack.Screen
-              name="MainDrawer"
-              component={DrawerNavigator}
-              options={{ cardStyleInterpolator: CardStyleInterpolators.forNoAnimation }}
-            />
-            <Stack.Screen
-              name="DishDetails"
-              component={DishDetailScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="PreparationDetails"
-              component={PreparationDetailScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="CategoryRecipes"
-              component={CategoryRecipesScreen}
-              options={{ headerShown: false, title: 'Category Recipes' }}
-            />
-            <Stack.Screen
-              name="CreateRecipe"
-              component={CreateRecipeScreen}
-              options={{
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="CreatePreparation"
-              component={CreatePreparationScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="HelpScreen"
-              component={HelpScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ManageKitchens"
-              component={ManageKitchensScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="About"
-              component={AboutScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen 
-              name="Account"
-              component={AccountScreen}
-            />
-            <Stack.Screen 
-              name="Preferences"
-              component={PreferencesScreen}
-            />
-          </>
-        ) : (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-        )}
+        <Stack.Screen
+          name="MainDrawer"
+          component={DrawerNavigator}
+          options={{ cardStyleInterpolator: CardStyleInterpolators.forNoAnimation }}
+        />
+        <Stack.Screen
+          name="DishDetails"
+          component={DishDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PreparationDetails"
+          component={PreparationDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CategoryRecipes"
+          component={CategoryRecipesScreen}
+          options={{ headerShown: false, title: 'Category Recipes' }}
+        />
+        <Stack.Screen
+          name="CreateRecipe"
+          component={CreateRecipeScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="CreatePreparation"
+          component={CreatePreparationScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="HelpScreen"
+          component={HelpScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ManageKitchens"
+          component={ManageKitchensScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="About"
+          component={AboutScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Account"
+          component={AccountScreen}
+        />
+        <Stack.Screen 
+          name="Preferences"
+          component={PreferencesScreen}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

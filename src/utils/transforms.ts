@@ -28,7 +28,7 @@ export type FetchedDishData = DbDish & {
 };
 
 // Type for the base components fetched in useDishDetail
-export type FetchedBaseComponent = Pick<DbDishComponent, 'ingredient_id' | 'unit_id' | 'amount'>;
+export type FetchedBaseComponent = Pick<DbDishComponent, 'ingredient_id' | 'unit_id' | 'amount' | 'piece_type'>;
 
 // Type for ingredient details fetched separately
 export type FetchedIngredientDetail = DbIngredient & { 
@@ -58,7 +58,16 @@ export type AssembledComponentData = {
 };
 
 // Update combined data type for transformPreparation input
-export type FetchedPreparationDataCombined = FetchedIngredientDetail & FetchedPreparationDetail & { amount: number };
+// Allow nulls for fields that can be null in DbIngredient/DbPreparation
+export type FetchedPreparationDataCombined = 
+    Omit<FetchedIngredientDetail, 'created_at' | 'updated_at'> & 
+    Omit<FetchedPreparationDetail, 'created_at'> & 
+    { 
+        amount: number;
+        // Re-add potentially nullable fields with correct type 
+        created_at: string | null; 
+        updated_at: string | null;
+    };
 
 // -- Export Transformation Functions --
 
@@ -77,6 +86,7 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
         name: 'Unknown Component',
         amount: baseComponent.amount || 0,
         unit: transformUnit(componentUnit), // Use the unit fetched for the component instance
+        item: (baseComponent as any).piece_type || null, // Map piece_type to item, handle potential undefined
         isPreparation: false,
         preparationDetails: null,
         rawIngredientDetails: null
@@ -110,6 +120,7 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
     name: ingredient.name,
     amount: baseComponent.amount || 0,
     unit: transformUnit(componentUnit), // Unit specifically for this component usage
+    item: (baseComponent as any).piece_type || null, // Map piece_type to item, handle potential undefined
     isPreparation: isPreparation,
     preparationDetails: finalPrepDetails, 
     rawIngredientDetails: finalRawIngredientDetails
@@ -127,22 +138,25 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
       directions: null,
       total_time: null,
       yield_unit: transformUnit(null),
-      yield_amount: null, // Add default yield_amount
-      reference_ingredient: null, // Add default reference_ingredient
+      yield_amount: null, 
+      reference_ingredient: null, 
       ingredients: [],
       cooking_notes: null 
     };
 
+  // Need to ensure FetchedPreparationDataCombined includes reference_ingredient if used here
+  const refIngredient = (combinedData as any).reference_ingredient;
+
   return {
     preparation_id: combinedData.preparation_id, 
     name: combinedData.name, 
-    directions: combinedData.directions || '', 
+    directions: combinedData.directions || null, // Use null if empty string preferred
     total_time: combinedData.total_time || 0, 
     yield_unit: transformUnit(combinedData.yield_unit), 
     yield_amount: combinedData.amount, // Get yield amount from ingredient data
-    reference_ingredient: (combinedData as any).reference_ingredient || null, // Access reference_ingredient with type assertion
+    reference_ingredient: refIngredient || null,
     ingredients: [], 
-    cooking_notes: combinedData.cooking_notes, 
+    cooking_notes: combinedData.cooking_notes ?? null, // Use nullish coalescing 
   };
 }
 
@@ -151,14 +165,20 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
  */
 export function transformPreparationIngredient(dbIngredient: FetchedPreparationIngredient): PreparationIngredient {
   if (!dbIngredient || !dbIngredient.ingredient) {
-     // ... (keep warning and default return)
-     return { preparation_id: '', ingredient_id: '', name: '', amount: 0, unit: transformUnit(null) };
+     // Return default matching PreparationIngredient type
+     return { 
+         preparation_id: dbIngredient?.preparation_id || '', // Use optional chaining 
+         ingredient_id: '', 
+         name: 'Unknown', 
+         amount: 0, 
+         unit: transformUnit(null) 
+        };
   }
   return {
     preparation_id: dbIngredient.preparation_id,
     ingredient_id: dbIngredient.ingredient.ingredient_id,
     name: dbIngredient.ingredient.name,
-    amount: dbIngredient.amount || 0,
+    amount: dbIngredient.amount ?? 0, // Use nullish coalescing
     unit: transformUnit(dbIngredient.unit)
   };
 }
@@ -167,29 +187,44 @@ export function transformPreparationIngredient(dbIngredient: FetchedPreparationI
  * Transform an ingredient from the fetched data structure
  */
 export function transformIngredient(dbIngredient: FetchedIngredientDetail | DbIngredient | null): Ingredient {
-  // Return a default structure matching Ingredient type if input is null
   if (!dbIngredient) return { 
       ingredient_id: '', 
       name: 'Unknown', 
       cooking_notes: null, 
       storage_location: null,
-      amount: 0,          // Add default required fields
-      created_at: '',    // Use appropriate default (e.g., empty string, epoch date)
+      amount: 0,          
+      created_at: '',    
       synonyms: null,
       unit_id: '',
       updated_at: '',
-      isPreparation: false, // Add optional fields with defaults
+      deleted: false, 
+      kitchen_id: '', 
+      isPreparation: false, 
       base_unit: null
     };
-  
-  // Return all properties from dbIngredient, ensuring required fields exist
-  // The `Ingredient` type in types.ts should closely match DbIngredient + optional fields
-  return {
-    ...dbIngredient, // Spread all properties from the DB object
-    // Ensure optional fields added by hooks are handled or defaulted if necessary
-    // isPreparation: (dbIngredient as any).isPreparation ?? false, // Example if isPreparation was added before transform
-    // base_unit: transformUnit((dbIngredient as FetchedIngredientDetail).base_unit) // Example if transforming nested unit
+
+  // Safely access base_unit only if it exists (i.e., input is FetchedIngredientDetail)
+  const baseUnit = 'base_unit' in dbIngredient ? transformUnit(dbIngredient.base_unit) : null;
+
+  // Construct the Ingredient object, providing defaults for required fields if null/undefined
+  const result: Ingredient = {
+    ingredient_id: dbIngredient.ingredient_id, 
+    name: dbIngredient.name, 
+    amount: dbIngredient.amount ?? 0, // Default to 0 if null/undefined
+    created_at: dbIngredient.created_at || '', // Default to empty string
+    deleted: dbIngredient.deleted ?? false, // Default to false
+    kitchen_id: dbIngredient.kitchen_id || '', // Default to empty string
+    unit_id: dbIngredient.unit_id || '', // Default to empty string
+    updated_at: dbIngredient.updated_at || '', // Default to empty string
+    // Optional fields
+    cooking_notes: dbIngredient.cooking_notes ?? null,
+    storage_location: dbIngredient.storage_location ?? null,
+    synonyms: dbIngredient.synonyms ?? null,
+    base_unit: baseUnit, 
+    // isPreparation should be set based on context where this is called, not here
   };
+
+  return result;
 }
 
 /**

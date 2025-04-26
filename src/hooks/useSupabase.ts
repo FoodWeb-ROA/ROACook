@@ -256,7 +256,7 @@ export function useDishDetail(dishId: string | undefined) {
         // implicitly scoped by the already validated dish_id.
         const { data: baseComponents, error: baseCompError } = await supabase
           .from('dish_components')
-          .select('ingredient_id, unit_id, amount')
+          .select('ingredient_id, unit_id, amount, piece_type')
           .eq('dish_id', dishId) as { data: FetchedBaseComponent[] | null, error: any };
 
         if (baseCompError) throw baseCompError;
@@ -335,15 +335,18 @@ export function useDishDetail(dishId: string | undefined) {
               const preparation = preparationsMap.get(baseComp.ingredient_id);
               const componentUnit = baseComp.unit_id ? unitsMap.get(baseComp.unit_id) : undefined;
 
+              // Ensure FetchedBaseComponent type includes piece_type if not already there
+              // You might need to update the type definition elsewhere
               const assembledData: AssembledComponentData = {
                   dish_id: dish?.dish_id || dishId || '', // Add fallback to dishId or empty string if dish is null
-                  baseComponent: baseComp,
+                  baseComponent: baseComp, // baseComp now includes piece_type
                   ingredient: ingredient,
                   preparation: preparation,
                   componentUnit: componentUnit,
                   prepIngredients: preparation ? prepIngredientsMap.get(preparation.preparation_id) : undefined
               };
-              return transformDishComponent(assembledData);
+              // Ensure transformDishComponent handles the piece_type from baseComponent
+              return transformDishComponent(assembledData); 
             });
         }
 

@@ -42,7 +42,6 @@ const PreparationDetailScreen = () => {
       error: Error | null 
   };
   
-  const [amountScale, setAmountScale] = useState(recipeServingScale || 1);
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
 
   const unitOptions: Record<MeasurementUnit, MeasurementUnit[]> = {
@@ -80,7 +79,7 @@ const PreparationDetailScreen = () => {
     const unit = unitObj.abbreviation || unitObj.unit_name;
     if (!unit) return quantity.toString();
 
-    const scaledQuantity = quantity * amountScale;
+    const scaledQuantity = quantity * currentServingScale;
     const currentUnit = selectedUnit[ingredientId] || unit;
     let displayValue: number;
     
@@ -155,11 +154,20 @@ const PreparationDetailScreen = () => {
   const directions = preparation.directions ? preparation.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
 
   const baseYieldAmount = preparation.yield_amount;
-  const currentYieldAmount = typeof baseYieldAmount === 'number' ? baseYieldAmount * amountScale : null;
   const yieldUnitAbbreviation = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
 
+  // Ensure recipeServingScale has a default value and calculate scaled yield
+  const currentServingScale = recipeServingScale ?? 1;
+  const scaledYieldAmount = typeof baseYieldAmount === 'number' ? baseYieldAmount * currentServingScale : null;
+  // Format the scaled yield for display using formatQuantityAuto
+  const formattedScaledYield = formatQuantityAuto(scaledYieldAmount, yieldUnitAbbreviation);
+
   const handleNestedPreparationPress = (nestedPrepId: string) => {
-    navigation.push('PreparationDetails', { preparationId: nestedPrepId, recipeServingScale: amountScale });
+    // Pass the currentServingScale down to the nested preparation screen
+    navigation.push('PreparationDetails', { 
+        preparationId: nestedPrepId, 
+        recipeServingScale: currentServingScale // Pass the scale down
+    });
   };
 
   return (
@@ -193,45 +201,18 @@ const PreparationDetailScreen = () => {
                 </Text>
               </View>
               
-              {typeof currentYieldAmount === 'number' && preparation.yield_unit && (
+              {/* Display Scaled Yield Amount */}
+              {formattedScaledYield.amount !== 'N/A' && ( // Check formatted amount
                 <View style={styles.infoItem}>
                   <MaterialCommunityIcons name="scale" size={18} color={COLORS.textLight} />
                   <Text style={styles.infoText}>
-                    {currentYieldAmount.toFixed(currentYieldAmount % 1 === 0 ? 0 : 1)} {yieldUnitAbbreviation}
+                    {/* Display the formatted scaled amount and unit */}
+                    {formattedScaledYield.amount} {formattedScaledYield.unit} 
                   </Text>
                 </View>
               )}
             </View>
           </View>
-          
-          {/* Scale Adjust Section */}
-          {typeof baseYieldAmount === 'number' && baseYieldAmount > 0 && preparation.yield_unit && (
-            <View style={styles.scaleAdjustContainer}>
-              <ScaleSliderInput
-                label={t('screens.preparationDetail.adjustScaleLabel', { 
-                  amount: formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).amount, 
-                  unit: formatQuantityAuto(baseYieldAmount, yieldUnitAbbreviation).unit 
-                })}
-                minValue={0.1}
-                maxValue={10}
-                step={0.5}
-                currentValue={amountScale}
-                displayValue={amountScale.toFixed(1)}
-                displaySuffix={t('screens.preparationDetail.scaleSuffix')}
-                onValueChange={setAmountScale}
-                onSlidingComplete={(value) => setAmountScale(Math.round(value * 2) / 2)}
-                onTextInputChange={(text) => {
-                  const newScale = parseFloat(text);
-                  if (!isNaN(newScale) && newScale > 0) {
-                    const clampedScale = Math.max(0.1, Math.min(10, newScale));
-                    setAmountScale(clampedScale);
-                  } else if (text === '') {
-                    setAmountScale(1);
-                  }
-                }}
-              />
-            </View>
-          )}
           
           {/* --- Raw Ingredients Section --- */}
           {rawIngredients.length > 0 && (
@@ -291,10 +272,10 @@ const PreparationDetailScreen = () => {
                   <View key={component.id} style={styles.componentWrapper}> 
                     <PreparationCard
                       component={prepComponent}
-                      scaleMultiplier={amountScale}
                       onPress={() => handleNestedPreparationPress(component.id)}
                       amountLabel={t('common.amount')}
                       hideReferenceIngredient={true}
+                      scaleMultiplier={currentServingScale}
                     />
                   </View>
                 );

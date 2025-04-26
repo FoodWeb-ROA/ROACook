@@ -155,7 +155,7 @@ const DishDetailScreen = () => {
     // Calculate scaled amount and format
     const scaledAmount = component.amount ? component.amount * servingScale : null;
     const unitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
-    const formattedComponent = formatQuantityAuto(scaledAmount, unitAbbr);
+    const formattedComponent = formatQuantityAuto(scaledAmount, unitAbbr, component.item || undefined);
 
     return (
       <View key={component.ingredient_id} style={styles.ingredientItem}>
@@ -227,7 +227,7 @@ const DishDetailScreen = () => {
           {typeof dish.num_servings === 'number' && dish.num_servings > 0 && (
             <View style={styles.servingsAdjustContainer}>
               <Text style={styles.sectionSubTitle}> 
-                {t('screens.dishDetail.adjustServingsLabel', 'Adjust Target Servings (Base: {{baseServings}})', { baseServings: originalServings })}
+                {t('screens.dishDetail.adjustServingsLabel', 'Adjust Target Servings')}
               </Text>
               <ScaleSliderInput
                 label=""

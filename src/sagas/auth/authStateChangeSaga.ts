@@ -13,6 +13,7 @@ import { checkKitchenUserLink, linkUserToKitchen } from './userProfileSaga';
 import { fetchUserProfile } from './utils';
 import { CheckUser, CreateUser } from './types';
 import { IUser } from '../../types';
+import { fetchKitchensWatch } from '../../slices/kitchensSlice';
 
 export function* handleAuthStateChange(
 	action: ReturnType<typeof authStateChanged>
@@ -75,6 +76,8 @@ export function* handleAuthStateChange(
 					console.log('* handleAuthStateChange: OAuth provider - dispatching oauthSuccess.');
 					yield put(oauthSuccess({ session, user: userProfile }));
 				}
+				console.log('* handleAuthStateChange: Dispatching fetchKitchensWatch.');
+				yield put(fetchKitchensWatch());
 			} else {
 				console.log(
 					`* handleAuthStateChange: User ${user.id} not linked to a kitchen. Attempting to link...`
@@ -116,6 +119,8 @@ export function* handleAuthStateChange(
 				} else {
 					yield put(oauthSuccess({ session, user: userProfile }));
 				}
+				console.log('* handleAuthStateChange: Dispatching fetchKitchensWatch after linking.');
+				yield put(fetchKitchensWatch());
 			}
 		} catch (error: any) {
 			console.error(
