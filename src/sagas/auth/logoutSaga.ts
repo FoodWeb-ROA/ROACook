@@ -8,11 +8,20 @@ import {
 import { AuthError } from './types';
 import { persistor } from '../../store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { stopDishRealtime } from '../dishes/dishesRealtimeSaga';
+import { stopIngredientRealtime } from '../ingredients/ingredientsRealtimeSaga';
+import { stopPreparationRealtime } from '../preparations/preparationsRealtimeSaga';
+import { purgeAllOfflineRecipes } from '../../persistence/offlineRecipes';
 
 function* handleLogout(): Generator<any, void, any> {
 	console.log(`* handleLogout`);
     
 	try {
+		console.log('* handleLogout: Dispatching stop realtime actions...');
+		yield put(stopDishRealtime());
+		yield put(stopIngredientRealtime());
+		yield put(stopPreparationRealtime());
+
 		const { error } = yield call(() => supabase.auth.signOut());
 
 		if (error) {
@@ -21,7 +30,7 @@ function* handleLogout(): Generator<any, void, any> {
 			yield put(logoutFailure(error.message));
 		} else {
 			console.log(
-				`* handleLogout: Sign-out successful. Waiting for onAuthStateChange...`
+				`* handleLogout: Sign-out successful. Clearing caches...`
 			);
 
 			// Purge persisted Redux state
@@ -29,11 +38,17 @@ function* handleLogout(): Generator<any, void, any> {
 
 			// Clear React Query cache (memory)
 			if (typeof window !== 'undefined' && window.queryClient) {
+				console.log('* handleLogout: Clearing memory RQ cache...');
 				window.queryClient.clear();
 			}
 
 			// Remove persisted React Query cache from AsyncStorage
+			console.log('* handleLogout: Clearing persisted RQ cache...');
 			yield call([AsyncStorage, 'removeItem'], 'rq-cache');
+
+			// Clear the individual offline recipe cache
+			console.log('* handleLogout: Clearing offline recipe cache...');
+			yield call(purgeAllOfflineRecipes);
 
 			yield put(logoutSuccess());
 		}

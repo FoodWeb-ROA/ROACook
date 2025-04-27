@@ -56,7 +56,8 @@
       "unknownIngredient": "Ingrediente Sconosciuto",
       "unknownComponent": "Componente Sconosciuto",
       "unexpectedError": "Si è verificato un errore imprevisto",
-      "ofReferenceIngredient": "di {{ingredient}}"
+      "ofReferenceIngredient": "di {{ingredient}}",
+      "replace": "[TRANSLATE] Replace"
     },
     "validation": {
       "required": "{{field}} è richiesto",
@@ -69,7 +70,8 @@
       "fullnameRequired": "Fullname is required",
       "passwordMinLength": "Password must be at least 6 characters",
       "invalidLanguage": "Invalid language",
-      "languageRequired": "Language is required"
+      "languageRequired": "Language is required",
+      "placeholderMissing": "[TRANSLATE] Placeholder text missing for {{key}}"
     },
     "navigation": {
       "home": "Home",
@@ -365,7 +367,22 @@
       "prepCreateSuccess": "Preparazione creata con successo!",
       "errorSavingRecipeTitle": "Errore nel Salvataggio della Ricetta",
       "errorSavingRecipeDefault": "Si è verificato un errore imprevisto. Riprova.",
-      "errorSavingRecipeKitchenIdMissing": "Impossibile salvare la ricetta: Nessuna cucina attiva selezionata."
+      "errorSavingRecipeKitchenIdMissing": "Impossibile salvare la ricetta: Nessuna cucina attiva selezionata.",
+      "confirmDeleteTitle": "[TRANSLATE] Confirm Delete",
+      "confirmDeleteMessage": "[TRANSLATE] Are you sure you want to delete this item? This action cannot be undone.",
+      "unsavedChangesTitle": "[TRANSLATE] Unsaved Changes",
+      "unsavedChangesMessage": "[TRANSLATE] You have unsaved changes. Are you sure you want to leave?",
+      "errorAddComponentFailed": "[TRANSLATE] Failed to add component: {{error}}",
+      "errorUpdateComponentFailed": "[TRANSLATE] Failed to update component: {{error}}",
+      "errorRemoveComponentFailed": "[TRANSLATE] Failed to remove component: {{error}}",
+      "errorSaveRecipeMessage": "[TRANSLATE] There was an error saving the recipe: {{error}}",
+      "recipeSaveSuccessTitle": "[TRANSLATE] Recipe Saved",
+      "recipeSaveSuccessMessage": "[TRANSLATE] Recipe \"{{recipeName}}\" saved successfully!",
+      "duplicateDishTitle": "[TRANSLATE] Duplicate Dish Name",
+      "duplicateDishReplaceMessage": "[TRANSLATE] A dish with the name \"{{dishName}}\" already exists. Replacing it will overwrite its current content.",
+      "duplicatePrepTitle": "[TRANSLATE] Duplicate Preparation Name",
+      "duplicatePrepActionReplace": "[TRANSLATE] Replace Existing",
+      "duplicatePrepActionNew": "[TRANSLATE] Use New Name"
     },
     "components": {
       "sidebar": {

@@ -16,67 +16,66 @@ ROACook/
 │   └── *.png
 ├── node_modules/      # Project dependencies
 ├── scripts/           # Utility scripts (e.g., data import/export)
-│   ├── exportData.ts
-│   ├── importData.ts
-│   ├── run-export.sh
-│   ├── run-import.sh
-│   └── ...
 ├── src/               # Main application source code
 │   ├── components/    # Reusable UI components
-│   │   ├── UnitDisplay.tsx   # Component for displaying units with proper conversion
-│   │   └── RecipeImage.tsx   # Component for displaying and managing recipe images
 │   ├── constants/     # Constant values (theme, dimensions, etc.)
-│   ├── context/       # React Context providers (e.g., AuthContext)
-│   │   ├── AuthContext.tsx      # Authentication context
-│   │   └── UnitSystemContext.tsx # Unit system preference (metric/imperial)
+│   ├── context/       # React Context providers
 │   ├── data/          # Data structures or static data
-│   ├── hooks/         # Custom React hooks
+│   ├── hooks/         # Custom React hooks (including data fetching)
 │   ├── locales/       # Internationalization (i18n) language files
 │   ├── navigation/    # Navigation setup (React Navigation)
+│   ├── persistence/   # Offline storage utilities
+│   │   └── offlineRecipes.ts # Individual recipe caching logic
+│   ├── realtime/      # Realtime subscription helpers
+│   │   └── supabaseChannelHelpers.ts # Supabase channel subscription helper
+│   ├── sagas/         # Redux Saga middleware for side effects
+│   │   ├── auth/         # Authentication flow sagas
+│   │   ├── kitchens/     # Kitchen management sagas (incl. realtime)
+│   │   ├── dishes/       # Dish realtime update saga
+│   │   ├── ingredients/  # Ingredient realtime update saga
+│   │   ├── preparations/ # Preparation realtime update saga
+│   │   └── rootSaga.ts   # Root saga combining all sagas
 │   ├── screens/       # Application screens/views
-│   ├── services/      # Services interacting with external APIs (e.g., Supabase)
-│   │   ├── api.ts             # Direct API communication service
-│   │   ├── notionApi.ts       # Notion integration for feedback and error reporting
-│   │   └── imageService.ts    # Services for managing recipe images
-│   ├── utils/         # Utility functions
-│   │   └── errorReporting.ts # Error handling and reporting utilities
+│   ├── services/      # Services interacting with external APIs
+│   ├── slices/        # Redux Toolkit state slices
+│   ├── store.ts       # Redux store configuration
+│   ├── utils/         # Utility functions (transforms, formatting, etc.)
 │   ├── i18n.ts        # i18next initialization
 │   └── types.ts       # TypeScript type definitions
-├── .env               # Environment variables (SUPABASE_URL, SUPABASE_ANON_KEY - **DO NOT COMMIT**)
+├── .env               # Environment variables (**DO NOT COMMIT**)
 ├── .gitignore         # Files and directories ignored by Git
 ├── App.tsx            # Main application entry point component
 ├── app.json           # Expo application configuration
 ├── babel.config.js    # Babel configuration
 ├── eas.json           # EAS Build configuration
-├── examples.txt       # Example data or usage notes
-├── index.ts           # Entry point for Metro bundler
 ├── metro.config.js    # Metro bundler configuration
-├── package-lock.json  # Exact dependency versions (npm)
-├── package.json       # Project metadata and dependencies (npm)
+├── package.json       # Project metadata and dependencies
 ├── tsconfig.json      # TypeScript compiler configuration
-└── yarn.lock          # Exact dependency versions (yarn)
+└── ...                # Other config files (yarn.lock, etc.)
 ```
 
 ## Key Technologies & Libraries
 
-*   **Framework:** Expo SDK (~52.0) / React Native (0.76.9)
+*   **Framework:** Expo SDK / React Native
 *   **Language:** TypeScript
-*   **UI Toolkit:** React Native Paper (^5.13.1), NativeWind (^4.1.23) (Tailwind for RN)
-*   **Navigation:** React Navigation (^7.x) (Stack, Bottom Tabs, Drawer)
-*   **State Management:** 
+*   **UI Toolkit:** React Native Paper, NativeWind (Tailwind for RN)
+*   **Navigation:** React Navigation (Stack, Bottom Tabs, Drawer)
+*   **State Management:**
     *   **Client/UI State:** Redux Toolkit + Redux Saga (`src/store.ts`, `src/slices/`, `src/sagas/`)
-    *   **Server State & Caching:** TanStack Query (React Query) v5 (`@tanstack/react-query`) with Supabase Cache Helpers (`@supabase-cache-helpers/postgrest-react-query`)
-*   **Local Storage:** AsyncStorage for preferences
-*   **Backend Integration:** Supabase JS Client (`@supabase/supabase-js` ^2.49.3)
-*   **Realtime Updates:** Supabase Realtime subscriptions managed via Redux Saga (`src/sagas/kitchens/kitchensRealtimeSaga.ts`)
+    *   **Server State & Caching:** TanStack Query (React Query) v5 (`@tanstack/react-query`)
+*   **Persistence:**
+    *   `redux-persist` for Redux state (`auth`, `kitchens` slices).
+    *   `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` for React Query cache.
+    *   Custom `AsyncStorage` caching for individual recipes (`src/persistence/offlineRecipes.ts`).
+*   **Local Storage:** AsyncStorage
+*   **Backend Integration:** Supabase JS Client (`@supabase/supabase-js`)
+*   **Realtime Updates:** Supabase Realtime + Redux Saga
 *   **Internationalization:** i18next, react-i18next, expo-localization
-*   **Fonts:** Custom Poppins fonts (`expo-font`)
-*   **Gestures:** `react-native-gesture-handler`
-*   **Animations:** `react-native-reanimated`
-*   **Media:** Expo Image Picker for camera and gallery access
-*   **Image Generation:** Integration with Together AI for recipe image generation
-*   **Utilities:** Expo Document Picker, Splash Screen, Status Bar, Action Sheet
-*   **Error Reporting:** Custom Notion integration for error tracking and feedback
+*   **Fonts:** `expo-font`
+*   **Gestures & Animations:** `react-native-gesture-handler`, `react-native-reanimated`
+*   **Media:** `expo-image-picker`
+*   **Image Generation:** Together AI via Supabase Edge Functions
+*   **Error Reporting:** Custom Notion integration
 
 ## Setup & Running
 
@@ -111,16 +110,16 @@ ROACook/
 
 ## Core Components & Concepts
 
-*   **`App.tsx`:** Root component. Initializes fonts, sets up providers (Redux, React Query, SafeArea, Paper, Auth, UnitSystem, ActionSheet), error boundary, navigator.
-*   **`src/components/ReactQueryClientProvider.tsx`:** Configures and provides the TanStack Query client.
-*   **`src/store.ts`:** Configures Redux store and middleware (Redux Saga).
-*   **`src/slices/`:** Redux Toolkit slices for managing client-side state (e.g., `authSlice`, `kitchensSlice` for `activeKitchenId`).
-*   **`src/sagas/`:** Redux Saga files for handling side effects, including auth flows and realtime subscription management.
-*   **`src/queries/`:** Contains reusable query functions (e.g., `getKitchensForUserQuery`) designed for use with `@supabase-cache-helpers/postgrest-react-query` and `useQuery`.
-*   **`src/screens/`:** Screen components. Screens fetching data from Supabase now primarily use the `useQuery` hook (e.g., `ManageKitchensScreen.tsx`).
-*   **`src/context/`:** React Context for global state not suited for Redux/React Query (e.g., `AuthContext`, `UnitSystemContext`).
+*   **`App.tsx`:** Root component. Initializes providers...
+*   **`src/components/ReactQueryClientProvider.tsx`:** Configures and provides the TanStack Query client, including persistence setup.
+*   **`src/store.ts`:** Configures Redux store, middleware (Saga), and persistence.
+*   **`src/slices/`:** Redux Toolkit slices...
+*   **`src/sagas/`:** Redux Saga files for side effects (auth, realtime management). See `rootSaga.ts` for structure.
+*   **`src/hooks/`:** Custom hooks, including data fetching hooks (`useDishes`, `usePreparationDetail`, etc.) using TanStack Query.
+*   **`src/context/`:** React Context...
 *   **`src/services/supabaseClient.ts`:** Exports the configured Supabase client.
-*   **`src/navigation/AppNavigator.tsx`:** Defines the main navigation structure (likely using stack, tabs, or drawers) based on authentication state.
+*   **`src/persistence/offlineRecipes.ts`:** Helpers for caching individual recipe details in AsyncStorage.
+*   **`src/realtime/supabaseChannelHelpers.ts`:** Reusable helper for managing Supabase Realtime channel subscriptions.
 *   **`src/screens/`:** Contains individual screen components, representing different views within the app (e.g., `HomeScreen`, `RecipeDetailScreen`, `CreateRecipeScreen`).
 *   **`src/components/`:** Houses reusable UI elements used across multiple screens:
     *   `Button`, `Card`, `Input`: Basic UI elements
@@ -135,6 +134,59 @@ ROACook/
 *   **`src/i18n.ts` & `src/locales/`:** Manages language translations and internationalization setup.
 *   **NativeWind:** Used for styling via Tailwind CSS classes. Configuration might be in `tailwind.config.js` (if present) or integrated into `babel.config.js`.
 *   **`src/types.ts`:** Central location for shared TypeScript interfaces and types, promoting consistency.
+
+## Data Fetching, Caching, and Realtime Updates
+
+This section details the application's strategy for managing server state, persistence, and live data updates.
+
+### State Management Approach
+
+The application employs a hybrid approach:
+
+*   **Redux Toolkit (+ Redux Saga):** Manages global client-side UI state (e.g., authentication status, active kitchen ID, theme preferences) and orchestrates complex asynchronous workflows like authentication and realtime subscription lifecycles.
+*   **TanStack Query (React Query) v5:** Manages server state fetched from the Supabase backend. It handles caching, background updates, loading/error states, and optimizes data fetching via hooks like `useQuery` located in `src/hooks/`. Query keys generally follow the pattern `[tableName, { filterKey: filterValue }]` (e.g., `['dishes', { kitchen_id: '...' }]`).
+
+### Caching & Persistence
+
+Multiple layers of caching are used to improve performance and provide offline capabilities:
+
+1.  **React Query In-Memory Cache:** TanStack Query automatically caches fetched data in memory. Default `staleTime` (5 min) and `gcTime` (30 min) are configured in `src/components/ReactQueryClientProvider.tsx`.
+2.  **React Query Persisted Cache:**
+    *   The entire React Query cache is persisted to `AsyncStorage` using `@tanstack/react-query-persist-client` and `@tanstack/query-async-storage-persister` (configured in `ReactQueryClientProvider.tsx`).
+    *   The cache key in `AsyncStorage` is `rq-cache`.
+    *   Hydration occurs on cold starts, followed by background revalidation based on `staleTime`.
+    *   This cache is cleared on user logout (`logoutSaga.ts`).
+3.  **Offline Recipe Cache:**
+    *   To ensure recently viewed recipes are quickly available even if the main RQ cache is garbage collected or stale, individual dish and preparation details are saved separately to `AsyncStorage` upon successful fetching in `useDishDetail` and `usePreparationDetail` hooks.
+    *   Logic is handled by helpers in `src/persistence/offlineRecipes.ts`.
+    *   These individual caches provide fast initial data hydration for recipe detail screens and basic offline viewing.
+    *   This cache is also cleared on user logout (`logoutSaga.ts`).
+4.  **Redux Persisted State:**
+    *   `redux-persist` saves parts of the Redux state (`auth`, `kitchens` slices) to `AsyncStorage`.
+    *   Configuration is in `src/store.ts`.
+    *   This is purged on logout (`logoutSaga.ts`).
+
+### Realtime Updates via Supabase & Sagas
+
+The application listens for database changes in realtime and updates the UI accordingly:
+
+*   **Subscriptions:** Redux Sagas (`src/sagas/{domain}/{domain}RealtimeSaga.ts`) manage subscriptions to Supabase Realtime channels for relevant tables (`dishes`, `ingredients`, `preparations`, `dish_components`, `preparation_ingredients`, `kitchens`, `kitchen_users`). A reusable helper exists in `src/realtime/supabaseChannelHelpers.ts`.
+*   **Event Handling:** These sagas listen for `INSERT`, `UPDATE`, and `DELETE` events pushed from the Supabase backend.
+*   **Cache Invalidation:** Upon receiving an event, the saga uses the shared `queryClient` instance (imported from `src/components/ReactQueryClientProvider.tsx`) to call `queryClient.invalidateQueries({ queryKey: [...] })`. This marks the relevant cached data (e.g., list views, detail views) as stale.
+*   **Automatic Refetching:** Components using TanStack Query hooks (`useQuery`) subscribed to the invalidated query keys will automatically and efficiently refetch the updated data in the background.
+*   **Lifecycle:** Realtime subscriptions are started/stopped based on the user's authentication state and active kitchen selection, managed primarily within `src/sagas/auth/authStateChangeSaga.ts` and the individual watcher sagas.
+
+This setup ensures the UI stays relatively up-to-date with backend changes without requiring manual polling.
+
+### Data Saving & Duplicate Handling (Revised July 2024)
+
+*   **Centralized Resolution:** Duplicate checking for ingredients, dishes, and preparations is handled by the functions `resolveIngredient`, `resolveDish`, and `resolvePreparation` in `src/services/duplicateResolver.ts`.
+*   **User Prompts:** When potential duplicates are detected (e.g., similar ingredient names, exact dish/preparation names), these resolver functions present the user with `Alert` prompts offering choices like "Use Existing", "Create New", "Replace", or "Rename".
+*   **Dish/Prep Creation Flow (`CreateRecipeScreen.tsx`):**
+    *   The `handleSaveDish` function now integrates with `resolveDish` and `resolvePreparation` before attempting inserts.
+    *   It handles different resolution modes (`existing`, `new`, `overwrite`, `rename`, `cancel`) to guide the saving process (update existing record, insert new, rename and insert, or abort).
+    *   Implicit creation of *new* preparations (identified during recipe parsing) during a *dish save* operation now correctly calls `createNewPreparation`, passing necessary data including `reference_ingredient` and `piece_type` (for sub-components).
+*   **Schema Corrections:** Save logic has been updated to use correct database column names (e.g., `piece_type` instead of `item` in `dish_components`) and avoids attempting to write to non-existent columns (e.g., `is_preparation` in `dish_components`).
 
 ## Recipe Image Management
 
@@ -182,192 +234,30 @@ The application supports both metric and imperial units with seamless conversion
 
 The user can toggle between metric and imperial units from the Preferences screen. This preference is stored locally and applies throughout the app.
 
-
-## Data Fetching, Caching, and Realtime Updates
-
-The application leverages TanStack Query (React Query) v5 along with `@supabase-cache-helpers/postgrest-react-query` for efficient server state management, caching, and automatic background updates.
-
-*   **Fetching:** Data fetching from Supabase is primarily handled using the `useQuery` hook within screen/component files. Reusable query functions are defined in `src/queries/` (e.g., `src/queries/kitchenQueries.ts`). These functions take the Supabase client and necessary parameters (like `userId`) and return a Supabase query builder instance.
-*   **Caching:** React Query automatically caches fetched data in memory. Default `staleTime` (5 min) and `gcTime` (30 min) are configured in `src/components/ReactQueryClientProvider.tsx`. This reduces unnecessary refetching and provides a snappier UI.
-*   **Realtime Updates:**
-    *   Supabase Realtime subscriptions are established for relevant tables (e.g., `kitchen`, `kitchen_users`) within a dedicated Redux Saga (`src/sagas/kitchens/kitchensRealtimeSaga.ts`).
-    *   This saga listens for `INSERT`, `UPDATE`, and `DELETE` events pushed from the Supabase backend.
-    *   Upon receiving an event, the saga identifies the relevant data potentially affected in the cache.
-    *   It then uses the `queryClient.invalidateQueries({ queryKey: [...] })` method to mark the corresponding query cache entries as stale.
-    *   Components subscribed to those queries via `useQuery` will automatically and efficiently refetch the updated data in the background when the cache is invalidated.
-    *   The `queryKey` used for invalidation corresponds to the key structure generated by `@supabase-cache-helpers/postgrest-react-query` (often based on table name and filter parameters).
-*   **State Management Mix:**
-    *   **React Query:** Manages server state (data fetched from Supabase), including loading states, errors, caching, and background updates.
-    *   **Redux:** Manages client-side UI state (e.g., authentication status, active kitchen ID, theme preferences) and orchestrates complex side effects via Sagas (auth flows, realtime subscription lifecycle).
-
-This approach separates concerns, using React Query for what it excels at (server state) and Redux/Saga for client state and complex asynchronous workflows.
-
 ## Data Management Scripts (`scripts/`)
 
 The `scripts/` directory contains Node.js scripts (using `ts-node`) for interacting with the Supabase database directly, primarily for backup and potentially seeding purposes.
 
-*   **Exporting:** `exportData.ts` (run via `npm run export-unix` or `npm run export-win`) fetches data from specified Supabase tables and saves it to JSON files in an `exports/` directory (this directory should likely be in `.gitignore`). It can export individual tables, all tables combined, and a detailed nested recipe structure.
-*   **Importing:** `importData.ts` (run via `npm run import-unix` or `npm run import-win`) reads data from the JSON files in `exports/` and inserts it into the Supabase database, respecting table dependencies.
-*   **Fetching Detailed Recipes:** `run-fetch-recipes.sh` uses a specific script (likely wrapping `exportData.ts` or a dedicated fetch script) to generate `detailed-recipes.json` containing deeply nested recipe data.
+*   **Exporting:** `exportData.ts` (run via `npm run script:export`) fetches data from specified Supabase tables and saves it to JSON files in an `exports/` directory (this directory should likely be in `.gitignore`). It can export individual tables, all tables combined, and a detailed nested recipe structure.
+*   **Importing:** `importData.ts` (run via `npm run script:import`) reads data from the JSON files in `exports/` and inserts it into the Supabase database, respecting table dependencies.
+*   **Fetching Detailed Recipes:** `fetchDetailedRecipes.ts` (run via `npm run script:fetch-recipes`) generates `detailed-recipes.json` containing deeply nested recipe data.
 
 **Usage:**
 
 ```bash
-# Example Export (Unix/Mac)
-npm run export-unix "YOUR_SUPABASE_URL" "YOUR_SUPABASE_ANON_KEY"
+# Export Data
+npm run script:export -- --url "YOUR_SUPABASE_URL" --key "YOUR_SUPABASE_ANON_KEY"
 
-# Example Import (Windows)
-npm run import-win "YOUR_SUPABASE_URL" "YOUR_SUPABASE_ANON_KEY"
+# Import Data
+npm run script:import -- --url "YOUR_SUPABASE_URL" --key "YOUR_SUPABASE_ANON_KEY"
 
-# Example Fetch Detailed Recipes (Unix/Mac)
-./scripts/run-fetch-recipes.sh "YOUR_SUPABASE_URL" "YOUR_SUPABASE_ANON_KEY"
+# Fetch Detailed Recipes
+npm run script:fetch-recipes -- --url "YOUR_SUPABASE_URL" --key "YOUR_SUPABASE_ANON_KEY"
 ```
 
-*(Refer to the original README section for specific script command details if needed)*
+*(Refer to the `package.json` for exact script definitions)*
 
 ## Environment Variables
 
 *   `SUPABASE_URL`: The URL of your Supabase project.
-*   `SUPABASE_ANON_KEY`: The anonymous (public) key for your Supabase project.
-*   `EXPO_PUBLIC_NOTION_API_KEY`: API key for Notion integration (error reporting and feedback).
-*   `EXPO_PUBLIC_NOTION_DATABASE_ID`: Notion database ID where errors and feedback are stored.
-
-These are typically loaded from the `.env` file. Ensure this file is present and correctly configured before running the app or data management scripts.
-
-## Build & Deployment (EAS)
-
-The project is configured for EAS (Expo Application Services) builds, as indicated by `eas.json` and the `eas.projectId` in `app.json`.
-
-*   Refer to EAS documentation for building and submitting the app: [https://docs.expo.dev/eas/](https://docs.expo.dev/eas/)
-*   Commands typically involve `eas build --platform [ios|android] --profile [development|preview|production]`.
-
-## Recent UI Changes Log
-
-*   Added recipe image functionality with AI generation and user uploads
-*   Integrated RecipeImage component into dish and preparation detail screens
-*   Added image-related translations to all language files
-*   Added unit system toggle (metric/imperial) in Preferences screen
-*   Implemented UnitDisplay component for showing measurements in the user's preferred unit system
-*   `CreateRecipeScreen` renders added preparations using read-only `PreparationCard`
-*   `PreparationCard` in `CreateRecipeScreen` shows "Amount:" instead of "Yield:", sub-ingredients only shown if parsed/uploaded
-*   `CreateRecipeScreen` has scale slider for servings, updates amounts dynamically, saves scaled amounts & target servings
-*   `ScaleSliderInput` layout adjusted
-*   Total yield displayed below servings slider in `CreateRecipeScreen`
-*   `CreateRecipeScreen` title changed to "Confirm Parsed Recipe" for parsed recipes
-*   Reduced vertical spacing around header/slider in `CreateRecipeScreen`
-*   `CreateRecipeScreen` includes `serving_item` input for count-based units, with modal to select existing components
-*   Quantities rounded to one decimal place in UI
-*   Count units use item name, simple pluralization ('s', 'es' for 'ss') applied based on quantity
-*   Fixed sub-ingredient capitalization in `PreparationCard` on confirmation screens
-
-*(This section summarizes previous manual notes. Future changes should ideally be tracked via Git history and commit messages.)*
-## Google Cloud Secret Manager Setup for Image Storage
-
-The application uses Google Cloud Storage (GCS) for storing recipe images. To enhance security, credentials for GCS are stored in Google Cloud Secret Manager rather than hardcoded in the application or environment variables.
-
-### Secret Manager Configuration
-
-1. **Create the secrets in Google Cloud Secret Manager:**
-
-We've provided a script to automate this process in `scripts/setup-gcs-secrets.sh`:
-
-```bash
-# Navigate to the scripts directory
-cd scripts
-
-# Make the script executable (if needed)
-chmod +x setup-gcs-secrets.sh
-
-# Run the script
-./setup-gcs-secrets.sh
-```
-
-Or manually create the secrets:
-
-```bash
-# Install Google Cloud CLI if you haven't already
-# https://cloud.google.com/sdk/docs/install
-
-# Login to your Google Cloud account
-gcloud auth login
-
-# Set your project ID
-gcloud config set project imperial-rarity-442220-c9
-
-# Create the secrets
-echo "user-recipe-image-worker@imperial-rarity-442220-c9.iam.gserviceaccount.com" | \
-  gcloud secrets create user-recipe-image-worker-email --data-file=-
-
-# Create the private key secret (replace with the actual private key)
-gcloud secrets create user-recipe-image-worker-key --data-file=./image-store-gcs-key-private-key.txt
-```
-
-2. **Grant permissions to Supabase Edge Functions:**
-
-The Supabase Edge Functions need permission to access the secrets. The specific service account depends on your Supabase setup. Consult the Supabase documentation for identifying the correct service account.
-
-```bash
-# Replace SERVICE_ACCOUNT with your Supabase Function's service account
-gcloud secrets add-iam-policy-binding user-recipe-image-worker-email \
-  --member="serviceAccount:SERVICE_ACCOUNT" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding user-recipe-image-worker-key \
-  --member="serviceAccount:SERVICE_ACCOUNT" \
-  --role="roles/secretmanager.secretAccessor"
-```
-
-3. **Environment Variables (Alternative Setup):**
-
-The application is designed to be flexible with credential sources. It checks for credentials in the following order:
-
-1. Secret Manager (preferred)
-2. Supabase Function environment variables
-3. Fallback to direct environment variables
-
-If you prefer to use environment variables instead of Secret Manager, you can set the following in your Supabase project:
-
-```
-# Direct Secret Manager access (preferred)
-SECRET_USER_RECIPE_IMAGE_WORKER_EMAIL=user-recipe-image-worker@imperial-rarity-442220-c9.iam.gserviceaccount.com
-SECRET_USER_RECIPE_IMAGE_WORKER_KEY=<the-private-key>
-
-# OR use traditional environment variables (fallback)
-GCS_CLIENT_EMAIL=user-recipe-image-worker@imperial-rarity-442220-c9.iam.gserviceaccount.com
-GCS_PRIVATE_KEY=<the-private-key>
-GCS_PROJECT_ID=imperial-rarity-442220-c9
-```
-
-### Testing Secret Manager Access
-
-To verify that your Supabase Edge Functions can access Secret Manager, deploy the functions and check the logs for any errors related to Secret Manager access.
-
-### Benefits of Using Secret Manager
-
-- **Security**: Credentials are stored securely and not within application code
-- **Access Control**: Fine-grained IAM permissions for who can access the secrets
-- **Versioning**: Secret values can be versioned and rolled back if needed
-- **Audit Logs**: All access to secrets is logged for security auditing
-- **Rotation**: Secrets can be rotated without application changes
-
-For more information on Google Cloud Secret Manager, see the [official documentation](https://cloud.google.com/secret-manager/docs/overview).
-
-## Local Persistence (React Query & Redux)
-
-As of 2024-07-25 the app now features **offline-first** behaviour with on-disk caching.
-
-### React Query (Server State)
-1.  Implemented via `PersistQueryClientProvider` in `src/components/ReactQueryClientProvider.tsx`.
-2.  Data fetched from Supabase is persisted to `AsyncStorage` under the key `rq-cache`.
-3.  Hydration occurs on cold start, followed by silent background re-validation.
-4.  Cache limits: `staleTime` 5 min, `gcTime` 30 min, persister throttled at 1 s.
-5.  On user sign-out we purge the persisted query cache (see `authSlice` sign-out thunk).
-
-### Redux (UI/Auth State)
-1.  `redux-persist` added with an `AsyncStorage` backend.
-2.  Only the `auth` and `kitchens` slices are whitelisted.
-3.  `persistGate` wraps the root of the component tree in `App.tsx`.
-4.  Store creation lives in `src/store.ts` with `persistor` export.
-5.  Logout action triggers `persistor.purge()` to wipe sensitive data.
-
-These changes allow navigation between screens without hitting the network when data is fresh and provide a usable offline mode (read-only at this stage).
+*   `

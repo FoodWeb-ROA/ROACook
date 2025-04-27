@@ -351,8 +351,8 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
                     .from('preparation_ingredients')
                     .select(`
                         *,
-                        unit:unit_id(*),
-                        ingredient:ingredient_id(*)
+                        unit:units!preparation_ingredients_unit_id_fkey(*),
+                        ingredient:ingredients!preparation_ingredients_ingredient_id_fkey(*)
                     `)
                     .eq('preparation_id', ingredientData.ingredient_id) as { 
                         data: FetchedPreparationIngredient[] | null, 
@@ -444,8 +444,14 @@ export function useMenuSections() {
   // Define kitchenId using the new hook
   const kitchenId = useCurrentKitchenId();
 
-  const refresh = () => {
-    setRefreshTrigger(prev => prev + 1);
+  // Create a Promise that resolves when the data is refreshed
+  const refresh = async () => {
+    return new Promise<void>((resolve) => {
+      setRefreshTrigger(prev => {
+        setTimeout(() => resolve(), 0); // Resolve on next tick after state is updated
+        return prev + 1;
+      });
+    });
   };
 
   useEffect(() => {
@@ -481,7 +487,7 @@ export function useMenuSections() {
     }
 
     fetchMenuSections();
-  }, [kitchenId]); // Dependency array
+  }, [kitchenId, refreshTrigger]); // Added refreshTrigger to dependency array
 
   return { menuSections, loading, error, refresh };
 }
@@ -611,8 +617,8 @@ export function usePreparationDetail(preparationId: string | undefined) {
           .from('preparation_ingredients')
           .select(`
               *,
-              unit:unit_id(*),
-              ingredient:ingredient_id(*)
+              unit:units!preparation_ingredients_unit_id_fkey(*),
+              ingredient:ingredients!preparation_ingredients_ingredient_id_fkey(*)
           `)
           .eq('preparation_id', preparationId) as { data: FetchedPreparationIngredient[] | null, error: any };
 

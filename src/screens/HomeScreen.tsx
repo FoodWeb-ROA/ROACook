@@ -35,6 +35,7 @@ import { useMenuSections, useDishes } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
 import { uploadRecipeImages } from '../services/recipeParser';
 import { useTranslation } from 'react-i18next';
+import { useTypedSelector } from '../hooks/useTypedSelector';
 
 // Helper function to chunk array with type annotations
 const chunk = <T,>(array: T[], size: number): T[][] => { // Add generic type T and return type T[][]
@@ -109,6 +110,9 @@ const HomeScreen = () => {
   const { showActionSheetWithOptions } = useActionSheet();
   const { t } = useTranslation();
   
+  // Get the active kitchen ID from Redux state
+  const activeKitchenId = useTypedSelector(state => state.kitchens.activeKitchenId);
+  
   // Use dynamic data loading hooks
   const { menuSections, loading: loadingCategories, error: categoriesError, refresh: refreshMenuSections } = useMenuSections();
   const { dishes, loading: loadingDishes, error: dishesError } = useDishes();
@@ -128,43 +132,34 @@ const HomeScreen = () => {
 
   const handleAddSection = async (sectionName: string) => {
     try {
-      // TODO: Replace placeholder with actual logic to get kitchen_id
-      const placeholderKitchenId = process.env.EXPO_PUBLIC_DEFAULT_KITCHEN_ID; 
-      console.log('>>> Read Kitchen ID from env:', placeholderKitchenId); // Add diagnostic log
-      if (placeholderKitchenId === process.env.EXPO_PUBLIC_DEFAULT_KITCHEN_ID) {
-          console.warn('Using placeholder kitchen ID in handleAddSection');
-          // Optionally Alert the user or prevent adding if no real ID is available
-          // Alert.alert("Setup Needed", "Kitchen selection not implemented yet.");
-          // return;
-      }
+      // Get kitchen_id from Redux state
+      const kitchenId = activeKitchenId;
+      console.log('>>> Using active kitchen ID:', kitchenId);
 
       // Ensure kitchen ID is available before proceeding
-      if (!placeholderKitchenId) {
+      if (!kitchenId) {
         Alert.alert(
           t('common.error'),
           t('screens.home.error.missingKitchenId'),
           [{ text: t('common.ok', 'OK') }]
         );
-        console.error('Error adding section: kitchen_id is undefined. Check environment variables or configuration.');
+        console.error('Error adding section: No active kitchen selected. Please select a kitchen first.');
         return; // Stop execution if kitchen ID is missing
       }
 
       const { data, error } = await supabase
         .from('menu_section')
         // Provide the required kitchen_id
-        .insert({ name: sectionName, kitchen_id: placeholderKitchenId }) 
+        .insert({ name: sectionName, kitchen_id: kitchenId }) 
         .select()
         .single();
       
       if (error) throw error;
       
-      Alert.alert(
-        t('screens.home.addSectionSuccessTitle'),
-        t('screens.home.addSectionSuccessMessage', { sectionName }),
-        [{ text: t('common.ok', 'OK') }]
-      );
+      // Refresh data immediately after successful operation
+      await refreshMenuSections();
       
-      refreshMenuSections();
+      // Success alert removed
     } catch (error: any) {
       console.error('Error adding section:', error);
       Alert.alert(
@@ -176,7 +171,11 @@ const HomeScreen = () => {
   };
 
   // --- Category Paging Logic ---
-  const formattedCategories = menuSections?.map(section => ({...section /* icon: 'silverware-fork-knife' */})) || [];
+  const formattedCategories = useMemo(() => {
+    // Return only the existing menu sections without adding an "All Recipes" card
+    return menuSections?.map(section => ({...section})) || [];
+  }, [menuSections, loadingCategories, t, isParsing]);
+  
   const categoriesWithAdd = [...formattedCategories, { isAddCard: true }];
   const categoryPages = chunk(categoriesWithAdd, CATEGORIES_PER_PAGE);
   const totalCategoryPages = categoryPages.length;
@@ -422,8 +421,6 @@ const HomeScreen = () => {
               <ActivityIndicator color={COLORS.primary} size="large" style={styles.loader} />
             ) : categoriesError ? (
               <Text style={styles.errorText}>{t('screens.home.errorLoadingCategories')}</Text>
-            ) : formattedCategories.length === 0 ? (
-              <Text style={styles.noDataText}>{t('screens.home.noCategoriesFound')}</Text>
             ) : (
               <>
                 <FlatList

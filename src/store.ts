@@ -15,18 +15,30 @@ import {
 	REGISTER,
 } from 'redux-persist';
 
-const rootReducer = combineReducers({
-	auth: authReducer,
-	kitchens: kitchensReducer,
-});
-
-const persistConfig = {
-	key: 'root',
+// Specific persist config for auth slice
+const authPersistConfig = {
+	key: 'auth',
 	storage: AsyncStorage,
-	whitelist: ['auth', 'kitchens'],
+	blacklist: ['loading', 'error', 'session'] // Blacklist loading, error, and session states
 };
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+const rootReducer = combineReducers({
+	auth: persistReducer(authPersistConfig, authReducer), // Apply nested persist config
+	kitchens: kitchensReducer, // kitchens can be persisted directly if needed, or use its own config
+});
+
+// Root persist config - might not need whitelist if handling slices individually
+const rootPersistConfig = {
+	key: 'root',
+	storage: AsyncStorage,
+	// Whitelist only slices that *don't* have their own nested config, if any.
+	// Or, if all slices handle their own persistence like 'auth' now does,
+	// you might remove the root whitelist or adjust accordingly.
+	// For now, let's assume 'kitchens' should still be persisted directly under root.
+	whitelist: ['kitchens'], 
+};
+
+const persistedReducer = persistReducer(rootPersistConfig, rootReducer);
 
 const sagaMiddleware = createSagaMiddleware();
 

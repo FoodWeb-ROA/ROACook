@@ -135,6 +135,8 @@ const AppNavigator = () => {
   const session = useTypedSelector(state => state.auth.session);
   const loading = useTypedSelector(state => state.auth.loading);
 
+  console.log(`--- AppNavigator render: loading=${loading}, session=${session ? 'exists' : 'null'}`);
+
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>

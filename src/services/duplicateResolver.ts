@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 import { findCloseIngredient, findDishByName, checkPreparationNameExists, findPreparationByFingerprint } from '../data/dbLookup';
 
-export type ResolutionMode = 'existing' | 'new' | 'overwrite' | 'rename';
+export type ResolutionMode = 'existing' | 'new' | 'overwrite' | 'rename' | 'cancel';
 export interface ResolutionResult {
   mode: ResolutionMode;
   id?: string | null;
@@ -70,7 +70,7 @@ export async function resolveDish(
         t('alerts.duplicateDishReplaceMessage', { name: trimmed }),
         [
           { text: t('common.replace'), onPress: () => res({ mode: 'overwrite', id }) },
-          { text: t('common.cancel'), style: 'cancel', onPress: () => res({ mode: 'new' }) }, // Treat cancel as creating a new (though user likely won't proceed)
+          { text: t('common.cancel'), style: 'cancel', onPress: () => res({ mode: 'cancel' }) },
         ],
         { cancelable: false }
       );

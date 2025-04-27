@@ -78,6 +78,7 @@ const authSlice = createSlice({
 			state.error = null;
 		},
 		logoutSuccess(state) {
+			console.log('--- logoutSuccess reducer: Setting loading=false');
 			state.loading = false;
 			state.session = null;
 			state.user = null;

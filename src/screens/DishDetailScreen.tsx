@@ -20,7 +20,7 @@ import { RootStackParamList } from '../navigation/types';
 import { Dish, DishComponent } from '../types';
 import AppHeader from '../components/AppHeader';
 import PreparationCard from '../components/PreparationCard';
-import { useDishDetail } from '../hooks/useSupabase';
+import { useDishDetail, useCurrentKitchenId } from '../hooks/useSupabase';
 import { formatQuantityAuto } from '../utils/textFormatters';
 import ScaleSliderInput from '../components/ScaleSliderInput';
 import { useTranslation } from 'react-i18next';
@@ -34,11 +34,20 @@ const DishDetailScreen = () => {
   const { dishId } = route.params;
   const { t } = useTranslation();
   
+  const kitchenId = useCurrentKitchenId();
+  const [isKitchenIdLoading, setIsKitchenIdLoading] = useState(true);
+
+  useEffect(() => {
+    if (kitchenId !== undefined) {
+      setIsKitchenIdLoading(false);
+    }
+  }, [kitchenId]);
+
   const { 
     dish, 
-    loading, 
+    loading: dishLoading,
     error 
-  } = useDishDetail(dishId);
+  } = useDishDetail(dishId, kitchenId);
 
   const [originalServings, setOriginalServings] = useState(1);
   const [targetServings, setTargetServings] = useState(1);
@@ -92,7 +101,10 @@ const DishDetailScreen = () => {
     // ... function body ...
   };
 
-  if (loading) {
+  // MODIFIED: Combine loading states
+  const isLoading = isKitchenIdLoading || dishLoading;
+
+  if (isLoading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />

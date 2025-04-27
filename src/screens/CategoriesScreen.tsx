@@ -53,20 +53,11 @@ const CategoriesScreen = () => {
       
       if (error) throw error;
       
-      // Cross-platform alert handling
-      if (Platform.OS === 'web') {
-        window.alert(`Section "${sectionName}" has been added successfully.`);
-      } else {
-        // React Native's Alert for iOS/Android
-        Alert.alert(
-          "Success",
-          `Section "${sectionName}" has been added successfully.`,
-          [{ text: "OK" }]
-        );
-      }
+      // Refresh the menu sections list immediately
+      await refresh();
       
-      // Refresh the menu sections list
-      refresh();
+      // Success alert removed
+
     } catch (error: any) {
       console.error('Error adding section:', error);
       

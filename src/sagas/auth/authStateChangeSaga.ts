@@ -14,6 +14,9 @@ import { fetchUserProfile } from './utils';
 import { CheckUser, CreateUser } from './types';
 import { IUser } from '../../types';
 import { fetchKitchensWatch } from '../../slices/kitchensSlice';
+import { startDishRealtime } from '../dishes/dishesRealtimeSaga';
+import { startIngredientRealtime } from '../ingredients/ingredientsRealtimeSaga';
+import { startPreparationRealtime } from '../preparations/preparationsRealtimeSaga';
 
 export function* handleAuthStateChange(
 	action: ReturnType<typeof authStateChanged>
@@ -78,6 +81,11 @@ export function* handleAuthStateChange(
 				}
 				console.log('* handleAuthStateChange: Dispatching fetchKitchensWatch.');
 				yield put(fetchKitchensWatch());
+				
+				console.log('* handleAuthStateChange: Dispatching start realtime actions...');
+				yield put(startDishRealtime());
+				yield put(startIngredientRealtime());
+				yield put(startPreparationRealtime());
 			} else {
 				console.log(
 					`* handleAuthStateChange: User ${user.id} not linked to a kitchen. Attempting to link...`
@@ -121,6 +129,11 @@ export function* handleAuthStateChange(
 				}
 				console.log('* handleAuthStateChange: Dispatching fetchKitchensWatch after linking.');
 				yield put(fetchKitchensWatch());
+				
+				console.log('* handleAuthStateChange: Dispatching start realtime actions after linking...');
+				yield put(startDishRealtime());
+				yield put(startIngredientRealtime());
+				yield put(startPreparationRealtime());
 			}
 		} catch (error: any) {
 			console.error(

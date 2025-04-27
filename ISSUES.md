@@ -1,1 +1,86 @@
-# ROACook Issues\n\n## Issue 1: Supabase Write Errors (Schema Mismatch & Ambiguous Join)\n\n**Reported:** 2024-07-26\n\n**Error Logs:**\n```\n(NOBRIDGE) ERROR  Error inserting preparation details: {\"code\": \"PGRST204\", \"details\": null, \"hint\": null, \"message\": \"Could not find the \'num_servings\' column of \'preparations\' in the schema cache\"}\n(NOBRIDGE) ERROR  Error checking preparation name: {\"code\": \"PGRST201\", ..., \"message\": \"Could not embed because more than one relationship was found for \'ingredients\' and \'preparations\'\"}\n```\n\n**Analysis:**\n1.  The code in `CreateRecipeScreen.tsx` (`savePrepLogic`, `createNewPreparation`) was attempting to write to a `num_servings` and `serving_size` field in the `preparations` table, which does not exist according to the schema definition found in migrations. These fields belong to the `dishes` table.\n2.  The `checkPreparationNameExists` function in `src/data/dbLookup.ts` was using an implicit join (`preparations(preparation_id)`) which was ambiguous due to multiple potential relationships between `ingredients` and `preparations` tables.\n3.  Minor linter errors were present in `CreateRecipeScreen.tsx` related to a redundant code block and an incorrect `kitchen_id` assignment.\n\n**Attempted Fixes (2024-07-26):**\n1.  **`CreateRecipeScreen.tsx`:**\n    *   Removed `num_servings` and `serving_size` fields from `.update()` and `.insert()` calls targeting the `preparations` table within `savePrepLogic` and `createNewPreparation`.\n    *   Removed a redundant `if (isUpdating)` block that contained incorrect logic for `componentsToSave`.\n    *   Removed `kitchen_id: activeKitchenId` from the object pushed into `componentsToSave` within the component processing loop (as it doesn't belong to `dish_components` or `preparation_ingredients`).\n2.  **`src/data/dbLookup.ts`:**\n    *   Modified the Supabase query within `checkPreparationNameExists` to use an explicit inner join hint: `.select(\`ingredient_id, preparations!inner(preparation_id)\`)` to resolve the relationship ambiguity.\n\n**Status:** Attempted Fix 
+
+
+## Issue 1: Duplicate Name Constraint Violation & Cancel Path
+
+**Reported:** 2024-07-27
+
+**Error Logs:**
+```
+(NOBRIDGE) ERROR  Error saving recipe: {"code": "23505", "details": "Key (dish_name)=(...) already exists.", ..., "message": "duplicate key value violates unique constraint ..."}
+```
+
+**Analysis:**
+1.  When saving a new dish/preparation with a name that already exists, the database threw a unique constraint violation (23505) instead of the user being prompted by the `resolveDish`/`resolvePreparation` functions.
+2.  The `resolveDish` function in `duplicateResolver.ts` incorrectly resolved the "Cancel" action as `{ mode: 'new' }`, causing the save flow to continue and hit the constraint error.
+3.  The `handleSaveDish` function in `CreateRecipeScreen.tsx` didn't explicitly handle the `cancel` mode and didn't ensure the insert path was only taken when the resolution mode was truly `new`.
+
+**Attempted Fixes (2024-07-27):**
+1.  **`src/services/duplicateResolver.ts`:**
+    *   Modified `resolveDish` to resolve the `Cancel` action with `{ mode: 'cancel' }`.
+2.  **`src/screens/CreateRecipeScreen.tsx`:**
+    *   Updated `handleSaveDish` to check for `dishResolution.mode === 'cancel'` and abort the save if true.
+    *   Ensured the `overwrite` logic path correctly updates the dish and returns.
+    *   Ensured the insert logic only proceeds if `dishResolution.mode === 'new'`.
+
+**Status:** Attempted Fix
+
+## Issue 3: Supabase Schema Cache Errors (Column Mismatch)
+
+**Reported:** 2024-07-27
+
+**Error Logs:**
+```
+(NOBRIDGE) ERROR  Error saving recipe: {"code": "PGRST204", ..., "message": "Could not find the 'is_preparation' column of 'dish_components' in the schema cache"}
+(NOBRIDGE) ERROR  Error saving recipe: {"code": "PGRST204", ..., "message": "Could not find the 'item' column of 'dish_components' in the schema cache"}
+```
+
+**Analysis:**
+1.  The code was attempting to insert data into `dish_components` using column names (`is_preparation`, `item`) that did not exist in the database schema.
+2.  Investigation revealed the `is_preparation` column doesn't exist (preparation status is inferred). The `item` column should be `piece_type`.
+
+**Attempted Fixes (2024-07-27):**
+1.  **`src/screens/CreateRecipeScreen.tsx`:**
+    *   Removed the `is_preparation` field from the data mapping for `dish_components` inserts.
+    *   Corrected the mapping to use `piece_type: c.item || null` instead of `item: c.item`.
+
+**Status:** Attempted Fix
+
+## Issue 4: Incomplete Preparation Creation Logic (Reference Ingredient)
+
+**Reported:** 2024-07-27
+
+**Analysis:**
+1.  The `reference_ingredient` field was parsed correctly into component state but wasn't being saved when a *new* preparation was implicitly created during a *dish save* operation.
+2.  The component processing logic within `handleSaveDish` was incomplete and didn't call `createNewPreparation` with the necessary data (including `reference_ingredient`).
+
+**Attempted Fixes (2024-07-27):**
+1.  **`src/screens/CreateRecipeScreen.tsx`:**
+    *   Implemented the component processing logic within the `components.map` block in `handleSaveDish`.
+    *   Added calls to `resolvePreparation` and `createNewPreparation` for new preparations.
+    *   Ensured `createNewPreparation` is called with `reference_ingredient: comp.reference_ingredient ?? null`.
+
+**Status:** Attempted Fix
+
+## Issue 5: Preparation Reference Ingredient Not Saving
+
+**Reported:** 2024-07-27
+
+**Analysis:** Ongoing issue despite previous fixes, potentially related to how `reference_ingredient` is handled in the `preparations` table vs. `ingredients` table during creation/updates, or how it's passed between screens/components.
+
+**Status:** Open
+
+## Issue 6: Edit Dish Not Correctly Populating Preparation Info
+
+**Reported:** 2024-07-27
+
+**Analysis:** When navigating to `CreateRecipeScreen` to edit an existing dish containing preparations, the preparation-specific details (sub-ingredients, instructions stored in `prepState...` fields) might not be loading correctly from the fetched `dishToEdit` data.
+
+**Status:** Open
+
+## Issue 7: Persistent Text Formatting Error in CreatePreparationScreen
+
+**Reported:** 2024-07-27
+
+**Analysis:** A text formatting or display error persists in `CreatePreparationScreen.tsx`, likely related to how scaled amounts or units are calculated or rendered, possibly involving the reference ingredient logic.
+
+**Status:** Open 

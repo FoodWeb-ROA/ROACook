@@ -47,9 +47,10 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
 
   // Construct yield text, conditionally adding reference ingredient
   let yieldText = `${formattedYield.amount} ${formattedYield.unit}`;
-  if (preparation.reference_ingredient && !hideReferenceIngredient) {
+  const refIngredientName = preparation.reference_ingredient;
+  if (refIngredientName && !hideReferenceIngredient) {
     // Use the new localization key with interpolation
-    yieldText += ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`;
+    yieldText += ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(refIngredientName) })}`;
   }
 
   // Ensure preparation.ingredients exists and is an array before using it
@@ -70,8 +71,8 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
         {formattedYield.amount !== 'N/A' && (
            <View style={styles.infoItem}> 
             <MaterialCommunityIcons name="scale-balance" size={16} color={COLORS.textLight} />
-            <Text style={styles.infoText}>
-              {displayLabel}: {yieldText} {/* Use combined yield text */}
+            <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="tail">
+              {displayLabel}: {yieldText}
             </Text>
            </View>
         )}

@@ -228,9 +228,11 @@ const PreparationDetailScreen = () => {
               {formattedScaledYield.amount !== 'N/A' && ( // Check formatted amount
                 <View style={styles.infoItem}>
                   <MaterialCommunityIcons name="scale" size={18} color={COLORS.textLight} />
-                  <Text style={styles.infoText}>
-                    {/* Display the formatted scaled amount and unit */}
-                    {formattedScaledYield.amount} {formattedScaledYield.unit} 
+                  <Text style={styles.infoText} numberOfLines={2} ellipsizeMode="tail">
+                    {t('common.yield')}: {formattedScaledYield.amount} {formattedScaledYield.unit}
+                    {preparation.reference_ingredient && (
+                      ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`
+                    )}
                   </Text>
                 </View>
               )}
