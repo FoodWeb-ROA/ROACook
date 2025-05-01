@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
@@ -13,17 +13,34 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { capitalizeWords } from '../utils/textFormatters';
 import { useTranslation } from 'react-i18next';
+import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
 
 const AllRecipesScreen = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const drawerNav = useNavigation<DrawerNavigationProp<DrawerParamList>>();
-  const { dishes, loading: loadingDishes, error: errorDishes } = useDishes();
-  const { preparations, loading: loadingPreps, error: errorPreps } = usePreparations();
+  const { dishes, loading: loadingDishes, error: errorDishes, lastUpdateTime: dishesLastUpdate } = useDishes();
+  const { preparations, loading: loadingPreps, error: errorPreps, lastUpdateTime: prepsLastUpdate } = usePreparations();
   const { t } = useTranslation();
   
   const [activeTab, setActiveTab] = useState<'recipes' | 'preparations'>('recipes');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'newest'>('name');
+  
+  const [showBanner, setShowBanner] = useState(false);
+  const lastUpdateTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const relevantUpdateTime = activeTab === 'recipes' ? dishesLastUpdate : prepsLastUpdate;
+    
+    if (relevantUpdateTime && relevantUpdateTime !== lastUpdateTimeRef.current) {
+      setShowBanner(true);
+      lastUpdateTimeRef.current = relevantUpdateTime;
+      const timer = setTimeout(() => {
+        setShowBanner(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, dishesLastUpdate, prepsLastUpdate]);
   
   const openDrawerMenu = () => drawerNav.openDrawer();
   
@@ -95,6 +112,7 @@ const AllRecipesScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <UpdateNotificationBanner visible={showBanner} message="List Updated" />
       <AppHeader title={screenTitle} showMenuButton={true} onMenuPress={openDrawerMenu} />
       
       {/* Tab Selector */}

@@ -53,41 +53,62 @@ export const parseUrlFragment = (url: string): Record<string, string> => {
 	}, {});
 };
 
+/**
+ * Fetches combined user profile information.
+ * Gets username from public.profiles and kitchen_id from public.kitchen_users.
+ * Uses basic info (id, email) from the authenticated auth.users object.
+ */
 export const fetchUserProfile = async (authUser: User | null): Promise<(IUser & { kitchen_id: string }) | null> => {
 	if (!authUser) {
 		console.warn('fetchUserProfile called with null authUser');
 		return null;
 	}
 	
-	const userId = authUser.id; // Define userId here
+	const userId = authUser.id;
 
 	try {
+		// Fetch profile data (e.g., username)
+		const { data: profileData, error: profileError } = await supabase
+			.from('profiles') // Query the new profiles table
+			.select('username') 
+			.eq('id', userId)
+			.maybeSingle(); // Use maybeSingle as profile might not exist immediately after signup trigger
+
+		if (profileError) {
+			console.error('Error fetching profile data:', profileError);
+			// Don't return null immediately, maybe kitchen link still exists
+		}
+
 		// Fetch the kitchen_id associated with the user
 		const { data: kitchenUserData, error: kitchenUserError } = await supabase
 			.from('kitchen_users')
 			.select('kitchen_id') 
 			.eq('user_id', userId)
-			.limit(1)
-			.single();
+			.limit(1) // Assuming user belongs to max 1 kitchen initially?
+			.single(); // Use single if user MUST be linked to proceed
 
 		if (kitchenUserError) {
 			console.error('Error fetching kitchen_users data:', kitchenUserError);
-			return null;
+			// If kitchen link is mandatory for a valid profile, return null
+			return null; 
 		}
 		
 		if (!kitchenUserData) {
+			// This case might be redundant if .single() throws error, but good practice
 			console.warn('No kitchen association found for user:', userId);
 			return null;
 		}
 
-		// Combine auth user details with kitchen_id
-		// Note: Adjust IUser type definition if necessary
+		// Combine auth user details, profile username, and kitchen_id
+		// Fallback for username if profile doesn't exist or fetch failed
+		const username = profileData?.username || authUser.user_metadata?.username || 'User';
+
 		return {
 			user_id: userId,
-			user_fullname: authUser.user_metadata?.full_name || 'Unknown Name',
-			user_language: authUser.user_metadata?.language || 'EN',
+			user_fullname: username, // Use username from profiles table
+			user_language: 'EN', // Default or fetch from profile if added later
 			user_email: authUser.email || null,
-			kitchen_id: kitchenUserData.kitchen_id
+			kitchen_id: kitchenUserData.kitchen_id // Include kitchen_id as per original type
 		};
 		
 	} catch (err) {

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../data/supabaseClient';
+import { useDispatch } from 'react-redux';
+import { authStateChanged } from '../slices/authSlice';
 
 interface AuthContextType {
   session: Session | null;
@@ -24,29 +26,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     // Normal authentication flow for production
     // Get session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
       setLoading(false);
+      // Dispatch Redux action with initial session state
+      console.log('[AuthProvider] Dispatching initial auth state');
+      dispatch(authStateChanged({ session: initialSession }));
+    }).catch(error => {
+        console.error("[AuthProvider] Error getting initial session:", error);
+         setLoading(false);
+         // Dispatch null session if error occurs
+         dispatch(authStateChanged({ session: null }));
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      console.log(`[AuthProvider] Auth state changed, event: ${_event}`);
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      // Ensure loading is false after an update
+      if (loading) setLoading(false);
+      // Dispatch Redux action on auth state change
+      dispatch(authStateChanged({ session: currentSession }));
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+        console.log('[AuthProvider] Unsubscribing from auth state changes.');
+        subscription.unsubscribe();
+    };
+  }, [dispatch]);
 
   // Sign in with email and password
   const signIn = async (email: string, password: string) => {
-
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error };
@@ -57,38 +74,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Sign up with email and password
   const signUp = async (email: string, password: string, username: string) => {
-
     try {
-      // Create auth user
+      // Create the Supabase Auth user.
+      // Additional profile creation/linking is handled later by sagas 
+      // triggered by the authStateChanged event (e.g., in authStateChangeSaga).
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
-          data: { username }
+          // Pass data like username here if needed by DB triggers/functions on auth.users insert
+          data: { username } 
         }
       });
       
-      if (error) return { error, user: null };
-      
-      // If successful, create user profile in the database
-      if (data?.user) {
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            uuid: data.user.id,
-            username,
-            email,
-            user_type_id: 2, // Assuming 2 is for regular users
-          });
-        
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          return { error: profileError, user: null };
-        }
-      }
-      
-      return { error: null, user: data?.user ?? null };
+      // Return only the auth result.
+      return { error, user: data?.user ?? null };
+
     } catch (error) {
+      console.error('Unexpected error during signUp:', error);
       return { error, user: null };
     }
   };

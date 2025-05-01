@@ -143,16 +143,16 @@ This section details the application's strategy for managing server state, persi
 
 The application employs a hybrid approach:
 
-*   **Redux Toolkit (+ Redux Saga):** Manages global client-side UI state (e.g., authentication status, active kitchen ID, theme preferences) and orchestrates complex asynchronous workflows like authentication and realtime subscription lifecycles.
+*   **Redux Toolkit (+ Redux Saga):** Manages global client-side UI state (e.g., authentication status, active kitchen ID, theme preferences) and orchestrates complex asynchronous workflows like authentication and **non-realtime** kitchen management (fetching lists, leaving kitchens).
 *   **TanStack Query (React Query) v5:** Manages server state fetched from the Supabase backend. It handles caching, background updates, loading/error states, and optimizes data fetching via hooks like `useQuery` located in `src/hooks/`. Query keys generally follow the pattern `[tableName, { filterKey: filterValue }]` (e.g., `['dishes', { kitchen_id: '...' }]`).
 
 ### Caching & Persistence
 
 Multiple layers of caching are used to improve performance and provide offline capabilities:
 
-1.  **React Query In-Memory Cache:** TanStack Query automatically caches fetched data in memory. Default `staleTime` (5 min) and `gcTime` (30 min) are configured in `src/components/ReactQueryClientProvider.tsx`.
+1.  **React Query In-Memory Cache:** TanStack Query automatically caches fetched data in memory. Default `staleTime` (30 min) and `gcTime` (30 min) are configured in `src/data/queryClient.ts`.
 2.  **React Query Persisted Cache:**
-    *   The entire React Query cache is persisted to `AsyncStorage` using `@tanstack/react-query-persist-client` and `@tanstack/query-async-storage-persister` (configured in `ReactQueryClientProvider.tsx`).
+    *   The entire React Query cache is persisted to `AsyncStorage` using `@tanstack/react-query-persist-client` and `@tanstack/query-async-storage-persister` (configured in `src/components/ReactQueryClientProvider.tsx`).
     *   The cache key in `AsyncStorage` is `rq-cache`.
     *   Hydration occurs on cold starts, followed by background revalidation based on `staleTime`.
     *   This cache is cleared on user logout (`logoutSaga.ts`).
@@ -166,17 +166,21 @@ Multiple layers of caching are used to improve performance and provide offline c
     *   Configuration is in `src/store.ts`.
     *   This is purged on logout (`logoutSaga.ts`).
 
-### Realtime Updates via Supabase & Sagas
+### Realtime Updates via Supabase & React Query (Revised Sept 2024)
 
-The application listens for database changes in realtime and updates the UI accordingly:
+The application listens for database changes in realtime using Supabase and directly updates the React Query cache:
 
-*   **Subscriptions:** Redux Sagas (`src/sagas/{domain}/{domain}RealtimeSaga.ts`) manage subscriptions to Supabase Realtime channels for relevant tables (`dishes`, `ingredients`, `preparations`, `dish_components`, `preparation_ingredients`, `kitchens`, `kitchen_users`). A reusable helper exists in `src/realtime/supabaseChannelHelpers.ts`.
-*   **Event Handling:** These sagas listen for `INSERT`, `UPDATE`, and `DELETE` events pushed from the Supabase backend.
-*   **Cache Invalidation:** Upon receiving an event, the saga uses the shared `queryClient` instance (imported from `src/components/ReactQueryClientProvider.tsx`) to call `queryClient.invalidateQueries({ queryKey: [...] })`. This marks the relevant cached data (e.g., list views, detail views) as stale.
-*   **Automatic Refetching:** Components using TanStack Query hooks (`useQuery`) subscribed to the invalidated query keys will automatically and efficiently refetch the updated data in the background.
-*   **Lifecycle:** Realtime subscriptions are started/stopped based on the user's authentication state and active kitchen selection, managed primarily within `src/sagas/auth/authStateChangeSaga.ts` and the individual watcher sagas.
+*   **Subscription Management:** The `src/realtime/useSupabaseRealtime.ts` hook manages the connection to a single Supabase Realtime channel (`kitchen-{activeKitchenId}`).
+    *   It subscribes/unsubscribes automatically based on the user's authentication state and active kitchen ID (selected via Redux).
+    *   It listens for `INSERT`, `UPDATE`, `DELETE` events on relevant tables (`kitchen`, `kitchen_users`, `dishes`, `ingredients`, `preparations`, `preparation_ingredients`, `menu_section`, `dish_components`).
+    *   Includes basic exponential backoff retry logic for connection errors.
+    *   The hook is activated globally via the `<SupabaseRealtimeProvider>` in `App.tsx`.
+*   **Cache Updates:** Upon receiving an event, the `useSupabaseRealtime` hook calls the `applyRealtimeEvent` function in `src/realtime/cacheInvalidation.ts`.
+    *   `applyRealtimeEvent` determines the appropriate cache keys to update based on the incoming event's table and data.
+    *   It uses `queryClient.invalidateQueries({ queryKey: [...] })` to mark relevant data as stale.
+*   **Automatic Refetching:** Components using TanStack Query hooks (`useQuery`) subscribed to the invalidated query keys will automatically and efficiently refetch the updated data in the background or display the updated data immediately if surgical cache updates (using `setQueryData`) are implemented in the future.
 
-This setup ensures the UI stays relatively up-to-date with backend changes without requiring manual polling.
+This setup replaces the previous Redux Saga-based realtime handling, simplifying the data flow and leveraging React Query's caching mechanisms more directly.
 
 ### Data Saving & Duplicate Handling (Revised July 2024)
 

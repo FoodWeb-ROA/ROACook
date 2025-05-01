@@ -11,27 +11,34 @@ import { AuthProvider } from './src/context/AuthContext';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { UnitSystemProvider } from './src/context/UnitSystemContext';
 import { Provider } from 'react-redux';
-import store, { persistor } from './src/store';
+import store from './src/store';
+import { persistStore } from 'redux-persist';
 import { DeepLinkHandler, useDeepLinking } from './src/hooks/useDeepLinking';
 import { ReactQueryClientProvider } from './src/components/ReactQueryClientProvider';
 import { PersistGate } from 'redux-persist/integration/react';
+import { SupabaseRealtimeProvider } from './src/realtime/SupabaseRealtimeProvider';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+// Create persistor instance here, using the imported store
+const persistor = persistStore(store);
 
 export default function App() {
 	return (
 		<Provider store={store}>
 			<PersistGate loading={null} persistor={persistor}>
 				<ReactQueryClientProvider>
-					<DeepLinkIntersepter />
+					<SupabaseRealtimeProvider>
+						<DeepLinkInterceptor />
+					</SupabaseRealtimeProvider>
 				</ReactQueryClientProvider>
 			</PersistGate>
 		</Provider>
 	);
 }
 
-function DeepLinkIntersepter() {
+function DeepLinkInterceptor() {
 	const [appIsReady, setAppIsReady] = useState(false);
 
 	const handleDeepLink: DeepLinkHandler = (url, parsed) => {

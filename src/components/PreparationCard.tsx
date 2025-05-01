@@ -18,8 +18,12 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
   const preparation = component.preparationDetails;
   const { t } = useTranslation();
 
+  // --- ADD LOGGING: Log received prop value ---
+  console.log(`[PreparationCard] Received component.preparationDetails.reference_ingredient: ${preparation?.reference_ingredient}`);
+  // --- END LOGGING ---
+
   // Use translated default for amountLabel
-  const displayLabel = amountLabel || t('common.yield');
+  const displayLabel = amountLabel || t('components.preparationCard.amountInRecipeLabel', 'Amount in Recipe:');
 
   if (!preparation) {
     // Should ideally not happen if component.isPreparation is true, but handle defensively
@@ -45,17 +49,32 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
   const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
   const formattedYield = formatQuantityAuto(scaledYieldAmount, yieldUnitAbbr);
 
-  // Construct yield text, conditionally adding reference ingredient
-  let yieldText = `${formattedYield.amount} ${formattedYield.unit}`;
-  const refIngredientName = preparation.reference_ingredient;
-  if (refIngredientName && !hideReferenceIngredient) {
-    // Use the new localization key with interpolation
-    yieldText += ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(refIngredientName) })}`;
-  }
-
   // Ensure preparation.ingredients exists and is an array before using it
   const ingredients = preparation.ingredients || [];
 
+  // --- REVISED: Calculate display amount and text based on reference ingredient --- 
+  let displayAmount = component.amount ? component.amount * scaleMultiplier : null;
+  let displayUnitAbbr = '';
+  let displayText = 'N/A';
+  const refIngredientName = preparation.reference_ingredient;
+  let refIngredientUnitAbbr = '';
+
+  if (refIngredientName) {
+    const refIngredient = ingredients.find(ing => ing.name === refIngredientName || ing.ingredient_id === refIngredientName);
+    refIngredientUnitAbbr = refIngredient?.unit?.abbreviation || refIngredient?.unit?.unit_name || '';
+    const formattedAmount = formatQuantityAuto(displayAmount, refIngredientUnitAbbr);
+    displayText = `${formattedAmount.amount} ${formattedAmount.unit}`;
+    // Use the new localization key with interpolation
+    displayText += ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(refIngredientName) })}`;
+    displayUnitAbbr = refIngredientUnitAbbr; // Store for scaling calculations
+  } else {
+    // No reference ingredient, use prep yield unit
+    displayUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
+    const formattedAmount = formatQuantityAuto(displayAmount, displayUnitAbbr);
+    displayText = `${formattedAmount.amount} ${formattedAmount.unit}`;
+  }
+  // --- END REVISION ---
+  
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.title}>{preparation.name || component.name}</Text>
@@ -68,11 +87,11 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
           </View>
         )}
         {/* Only show Yield/Amount if available */}
-        {formattedYield.amount !== 'N/A' && (
+        {displayText !== 'N/A' && (
            <View style={styles.infoItem}> 
             <MaterialCommunityIcons name="scale-balance" size={16} color={COLORS.textLight} />
             <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="tail">
-              {displayLabel}: {yieldText}
+              {displayLabel}: {displayText}
             </Text>
            </View>
         )}
@@ -83,9 +102,39 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
       <Text style={styles.subTitle}>{t('components.preparationCard.subTitle')}</Text>
       {ingredients.length > 0 ? (
         ingredients.slice(0, 3).map((ing: PreparationIngredient) => {
-          const scaledIngAmount = ing.amount ? ing.amount * scaleMultiplier : null;
+          // --- REVISED SCALING based on reference ingredient ---
+          let finalScaledAmount = null;
+          const baseIngAmount = ing.amount;
+          const prepBaseYield = preparation.yield_amount; 
+          const scaledPrepAmountInDish = displayAmount; // Amount displayed (already scaled by multiplier)
+
+          if (refIngredientName && baseIngAmount !== null) {
+            // Find ref ingredient base amount
+            const refIngredientBase = ingredients.find(i => i.name === refIngredientName || i.ingredient_id === refIngredientName);
+            const refIngBaseAmount = refIngredientBase?.amount;
+            const componentBaseAmount = component.amount; // Use the UNSCALED component amount for ratio
+            
+            // Check if refIngBaseAmount is a valid, positive number before using
+            if (typeof refIngBaseAmount === 'number' && refIngBaseAmount > 0 && componentBaseAmount !== null) {
+              // Scale factor based on target ref ingredient amount vs base ref ingredient amount
+              const refScaleFactor = componentBaseAmount / refIngBaseAmount;
+              finalScaledAmount = baseIngAmount * refScaleFactor * scaleMultiplier;
+            } else {
+              finalScaledAmount = baseIngAmount * scaleMultiplier; // Fallback
+            }
+          } else if (!refIngredientName && baseIngAmount !== null && scaledPrepAmountInDish !== null && prepBaseYield !== null && prepBaseYield > 0) {
+            // Original scaling if no reference ingredient
+            const scaleFactor = scaledPrepAmountInDish / prepBaseYield;
+            finalScaledAmount = baseIngAmount * scaleFactor;
+          } else if (baseIngAmount !== null) {
+            // Fallback if other scaling fails
+            finalScaledAmount = baseIngAmount * scaleMultiplier; 
+          }
+          // --- END REVISION ---
+          
           const ingUnitAbbr = ing.unit?.abbreviation || ing.unit?.unit_name || '';
-          const formattedIng = formatQuantityAuto(scaledIngAmount, ingUnitAbbr);
+          // Use the newly calculated finalScaledAmount
+          const formattedIng = formatQuantityAuto(finalScaledAmount, ingUnitAbbr);
           return (
             <View key={ing.ingredient_id} style={styles.ingredientItem}>
               <Text style={styles.ingredientName}>• {capitalizeWords(ing.name)}</Text>

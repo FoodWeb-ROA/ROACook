@@ -30,8 +30,6 @@ const PreferencesScreen = () => {
   const { t, i18n } = useTranslation();
   const { showActionSheetWithOptions } = useActionSheet();
   const { unitSystem, toggleUnitSystem, isMetric } = useUnitSystem();
-  const [notifications, setNotifications] = useState(true);
-  const [autoSync, setAutoSync] = useState(true);
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
@@ -141,7 +139,6 @@ const PreferencesScreen = () => {
         <View style={styles.section}>
           {renderActionItem('account-circle-outline', 'navigation.account', '', 
             () => navigation.getParent<StackNavigationProp<RootStackParamList>>().navigate('Account'))}
-          {renderSettingItem('bell-outline', 'notifications', notifications, setNotifications)}
           {renderActionItem('ruler', 'unitSystem', t(`common.${unitSystem}`), showUnitSystemSelector)}
           {renderActionItem('translate', 'language', currentLanguageName, showLanguageSelector)}
         </View>

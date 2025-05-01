@@ -1,4 +1,6 @@
-import { call, put } from 'redux-saga/effects';
+import { call, put, select, take, takeEvery } from 'redux-saga/effects';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '../../data/supabaseClient';
 import {
 	authStateChanged,
 	loginSuccess,
@@ -9,15 +11,13 @@ import {
 	oauthFailure,
 	logoutSuccess
 } from '../../slices/authSlice';
+import { fetchKitchensWatch } from '../../slices/kitchensSlice';
 import { checkKitchenUserLink, linkUserToKitchen } from './userProfileSaga';
 import { fetchUserProfile } from './utils';
 import { CheckUser, CreateUser } from './types';
 import { IUser } from '../../types';
-import { fetchKitchensWatch } from '../../slices/kitchensSlice';
-import { startDishRealtime } from '../dishes/dishesRealtimeSaga';
-import { startIngredientRealtime } from '../ingredients/ingredientsRealtimeSaga';
-import { startPreparationRealtime } from '../preparations/preparationsRealtimeSaga';
 
+// Saga to handle auth state changes based on the dispatched action
 export function* handleAuthStateChange(
 	action: ReturnType<typeof authStateChanged>
 ): Generator<any, void, any> {
@@ -40,6 +40,7 @@ export function* handleAuthStateChange(
 
 			console.log(`* handleAuthStateChange/user:`, JSON.stringify(user, null, 2));
 
+			// Check if user is linked to a kitchen
 			const kitchenLinkResponse: { data: { kitchen_id: string } | null; error: any } = yield call(
 				checkKitchenUserLink,
 				user.id
@@ -52,7 +53,7 @@ export function* handleAuthStateChange(
 				);
 				const errorMsg = kitchenLinkResponse.error.message || 'Database error checking user kitchen link.';
 				if (user.app_metadata.provider === 'email') {
-					yield put(registerFailure(errorMsg));
+					yield put(registerFailure(errorMsg)); // Assume error during signup/initial link
 				} else {
 					yield put(oauthFailure(errorMsg));
 				}
@@ -60,6 +61,7 @@ export function* handleAuthStateChange(
 			}
 
 			if (kitchenLinkResponse.data) {
+				// User is linked, proceed with login flow
 				console.log(`* handleAuthStateChange: User ${user.id} is linked to kitchen ${kitchenLinkResponse.data.kitchen_id}.`);
 				
 				const userProfile: (IUser & { kitchen_id: string }) | null = yield call(fetchUserProfile, user);
@@ -79,14 +81,12 @@ export function* handleAuthStateChange(
 					console.log('* handleAuthStateChange: OAuth provider - dispatching oauthSuccess.');
 					yield put(oauthSuccess({ session, user: userProfile }));
 				}
+
 				console.log('* handleAuthStateChange: Dispatching fetchKitchensWatch.');
 				yield put(fetchKitchensWatch());
-				
-				console.log('* handleAuthStateChange: Dispatching start realtime actions...');
-				yield put(startDishRealtime());
-				yield put(startIngredientRealtime());
-				yield put(startPreparationRealtime());
+
 			} else {
+				// User is not linked, attempt to link
 				console.log(
 					`* handleAuthStateChange: User ${user.id} not linked to a kitchen. Attempting to link...`
 				);
@@ -127,13 +127,9 @@ export function* handleAuthStateChange(
 				} else {
 					yield put(oauthSuccess({ session, user: userProfile }));
 				}
+
 				console.log('* handleAuthStateChange: Dispatching fetchKitchensWatch after linking.');
 				yield put(fetchKitchensWatch());
-				
-				console.log('* handleAuthStateChange: Dispatching start realtime actions after linking...');
-				yield put(startDishRealtime());
-				yield put(startIngredientRealtime());
-				yield put(startPreparationRealtime());
 			}
 		} catch (error: any) {
 			console.error(
@@ -141,10 +137,32 @@ export function* handleAuthStateChange(
 				error
 			);
 			const errorMsg = error.message || 'Error processing session update.';
-			yield put(oauthFailure(errorMsg));
+			yield put(oauthFailure(errorMsg)); // Adjust failure action based on context if possible
+			yield put(logoutSuccess()); // Ensure logout state consistency on error
 		}
 	} else {
+		// Session is null, handle logout
 		console.log('* handleAuthStateChange: Session is null, user logged out.');
 		yield put(logoutSuccess());
 	}
+}
+
+// Simple watcher that listens for the authStateChanged action dispatched elsewhere
+// (e.g., potentially from the Supabase listener callback via dispatch)
+// Or, more likely, listens for specific login/register/oauth success actions.
+// For now, just setting up the listener for the action.
+export function* authStateChangeSaga(): Generator<any, void, any> {
+	yield takeEvery(authStateChanged.type, handleAuthStateChange);
+	console.log('* authStateChangeSaga: Watching for authStateChanged actions.');
+
+	// NOTE: The actual Supabase listener (supabase.auth.onAuthStateChange)
+	// needs to be set up elsewhere (e.g., in App.tsx or a context provider)
+	// and needs to dispatch the `authStateChanged` action with the session.
+
+	// Initial check could also dispatch the action:
+	// try {
+	//     const { data, error } = yield call(supabase.auth.getSession);
+	//     if (error) throw error;
+	//     yield put(authStateChanged({ session: data.session }));
+	// } catch (e) { ... }
 }

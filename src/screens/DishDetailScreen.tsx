@@ -24,6 +24,8 @@ import { useDishDetail, useCurrentKitchenId } from '../hooks/useSupabase';
 import { formatQuantityAuto } from '../utils/textFormatters';
 import ScaleSliderInput from '../components/ScaleSliderInput';
 import { useTranslation } from 'react-i18next';
+import { transformDishComponent } from '../utils/transforms';
+import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
 
 type DishDetailRouteProp = RouteProp<RootStackParamList, 'DishDetails'>;
 type DishDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -46,7 +48,8 @@ const DishDetailScreen = () => {
   const { 
     dish, 
     loading: dishLoading,
-    error 
+    error,
+    lastUpdateTime
   } = useDishDetail(dishId, kitchenId);
 
   const [originalServings, setOriginalServings] = useState(1);
@@ -74,13 +77,33 @@ const DishDetailScreen = () => {
     }
   }, [dish?.num_servings]);
 
+  // Effect to show banner on update
+  const [showBanner, setShowBanner] = useState(false);
+  const lastUpdateTimeRef = React.useRef<number | null>(null);
+
+  useEffect(() => {
+    if (lastUpdateTime && lastUpdateTime !== lastUpdateTimeRef.current) {
+      setShowBanner(true);
+      lastUpdateTimeRef.current = lastUpdateTime;
+      const timer = setTimeout(() => {
+        setShowBanner(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastUpdateTime]);
+
   // Navigation handler for preparation press
-  const handlePreparationPress = (preparationId: string) => {
+  const handlePreparationPress = (preparationId: string, component: DishComponent) => {
     if (!preparationId) {
       console.warn('Attempted to navigate to preparation with invalid ID');
       return;
     }
-    navigation.navigate('PreparationDetails', { preparationId, recipeServingScale: servingScale });
+    // Pass the actual amount of the prep used in the dish
+    navigation.navigate('PreparationDetails', { 
+      preparationId, 
+      recipeServingScale: servingScale, 
+      prepAmountInDish: component.amount // Pass the component's amount
+    });
   };
 
   // Handler for edit button press
@@ -88,7 +111,6 @@ const DishDetailScreen = () => {
     if (!dishId) return;
     // Navigate to CreateRecipeScreen with dishId for editing
     navigation.navigate('CreateRecipe', { dishId });
-    // console.log("Edit pressed for dish:", dishId); // Log for now
   };
 
   // Add type for parameters
@@ -104,6 +126,46 @@ const DishDetailScreen = () => {
   // MODIFIED: Combine loading states
   const isLoading = isKitchenIdLoading || dishLoading;
 
+  // Re-add inline formatTime function
+  const formatTime = (interval: string | null): string => {
+      if (!interval) return 'N/A';
+      // Handle HH:MM:SS format
+      if (interval.includes(':')) {
+          const parts = interval.split(':');
+          const hours = parseInt(parts[0], 10);
+          const minutes = parseInt(parts[1], 10);
+          // Ignore seconds if present parts[2]
+          if (isNaN(hours) || isNaN(minutes)) return 'Invalid Time';
+          if (hours > 0) return `${hours}h ${minutes}m`;
+          if (minutes > 0) return `${minutes} min`;
+          return '0 min'; // Or handle cases with only seconds if needed
+      } 
+      // Handle ISO 8601 Duration format (e.g., PT1H30M)
+      else if (interval.startsWith('PT')) {
+          const match = interval.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+           if (match) {
+              const hours = parseInt(match[1] || '0', 10);
+              const minutes = parseInt(match[2] || '0', 10);
+              // const seconds = parseInt(match[3] || '0', 10);
+              if (hours > 0) return `${hours}h ${minutes}m`;
+              if (minutes > 0) return `${minutes} min`;
+              // Handle seconds if needed: if (seconds > 0) return `${seconds} sec`;
+              return '0 min';
+          }
+      }
+      // Assume it might be just minutes as a number string
+      const minutesAsNum = parseInt(interval, 10);
+      if (!isNaN(minutesAsNum)) {
+          const hours = Math.floor(minutesAsNum / 60);
+          const minutes = minutesAsNum % 60;
+          if (hours > 0) return `${hours}h ${minutes}m`;
+          return `${minutes} min`;
+      }
+      // Fallback if format is unrecognized
+      return interval; 
+  };
+
+  // Only show loading screen during initial load, not error
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
@@ -114,7 +176,8 @@ const DishDetailScreen = () => {
     );
   }
 
-  if (error || !dish) {
+  // Only show error screen if there's an error AFTER loading completes
+  if (!isLoading && (error || !dish)) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
@@ -126,63 +189,58 @@ const DishDetailScreen = () => {
     );
   }
 
-  // Final check to ensure dish is not null before rendering main content
+  // If we have no dish data but no error, return to loading state instead of showing error
   if (!dish) {
-    // This case should ideally be caught by the error check above,
-    // but adding for extra safety.
     return (
-      <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
+      <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
         <StatusBar style="light" />
-        <AppHeader title={t('common.error')} showBackButton={true} />
-        <Text style={styles.errorText}>
-          {t('screens.dishDetail.notFound', 'Dish not found')}
-        </Text>
+        <AppHeader title={t('screens.dishDetail.loading')} showBackButton={true} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
   }
 
   const directions = dish.directions ? dish.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
 
-  const formatTime = (interval: string | null): string => {
-      if (!interval) return 'N/A';
-      if (interval.includes(':')) {
-          const parts = interval.split(':');
-          const hours = parseInt(parts[0]);
-          const minutes = parseInt(parts[1]);
-          if (hours > 0) return `${hours}h ${minutes}m`;
-          return `${minutes} min`;
-      } else if (interval.startsWith('PT')) {
-          const match = interval.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-           if (match) {
-              const hours = parseInt(match[1] || '0');
-              const minutes = parseInt(match[2] || '0');
-              if (hours > 0) return `${hours}h ${minutes}m`;
-              return `${minutes} min`;
-          }
-      }
-      return interval;
-  };
-
   const renderComponent = (component: DishComponent, index: number) => {
-    // Calculate scaled amount and format
     const scaledAmount = component.amount ? component.amount * servingScale : null;
     const unitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
     const formattedComponent = formatQuantityAuto(scaledAmount, unitAbbr, component.item || undefined);
 
-    return (
-      <View key={component.ingredient_id} style={styles.ingredientItem}>
-        <Text style={styles.ingredientName}>
-          {component.name || t('common.unknownIngredient')}
-          {component.isPreparation ? t('screens.dishDetail.prepSuffix') : ''}
-        </Text>
-        <View style={styles.ingredientQuantity}>
-          <Text style={styles.ingredientQuantityText}>
-            {formattedComponent.amount} {formattedComponent.unit}
-          </Text>
-        </View>
-      </View>
-    );
+    // If it's a raw ingredient, render using simple Text
+    if (!component.isPreparation) {
+        return (
+          <View key={component.ingredient_id} style={styles.ingredientItem}>
+             <Text style={styles.ingredientName}>
+                {component.name || t('common.unknownIngredient')}
+             </Text>
+             <View style={styles.ingredientQuantity}>
+                <Text style={styles.ingredientQuantityText}>
+                   {formattedComponent.amount} {formattedComponent.unit}
+                </Text>
+             </View>
+          </View>
+        );
+    } else {
+        // Preparation rendering remains handled by PreparationCard below
+        return null;
+    }
   };
+
+  // --- Calculate Scale Factor ---
+  const calculateScaleFactor = () => {
+    if (!dish || !dish.num_servings || dish.num_servings === 0) {
+      return 1; // Default to 1 if base servings info is missing
+    }
+    return targetServings / dish.num_servings;
+  };
+
+  const scaleFactor = calculateScaleFactor();
+  const totalYieldAmount = (dish?.serving_size || 0) * targetServings;
+  const totalYieldUnit = dish?.serving_unit?.abbreviation || dish?.serving_unit?.unit_name || 'g'; // Default unit
+
+  // ADD LOG: Log dish components just before rendering
+  console.log('[DishDetailScreen Render] Dish components state:', JSON.stringify(dish?.components, null, 2));
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -287,7 +345,7 @@ const DishDetailScreen = () => {
                 <PreparationCard
                   key={preparation.ingredient_id}
                   component={preparation}
-                  onPress={() => handlePreparationPress(preparation.ingredient_id)}
+                  onPress={() => handlePreparationPress(preparation.ingredient_id, preparation)}
                   scaleMultiplier={servingScale}
                 />
               ))}
@@ -327,6 +385,7 @@ const DishDetailScreen = () => {
           )}
         </View>
       </ScrollView>
+      <UpdateNotificationBanner visible={showBanner} />
     </SafeAreaView>
   );
 };

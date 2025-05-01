@@ -33,7 +33,7 @@ export type PreparationIngredient = {
     name: string; // Ingredient name
     amount: number | null;
     unit: Unit | null;
-    // Add other relevant fields if needed
+    isPreparation?: boolean; // Added by usePreparationDetail hook
 };
 
 // Define DishComponent based on transformed structure

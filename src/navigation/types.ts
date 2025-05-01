@@ -1,3 +1,4 @@
+import { NavigatorScreenParams } from '@react-navigation/native';
 import { ParsedRecipe, ParsedIngredient, Kitchen, EditablePrepIngredient } from '../types';
 import { DrawerParamList } from './AppNavigator';
 
@@ -19,7 +20,11 @@ export type RootStackParamList = {
   // Rename RecipeDetails to DishDetails and update param
   DishDetails: { dishId: string };
   CategoryRecipes: { categoryId: string; categoryName: string };
-  PreparationDetails: { preparationId: string, recipeServingScale?: number };
+  PreparationDetails: {
+    preparationId: string;
+    recipeServingScale?: number;
+    prepAmountInDish?: number | null;
+  };
   CreatePreparation: {
     preparation: ParsedIngredient;
     scaleMultiplier?: number;
@@ -53,6 +58,8 @@ export type RootStackParamList = {
   RecipeDetail: { recipe: ParsedRecipe };
   EditRecipe: { recipe: ParsedRecipe | null };
   About: undefined;
+  RecipeList: undefined;
+  Settings: undefined;
 };
 
 // Ensure no duplicate DrawerParamList export/declaration exists below

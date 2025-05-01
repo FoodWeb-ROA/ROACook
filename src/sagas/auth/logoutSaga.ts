@@ -6,22 +6,16 @@ import {
 	logoutFailure
 } from '../../slices/authSlice';
 import { AuthError } from './types';
-import { persistor } from '../../store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { stopDishRealtime } from '../dishes/dishesRealtimeSaga';
-import { stopIngredientRealtime } from '../ingredients/ingredientsRealtimeSaga';
-import { stopPreparationRealtime } from '../preparations/preparationsRealtimeSaga';
 import { purgeAllOfflineRecipes } from '../../persistence/offlineRecipes';
+import { queryClient } from '../../data/queryClient';
+
+const PURGE_ACTION_TYPE = 'persist/PURGE_REQUESTED';
 
 function* handleLogout(): Generator<any, void, any> {
 	console.log(`* handleLogout`);
     
 	try {
-		console.log('* handleLogout: Dispatching stop realtime actions...');
-		yield put(stopDishRealtime());
-		yield put(stopIngredientRealtime());
-		yield put(stopPreparationRealtime());
-
 		const { error } = yield call(() => supabase.auth.signOut());
 
 		if (error) {
@@ -33,13 +27,15 @@ function* handleLogout(): Generator<any, void, any> {
 				`* handleLogout: Sign-out successful. Clearing caches...`
 			);
 
-			// Purge persisted Redux state
-			yield call([persistor, persistor.purge]);
+			yield put({ type: PURGE_ACTION_TYPE });
 
-			// Clear React Query cache (memory)
-			if (typeof window !== 'undefined' && window.queryClient) {
+			// Clear React Query cache using imported client and call effect
+			if (queryClient) {
 				console.log('* handleLogout: Clearing memory RQ cache...');
-				window.queryClient.clear();
+				yield call([queryClient, queryClient.clear]);
+				console.log('[Logout Saga] React Query cache cleared.');
+			} else {
+				console.warn('[Logout Saga] QueryClient not available to clear cache.');
 			}
 
 			// Remove persisted React Query cache from AsyncStorage

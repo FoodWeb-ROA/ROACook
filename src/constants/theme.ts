@@ -81,7 +81,7 @@ export const SIZES = {
 
 // Custom font styles
 export const FONTS = {
-  largeTitle: { fontSize: SIZES.xxxl, fontFamily: 'Poppins' },
+  largeTitle: { fontSize: SIZES.xxxl, fontFamily: 'Poppins', fontWeight: '800' },
   h1: { fontSize: SIZES.xxl, fontFamily: 'Poppins' },
   h2: { fontSize: SIZES.xl, fontFamily: 'Poppins' },
   h3: { fontSize: SIZES.large, fontFamily: 'Poppins' },

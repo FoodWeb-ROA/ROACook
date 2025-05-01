@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -24,6 +24,7 @@ import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
 import ScaleSliderInput from '../components/ScaleSliderInput';
 import { useTranslation } from 'react-i18next';
 import PreparationCard from '../components/PreparationCard';
+import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
 
 type PreparationDetailRouteProp = RouteProp<RootStackParamList, 'PreparationDetails'>;
 type PreparationDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -33,16 +34,26 @@ type MeasurementUnit = 'g' | 'kg' | 'ml' | 'l' | 'tbsp' | 'tsp' | 'cup' | 'oz' |
 const PreparationDetailScreen = () => {
   const navigation = useNavigation<PreparationDetailNavigationProp>();
   const route = useRoute<PreparationDetailRouteProp>();
-  const { preparationId, recipeServingScale } = route.params;
+  const { preparationId, recipeServingScale, prepAmountInDish } = route.params;
   
-  const { preparation, ingredients, loading, error } = usePreparationDetail(preparationId) as { 
+  // Determine if navigated from a dish context
+  const isFromDishContext = prepAmountInDish !== null && prepAmountInDish !== undefined;
+  
+  const { preparation, ingredients, loading, error, lastUpdateTime } = usePreparationDetail(preparationId) as { 
       preparation: Preparation | null, 
-      ingredients: PreparationIngredient[], 
+      ingredients: (PreparationIngredient & { isPreparation?: boolean })[], 
       loading: boolean, 
-      error: Error | null 
+      error: Error | null,
+      lastUpdateTime: number | null
   };
   
+  // ADD LOG: Log ingredients received from hook
+  console.log('[PreparationDetailScreen] Received ingredients:', JSON.stringify(ingredients, null, 2));
+  
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
+  const { t } = useTranslation();
+  const [showBanner, setShowBanner] = useState(false);
+  const lastUpdateTimeRef = useRef<number | null>(null);
 
   const unitOptions: Record<MeasurementUnit, MeasurementUnit[]> = {
     g: ['g', 'kg'],
@@ -114,44 +125,36 @@ const PreparationDetailScreen = () => {
     if (!preparationId) return;
     // Navigate to CreateRecipeScreen with preparationId for editing
     navigation.navigate('CreateRecipe', { preparationId }); 
-    // console.log("Edit pressed for preparation:", preparationId); // Log for now
   };
 
-  const { t } = useTranslation();
-
-  // Modified: Transform ingredients into PreparationComponentDetail objects
-  const transformedIngredients = useMemo(() => {
-    if (!ingredients || ingredients.length === 0) return [];
-    
-    return ingredients.map(ing => {
-      const componentDetail: PreparationComponentDetail = {
-        // Check if this is a preparation by looking at the ingredient data in usePreparationDetail hook
-        isPreparation: false, // Default to false, we'll check with kitchen to get this info
-        id: ing.ingredient_id,
-        name: ing.name,
-        amount: ing.amount,
-        unit: ing.unit,
-        // Placeholder for preparation details - will be populated later as needed
-        preparationDetails: null,
-        // Default raw ingredient details
-        rawIngredientDetails: {
-          cooking_notes: null // We don't have this information at this level
-        }
-      };
-      return componentDetail;
-    });
-  }, [ingredients]);
-  
-  // Use transformedIngredients instead of ingredients directly
+  // Use the ingredients array directly from the hook
   const nestedPreparations = useMemo(() => 
-    transformedIngredients?.filter(c => c.isPreparation) || [], 
-    [transformedIngredients]
+    ingredients?.filter(c => c.isPreparation === true) || [], 
+    [ingredients]
   );
+  // ADD LOG: Log nested preparations array
+  console.log('[PreparationDetailScreen] Filtered nestedPreparations:', JSON.stringify(nestedPreparations, null, 2));
+  
   const rawIngredients = useMemo(() => 
-    transformedIngredients?.filter(c => !c.isPreparation) || [], 
-    [transformedIngredients]
+    ingredients?.filter(c => c.isPreparation !== true) || [], // Treat undefined or false as raw
+    [ingredients]
   );
+  // ADD LOG: Log raw ingredients array
+  console.log('[PreparationDetailScreen] Filtered rawIngredients:', JSON.stringify(rawIngredients, null, 2));
 
+  // Effect to show banner on update
+  useEffect(() => {
+    if (lastUpdateTime && lastUpdateTime !== lastUpdateTimeRef.current) {
+      setShowBanner(true);
+      lastUpdateTimeRef.current = lastUpdateTime;
+      const timer = setTimeout(() => {
+        setShowBanner(false);
+      }, 3000); // Hide banner after 3 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [lastUpdateTime]);
+
+  // Only show loading screen during initial load, not error
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
@@ -162,7 +165,8 @@ const PreparationDetailScreen = () => {
     );
   }
 
-  if (error || !preparation) {
+  // Only show error screen if there's an error AFTER loading completes
+  if (!loading && (error || !preparation)) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.errorContainer]}>
         <StatusBar style="light" />
@@ -170,6 +174,17 @@ const PreparationDetailScreen = () => {
         <Text style={styles.errorText}>
           {error ? error.message : t('screens.preparationDetail.errorNotFound')}
         </Text>
+      </SafeAreaView>
+    );
+  }
+
+  // If we have no preparation data but no error, return to loading state instead of showing error
+  if (!preparation) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
+        <StatusBar style="light" />
+        <AppHeader title={t('screens.preparationDetail.loading')} showBackButton={true} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
   }
@@ -196,6 +211,7 @@ const PreparationDetailScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
+      <UpdateNotificationBanner visible={showBanner} />
       <AppHeader
         title={preparation.name || t('screens.preparationDetail.titleFallback')}
         showBackButton={true}
@@ -224,17 +240,56 @@ const PreparationDetailScreen = () => {
                 </Text>
               </View>
               
-              {/* Display Scaled Yield Amount */}
-              {formattedScaledYield.amount !== 'N/A' && ( // Check formatted amount
-                <View style={styles.infoItem}>
-                  <MaterialCommunityIcons name="scale" size={18} color={COLORS.textLight} />
-                  <Text style={styles.infoText} numberOfLines={2} ellipsizeMode="tail">
-                    {t('common.yield')}: {formattedScaledYield.amount} {formattedScaledYield.unit}
-                    {preparation.reference_ingredient && (
-                      ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`
-                    )}
-                  </Text>
-                </View>
+              {/* CONDITIONAL: Display Amount in Recipe OR Base Yield */}
+              {isFromDishContext && (
+                // --- Display Amount Used In Recipe ---
+                (() => {
+                  const actualAmountNeeded = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
+                  let displayAmountText = 'N/A';
+                  let refIngredientUnit = preparation.yield_unit; // Default to prep yield unit
+
+                  if (preparation.reference_ingredient) {
+                      const refIng = ingredients.find(i => i.name === preparation.reference_ingredient || i.ingredient_id === preparation.reference_ingredient);
+                      refIngredientUnit = refIng?.unit ?? preparation.yield_unit; // Use ref ing unit if found, else prep unit
+                      const refUnitAbbr = refIngredientUnit?.abbreviation || refIngredientUnit?.unit_name || '';
+                      const formattedAmount = formatQuantityAuto(actualAmountNeeded, refUnitAbbr);
+                      displayAmountText = `${formattedAmount.amount} ${formattedAmount.unit} ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`;
+                  } else {
+                      const prepUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
+                      const formattedAmount = formatQuantityAuto(actualAmountNeeded, prepUnitAbbr);
+                      displayAmountText = `${formattedAmount.amount} ${formattedAmount.unit}`;
+                  }
+                  
+                  return (
+                    <View style={styles.infoItem}>
+                      <MaterialCommunityIcons name="scale" size={18} color={COLORS.textLight} />
+                      <Text style={styles.infoText} numberOfLines={2} ellipsizeMode="tail">
+                        {t('screens.preparationDetail.amountInRecipeLabel', 'Amount in Recipe')}: {displayAmountText}
+                      </Text>
+                    </View>
+                  );
+                })()
+              )}
+              {!isFromDishContext && preparation.yield_amount !== null && (
+                 // --- Display Base Yield (Scaled) ---
+                (() => {
+                  const baseYield = preparation.yield_amount ?? 0;
+                  const scale = recipeServingScale ?? 1; // Apply recipe scale if passed directly
+                  const scaledBaseYield = baseYield * scale;
+                  const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
+                  const formattedYield = formatQuantityAuto(scaledBaseYield, yieldUnitAbbr);
+                  return (
+                    <View style={styles.infoItem}>
+                      <MaterialCommunityIcons name="scale-balance" size={18} color={COLORS.textLight} />
+                      <Text style={styles.infoText} numberOfLines={2} ellipsizeMode="tail">
+                        {t('common.yield')}: {formattedYield.amount} {formattedYield.unit}
+                        {preparation.reference_ingredient && (
+                          ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`
+                        )}
+                      </Text>
+                    </View>
+                  );
+                })()
               )}
             </View>
           </View>
@@ -246,18 +301,73 @@ const PreparationDetailScreen = () => {
               {rawIngredients.map((ingredient) => {
                 const unitKey = (ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
                 const isToggleable = ingredient.unit && (unitOptions[unitKey]?.length || 0) > 1;
-                const displayUnit = (selectedUnit[ingredient.id] || ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
+                const displayUnit = (selectedUnit[ingredient.ingredient_id] || ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
                 
+                // --- CONDITIONAL SCALING for main ingredient list ---
+                let amountToDisplay = 0;
+                const baseIngAmount = ingredient.amount ?? 0;
+                
+                if (isFromDishContext) {
+                    // Scale based on amount used in dish
+                    const prepBaseYield = preparation.yield_amount;
+                    const scaledTargetAmount = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
+                    
+                    if (preparation.reference_ingredient) {
+                        // Scale based on reference ingredient
+                        const refIng = ingredients.find(i => i.name === preparation.reference_ingredient || i.ingredient_id === preparation.reference_ingredient);
+                        const refIngBaseAmount = refIng?.amount;
+                        if (typeof refIngBaseAmount === 'number' && refIngBaseAmount > 0 && prepAmountInDish !== null) {
+                           const refScaleFactor = prepAmountInDish / refIngBaseAmount; // Use unscaled prepAmountInDish for ratio
+                           amountToDisplay = baseIngAmount * refScaleFactor * (recipeServingScale ?? 1);
+                        } else {
+                           amountToDisplay = baseIngAmount * (recipeServingScale ?? 1); // Fallback
+                        }
+                    } else {
+                        // Scale based on total yield
+                         const scaleForDishUsage = (prepBaseYield !== null && prepBaseYield > 0 && prepAmountInDish !== null)
+                                              ? (prepAmountInDish / prepBaseYield) // Use unscaled prepAmountInDish for ratio
+                                              : 1; // Fallback scale
+                        amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
+                    }
+                } else {
+                    // Scale only by recipeServingScale (if viewing prep directly)
+                    amountToDisplay = baseIngAmount * (recipeServingScale ?? 1);
+                    // --- ADD LOGGING for direct view ---
+                    console.log(`[PrepDetailDirectView] Ingredient: ${ingredient.name}, Base: ${baseIngAmount}, Scale: ${recipeServingScale ?? 1}, Display: ${amountToDisplay}`);
+                    // --- END LOGGING ---
+                }
+                // --- END CONDITIONAL SCALING ---
+                
+                // Display value might still use unit conversion
+                let displayValue: number;
+                if (unitKey && displayUnit !== unitKey) {
+                    displayValue = convertUnit(amountToDisplay, unitKey, displayUnit);
+                } else {
+                    displayValue = amountToDisplay;
+                }
+                
+                // --- MODIFIED FORMATTING ---
+                // Use formatQuantityAuto for consistency, pass null for item
+                const formattedOutput = formatQuantityAuto(displayValue, displayUnit);
+                const formattedValue = formattedOutput.amount;
+                const formattedUnit = formattedOutput.unit; // Use the unit returned by the formatter
+                // --- END MODIFIED FORMATTING ---
+
+                // --- ADD LOGGING: Final render values ---
+                console.log(`[PrepDetailRender] Ing: ${ingredient.name}, AmountToDisplay: ${amountToDisplay}, DisplayValue: ${displayValue}, FormattedValue: ${formattedValue}, DisplayUnit (used for render): ${formattedUnit}`);
+                // --- END LOGGING ---
+
                 return (
-                  <View key={ingredient.id} style={styles.ingredientItem}>
+                  <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
                     <Text style={styles.ingredientName}>{capitalizeWords(ingredient.name)}</Text>
                     <TouchableOpacity 
                       style={styles.ingredientQuantity}
-                      onPress={() => toggleUnit(ingredient.id, ingredient.unit)}
+                      onPress={() => toggleUnit(ingredient.ingredient_id, ingredient.unit)}
                       disabled={!isToggleable}
                     >
                       <Text style={styles.ingredientQuantityText}>
-                        {getDisplayValue(ingredient.amount, ingredient.unit, ingredient.id)} {displayUnit}
+                        {/* MODIFIED: Use formattedUnit from formatQuantityAuto */} 
+                        {formattedValue} {formattedUnit}
                       </Text>
                       {isToggleable && (
                         <MaterialCommunityIcons 
@@ -279,34 +389,39 @@ const PreparationDetailScreen = () => {
               <Text style={styles.sectionTitle}>{t('screens.preparationDetail.preparationsTitle')}</Text>
               {nestedPreparations.map((component) => {
                  // For nested preparations, we need to fetch their details when clicked
-                 const prepComponent: DishComponent = {
-                   dish_id: '', 
-                   ingredient_id: component.id,
+                 // Construct a basic DishComponent structure for PreparationCard props
+                 const prepComponentForCard: DishComponent = {
+                   dish_id: '', // Not relevant here
+                   ingredient_id: component.ingredient_id,
                    name: component.name,
-                   amount: component.amount,
+                   amount: component.amount, // Base amount from parent prep recipe
                    unit: component.unit,
                    isPreparation: true,
+                   // We don't have full nested details here, card will show limited info
                    preparationDetails: {
-                     preparation_id: component.id,
+                     preparation_id: component.ingredient_id, // ID of the nested prep
                      name: component.name,
                      directions: null,
-                     total_time: component.preparationDetails?.total_time ?? null,
-                     yield_unit: component.preparationDetails?.yield_unit ?? null,
-                     yield_amount: component.preparationDetails?.yield_amount ?? null,
+                     total_time: null, // Not available here
+                     yield_unit: null, // Not available here
+                     yield_amount: null, // Not available here
                      cooking_notes: null,
-                     reference_ingredient: component.preparationDetails?.reference_ingredient ?? null,
-                     ingredients: component.preparationDetails?.ingredients ?? [],
+                     reference_ingredient: null, // Not available here
+                     ingredients: [], // Not available here
                    },
                    rawIngredientDetails: null
                  };
                 return (
-                  <View key={component.id} style={styles.componentWrapper}> 
+                  <View key={component.ingredient_id} style={styles.componentWrapper}> 
                     <PreparationCard
-                      component={prepComponent}
-                      onPress={() => handleNestedPreparationPress(component.id)}
-                      amountLabel={t('common.amount')}
-                      hideReferenceIngredient={false}
-                      scaleMultiplier={currentServingScale}
+                      // Pass the constructed basic details
+                      component={prepComponentForCard} 
+                      onPress={() => handleNestedPreparationPress(component.ingredient_id)}
+                      // Label indicates amount used *in this parent preparation's recipe*
+                      amountLabel={t('common.amount')} 
+                      hideReferenceIngredient={false} // Or true, as details aren't loaded anyway
+                      // Scale based on the PARENT prep's scaling
+                      scaleMultiplier={currentServingScale} 
                     />
                   </View>
                 );

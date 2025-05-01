@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, StackNavigationProp, CardStyleInterpolators } from '@react-navigation/stack';
 import { createDrawerNavigator, DrawerNavigationProp } from '@react-navigation/drawer';
@@ -28,6 +28,8 @@ import AboutScreen from '../screens/AboutScreen';
 import { RootStackParamList } from './types';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
 import { useTypedSelector } from '../hooks/useTypedSelector';
+import { useCurrentKitchenId } from '../hooks/useSupabase';
+import { dataPrefetchService } from '../services/DataPrefetchService';
 
 // Define DrawerParamList type
 export type DrawerParamList = {
@@ -134,8 +136,20 @@ const AppNavigator = () => {
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
   const session = useTypedSelector(state => state.auth.session);
   const loading = useTypedSelector(state => state.auth.loading);
+  const kitchenId = useCurrentKitchenId();
 
   console.log(`--- AppNavigator render: loading=${loading}, session=${session ? 'exists' : 'null'}`);
+
+  // Start prefetching when session and kitchenId are available
+  useEffect(() => {
+    if (session && kitchenId) {
+      console.log('--- Starting data prefetch on app startup');
+      dataPrefetchService.prefetchAllRecipeData(kitchenId)
+        .catch(error => {
+          console.error('Data prefetch error:', error);
+        });
+    }
+  }, [session, kitchenId]);
 
   if (loading) {
     return (
@@ -148,7 +162,7 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={"Login"}
+        initialRouteName={session ? "MainDrawer" : "Login"}
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: COLORS.background },

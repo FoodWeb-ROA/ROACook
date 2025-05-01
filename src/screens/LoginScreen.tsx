@@ -361,9 +361,10 @@ const styles = StyleSheet.create({
 	},
 	superTitle: {
 		color: COLORS.text,
-		...FONTS.h1,
+		...FONTS.largeTitle,
 		paddingTop: '10%',
-		paddingBottom: SIZES.padding
+		paddingBottom: SIZES.padding,
+		fontWeight: 'bold'
 	},
 	segmentedWrapper: {
 		paddingHorizontal: SIZES.padding

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -36,6 +36,8 @@ import { supabase } from '../data/supabaseClient';
 import { uploadRecipeImages } from '../services/recipeParser';
 import { useTranslation } from 'react-i18next';
 import { useTypedSelector } from '../hooks/useTypedSelector';
+import { queryClient } from '../data/queryClient';
+import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
 
 // Helper function to chunk array with type annotations
 const chunk = <T,>(array: T[], size: number): T[][] => { // Add generic type T and return type T[][]
@@ -55,13 +57,12 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // --- Category Grid Constants ---
 const CATEGORIES_PER_PAGE = 4;
 const CATEGORY_NUM_COLUMNS = 2;
-// Make category padding match recipe padding initially, then reduce slightly
+// Make category padding match recipe padding for consistency
 const RECIPE_PADDING = SIZES.padding;
-const BASE_CAT_PADDING = RECIPE_PADDING * 0.8; // Reduced padding to allow cards to fill more width
-const CAT_PADDING = BASE_CAT_PADDING; // Reduce category padding slightly
-const CAT_ITEM_SPACING = SIZES.padding / 2; // Keep item spacing relative to base padding perhaps?
-// Recalculate available width based on the updated padding
-const catAvailableWidthInPage = (screenWidth - CAT_PADDING * 2); // Increased from 0.95 to 0.98
+const CAT_PADDING = RECIPE_PADDING; // Use RECIPE_PADDING for categories as well
+const CAT_ITEM_SPACING = SIZES.padding / 2;
+// Recalculate available width based on RECIPE_PADDING (from sectionContainer)
+const catAvailableWidthInPage = (screenWidth - RECIPE_PADDING * 2);
 const categoryItemWidth = (catAvailableWidthInPage - CAT_ITEM_SPACING * (CATEGORY_NUM_COLUMNS - 1)) / CATEGORY_NUM_COLUMNS;
 const CAT_PAGE_WIDTH = screenWidth;
 
@@ -77,6 +78,9 @@ const recipeAvailableWidthInPage = screenWidth - RECIPE_PADDING * 2;
 // Recalculate width for each recipe item (2 columns)
 const recipeItemWidth = (recipeAvailableWidthInPage - RECIPE_ITEM_SPACING * (RECIPE_NUM_COLUMNS - 1)) / RECIPE_NUM_COLUMNS;
 const RECIPE_PAGE_WIDTH = screenWidth; // Each page is full width
+
+// Calculate the width of the visible content area within the padding
+const VISIBLE_CONTENT_WIDTH = screenWidth - RECIPE_PADDING * 2;
 
 // Define a height for the category section content area
 const CATEGORY_SECTION_HEIGHT = 300; // Example height, adjust as needed
@@ -113,11 +117,30 @@ const HomeScreen = () => {
   // Get the active kitchen ID from Redux state
   const activeKitchenId = useTypedSelector(state => state.kitchens.activeKitchenId);
   
-  // Use dynamic data loading hooks
-  const { menuSections, loading: loadingCategories, error: categoriesError, refresh: refreshMenuSections } = useMenuSections();
-  const { dishes, loading: loadingDishes, error: dishesError } = useDishes();
+  // Get hooks data, including lastUpdateTime
+  const { menuSections, isLoading: loadingCategories, error: categoriesError, lastUpdateTime: categoriesLastUpdate } = useMenuSections();
+  const { dishes, loading: loadingDishes, error: dishesError, lastUpdateTime: dishesLastUpdate } = useDishes();
 
   const [isParsing, setIsParsing] = useState(false);
+
+  // State and Ref for Banner
+  const [showBanner, setShowBanner] = useState(false);
+  const lastUpdateTimeRef = useRef<number | null>(null); // Use a single ref
+
+  // Effect to show banner on update from either hook
+  useEffect(() => {
+    const latestUpdate = Math.max(categoriesLastUpdate || 0, dishesLastUpdate || 0);
+    // Check if latestUpdate is valid and different from the stored ref
+    if (latestUpdate > 0 && latestUpdate !== lastUpdateTimeRef.current) {
+      setShowBanner(true);
+      lastUpdateTimeRef.current = latestUpdate; // Update ref to the latest timestamp
+      const timer = setTimeout(() => {
+        setShowBanner(false);
+      }, 3000); // Hide banner after 3 seconds
+      return () => clearTimeout(timer); // Cleanup timer
+    }
+    // If timestamps become null (e.g., hook reset), don't show banner unless they become valid again
+  }, [categoriesLastUpdate, dishesLastUpdate]);
 
   const handleCategoryPress = (category: Category) => {
     navigation.navigate('CategoryRecipes', {
@@ -149,16 +172,16 @@ const HomeScreen = () => {
 
       const { data, error } = await supabase
         .from('menu_section')
-        // Provide the required kitchen_id
-        .insert({ name: sectionName, kitchen_id: kitchenId }) 
+        .insert({ name: sectionName, kitchen_id: kitchenId })
         .select()
         .single();
       
       if (error) throw error;
       
-      // Refresh data immediately after successful operation
-      await refreshMenuSections();
-      
+      // Instead of manual refresh, invalidate the query cache
+      console.log(`[HomeScreen] Invalidating menu section query for kitchen: ${kitchenId}`);
+      queryClient.invalidateQueries({ queryKey: ['menu_section', { kitchen_id: kitchenId }] });
+
       // Success alert removed
     } catch (error: any) {
       console.error('Error adding section:', error);
@@ -172,9 +195,9 @@ const HomeScreen = () => {
 
   // --- Category Paging Logic ---
   const formattedCategories = useMemo(() => {
-    // Return only the existing menu sections without adding an "All Recipes" card
+    // Use isLoading from useQuery instead of local loading state
     return menuSections?.map(section => ({...section})) || [];
-  }, [menuSections, loadingCategories, t, isParsing]);
+  }, [menuSections, t, isParsing]);
   
   const categoriesWithAdd = [...formattedCategories, { isAddCard: true }];
   const categoryPages = chunk(categoriesWithAdd, CATEGORIES_PER_PAGE);
@@ -397,6 +420,7 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
+      <UpdateNotificationBanner visible={showBanner} message="Content Updated" />
       <AppHeader 
         title="ROACook"
         showMenuButton={true}
@@ -408,7 +432,7 @@ const HomeScreen = () => {
         style={styles.container}
         contentContainerStyle={{ paddingBottom: SCROLL_EXTRA_PADDING }}
         refreshControl={
-          <RefreshControl refreshing={loadingCategories || loadingDishes} onRefresh={refreshMenuSections} />
+          <RefreshControl refreshing={loadingCategories || loadingDishes} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['menu_section', { kitchen_id: activeKitchenId }] })} />
         }
       >
         {/* Category Section */}
@@ -429,7 +453,8 @@ const HomeScreen = () => {
                   renderItem={renderCategoryPage}
                   keyExtractor={(_, index) => `category-page-${index}`}
                   horizontal
-                  snapToInterval={CAT_PAGE_WIDTH}
+                  pagingEnabled={true}
+                  disableIntervalMomentum={true}
                   decelerationRate="fast"
                   showsHorizontalScrollIndicator={false}
                   onViewableItemsChanged={onCategoryViewableItemsChanged}
@@ -480,7 +505,8 @@ const HomeScreen = () => {
                   renderItem={renderRecipePage}
                   keyExtractor={(_, index) => `recipe-page-${index}`}
                   horizontal
-                  pagingEnabled
+                  pagingEnabled={true}
+                  disableIntervalMomentum={true}
                   showsHorizontalScrollIndicator={false}
                   onViewableItemsChanged={onRecipeViewableItemsChanged}
                   viewabilityConfig={recipeViewabilityConfig}
@@ -622,7 +648,7 @@ const styles = StyleSheet.create({
   // --- Category Styles --- 
   pageContainer: { // Style for category pages
     width: CAT_PAGE_WIDTH,
-    paddingHorizontal: CAT_PADDING,
+    paddingHorizontal: RECIPE_PADDING, // Add padding back to page
     flex: 1, // Allow page container to fill space
   },
   categoryItemContainer: {
@@ -662,7 +688,7 @@ const styles = StyleSheet.create({
   },
   
   recipePage: { // Style for recipe pages
-    paddingHorizontal: RECIPE_PADDING,
+    paddingHorizontal: RECIPE_PADDING, // Add padding back to page
     justifyContent: 'flex-start', // Align rows to the top
     width: RECIPE_PAGE_WIDTH,
     flex: 1, // Allow page container to fill space
@@ -677,13 +703,13 @@ const styles = StyleSheet.create({
   recipeRow: {
     flexDirection: 'row',
     marginBottom: RECIPE_ITEM_SPACING, // Use standard item spacing
-    justifyContent: 'space-between', // Ensure items spread
+    // justifyContent: 'space-between', // REMOVED - Rely on item width and margins
   },
   
   categoryRow: {
     flexDirection: 'row',
     marginBottom: CAT_ITEM_SPACING, // Use standard item spacing
-    justifyContent: 'flex-start', // Ensure items spread
+    // justifyContent: 'flex-start', // Keep default (flex-start)
   },
   // New style for the dot separator containers
   dotSeparatorContainer: {
@@ -694,7 +720,6 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     flex: 1,
-    paddingHorizontal: SIZES.padding/4,
     marginBottom: SIZES.padding, // Reduced to make spacing equidistant
   },
   loader: {

@@ -61,10 +61,13 @@ export type AssembledComponentData = {
 // Allow nulls for fields that can be null in DbIngredient/DbPreparation
 export type FetchedPreparationDataCombined = 
     Omit<FetchedIngredientDetail, 'created_at' | 'updated_at'> & 
-    Omit<FetchedPreparationDetail, 'created_at'> & 
+    Omit<FetchedPreparationDetail, 'created_at'> & // Keep omitting created_at from prep
     { 
+        // Add missing fields from FetchedPreparationDetail
+        amount_unit_id: string | null; 
+        fingerprint: string | null;
+        // Explicitly list fields required by the combination
         amount: number;
-        // Re-add potentially nullable fields with correct type 
         created_at: string | null; 
         updated_at: string | null;
     };
@@ -98,14 +101,27 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
   let finalRawIngredientDetails: (Ingredient & { base_unit: Unit | null }) | null = null;
 
   if (isPreparation && preparation) {
-      // Transform the combined ingredient + preparation data
-      const transformedPrep = transformPreparation({
-          ...ingredient, // Base info like name, cooking_notes
-          ...preparation // Prep specific info like directions, time, yield_unit
-      });
-      // Assign the already fetched & transformed ingredients from the hook
-      transformedPrep.ingredients = prepIngredients || [];
-      finalPrepDetails = transformedPrep as (Preparation & { ingredients: PreparationIngredient[] }); // Cast needed if transformPreparation return type is just Preparation
+      // --- MODIFIED: Construct finalPrepDetails directly ---
+      // Use the details from the already fetched 'preparation' object (which includes yield_unit)
+      // and the already transformed 'prepIngredients' list.
+      finalPrepDetails = {
+          preparation_id: preparation.preparation_id,
+          name: ingredient.name, // Name comes from the base ingredient row linked to the prep
+          directions: preparation.directions || null,
+          total_time: preparation.total_time || null,
+          // Directly use the transformed yield unit from the fetched preparation data
+          yield_unit: transformUnit(preparation.yield_unit), 
+          // Yield amount comes from the base ingredient row linked to the prep
+          yield_amount: ingredient.amount ?? null, 
+          reference_ingredient: preparation.reference_ingredient ?? null,
+          // Use the already transformed ingredients list passed in
+          ingredients: prepIngredients || [], 
+          cooking_notes: ingredient.cooking_notes ?? null, // Notes come from the base ingredient
+      };
+      // --- END MODIFICATION ---
+      // --- ADD LOGGING: Final Prep Details ---
+      console.log(`[transformDishComponent] Final prepDetails for ${preparation.preparation_id}:`, JSON.stringify(finalPrepDetails, null, 2));
+      // --- END LOGGING ---
   } else {
       // Transform raw ingredient details
       finalRawIngredientDetails = {
@@ -129,35 +145,64 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
 
 /**
  * Transform a preparation from the COMBINED ingredient + preparation data 
- * (Now includes yield amount from ingredient table)
  */
 export function transformPreparation(combinedData: FetchedPreparationDataCombined | null): Preparation { 
-  if (!combinedData) return { 
-      preparation_id: '',
-      name: 'Unknown Preparation',
-      directions: null,
-      total_time: null,
-      yield_unit: transformUnit(null),
-      yield_amount: null, 
-      reference_ingredient: null, 
-      ingredients: [],
-      cooking_notes: null 
-    };
+  // --- ADD LOGGING: Input data ---
+  console.log('[transformPreparation] Input combinedData:', JSON.stringify(combinedData, null, 2));
+  // --- END LOGGING ---
 
-  // Need to ensure FetchedPreparationDataCombined includes reference_ingredient if used here
+  if (!combinedData) {
+      // ... (null handling - unchanged) ...
+      return { 
+          preparation_id: '',
+          name: 'Unknown Preparation',
+          directions: null,
+          total_time: null,
+          yield_unit: transformUnit(null),
+          yield_amount: null, 
+          reference_ingredient: null, 
+          ingredients: [],
+          cooking_notes: null 
+        };
+  }
+
   const refIngredient = (combinedData as any).reference_ingredient;
 
-  return {
+  // --- ADDED: Robust parsing for directions --- 
+  let processedDirections: string | null = null;
+  if (typeof combinedData.directions === 'string' && combinedData.directions.startsWith('{') && combinedData.directions.endsWith('}')) {
+      // Looks like the PostgreSQL array string format "{"Step 1","Step 2"}"
+      processedDirections = combinedData.directions
+          .slice(1, -1) // Remove curly braces
+          .split('","') // Split by the comma and quotes separator
+          .map(step => step.replace(/^"|"$/g, '')) // Remove leading/trailing quotes from each step
+          .join('\n'); // Join with newlines
+  } else if (Array.isArray(combinedData.directions)) {
+      // Handle if it's somehow already a JS array
+      processedDirections = combinedData.directions.join('\n');
+  } else {
+      // Assume it's either null or a pre-formatted string
+      processedDirections = combinedData.directions || null;
+  }
+  // --- END Parsing ---
+
+  const result = {
     preparation_id: combinedData.preparation_id, 
     name: combinedData.name, 
-    directions: combinedData.directions || null, // Use null if empty string preferred
+    directions: processedDirections, 
     total_time: combinedData.total_time || 0, 
     yield_unit: transformUnit(combinedData.yield_unit), 
     yield_amount: combinedData.amount, // Get yield amount from ingredient data
     reference_ingredient: refIngredient || null,
     ingredients: [], 
-    cooking_notes: combinedData.cooking_notes ?? null, // Use nullish coalescing 
+    cooking_notes: combinedData.cooking_notes ?? null, 
   };
+
+  // --- ADD LOGGING: Output data ---
+  console.log('[transformPreparation] Output Preparation object:', JSON.stringify(result, null, 2));
+  // --- END LOGGING ---
+
+  return result;
 }
 
 /**

@@ -78,7 +78,7 @@ const CreateRecipeScreen = () => {
   const { preparation: prepToEdit, ingredients: prepComponentsToEdit, loading: loadingPrep, error: prepError } = usePreparationDetail(preparationIdToEdit);
 
   // --- Hooks for fetching data --- 
-  const { menuSections, loading: loadingSections } = useMenuSections();
+  const { menuSections, isLoading: loadingSections } = useMenuSections(); // <-- Renamed loading to isLoading
   const { units, loading: loadingUnits } = useUnits(); // Assumes useUnits hook exists
   // Fetch both ingredients and preparations for component selection
   const { ingredients: availableComponents, loading: loadingComponents } = useIngredients(true); // Assumes useIngredients hook exists and accepts flag
