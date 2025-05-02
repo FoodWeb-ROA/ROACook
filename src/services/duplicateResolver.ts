@@ -67,7 +67,7 @@ export async function resolveDish(
     return new Promise(res => {
       Alert.alert(
         t('alerts.duplicateNameTitle'),
-        t('alerts.duplicateDishReplaceMessage', { name: trimmed }),
+        t('alerts.duplicateDishReplaceMessage', { dishName: trimmed }),
         [
           { text: t('common.replace'), onPress: () => res({ mode: 'overwrite', id }) },
           { text: t('common.cancel'), style: 'cancel', onPress: () => res({ mode: 'cancel' }) },

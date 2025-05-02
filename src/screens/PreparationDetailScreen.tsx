@@ -246,19 +246,10 @@ const PreparationDetailScreen = () => {
                 (() => {
                   const actualAmountNeeded = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
                   let displayAmountText = 'N/A';
-                  let refIngredientUnit = preparation.yield_unit; // Default to prep yield unit
-
-                  if (preparation.reference_ingredient) {
-                      const refIng = ingredients.find(i => i.name === preparation.reference_ingredient || i.ingredient_id === preparation.reference_ingredient);
-                      refIngredientUnit = refIng?.unit ?? preparation.yield_unit; // Use ref ing unit if found, else prep unit
-                      const refUnitAbbr = refIngredientUnit?.abbreviation || refIngredientUnit?.unit_name || '';
-                      const formattedAmount = formatQuantityAuto(actualAmountNeeded, refUnitAbbr);
-                      displayAmountText = `${formattedAmount.amount} ${formattedAmount.unit} ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`;
-                  } else {
-                      const prepUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
-                      const formattedAmount = formatQuantityAuto(actualAmountNeeded, prepUnitAbbr);
-                      displayAmountText = `${formattedAmount.amount} ${formattedAmount.unit}`;
-                  }
+                  
+                  const prepUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
+                  const formattedAmount = formatQuantityAuto(actualAmountNeeded, prepUnitAbbr);
+                  displayAmountText = `${formattedAmount.amount} ${formattedAmount.unit}`;
                   
                   return (
                     <View style={styles.infoItem}>
@@ -283,9 +274,6 @@ const PreparationDetailScreen = () => {
                       <MaterialCommunityIcons name="scale-balance" size={18} color={COLORS.textLight} />
                       <Text style={styles.infoText} numberOfLines={2} ellipsizeMode="tail">
                         {t('common.yield')}: {formattedYield.amount} {formattedYield.unit}
-                        {preparation.reference_ingredient && (
-                          ` ${t('common.ofReferenceIngredient', { ingredient: capitalizeWords(preparation.reference_ingredient) })}`
-                        )}
                       </Text>
                     </View>
                   );
@@ -312,23 +300,11 @@ const PreparationDetailScreen = () => {
                     const prepBaseYield = preparation.yield_amount;
                     const scaledTargetAmount = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
                     
-                    if (preparation.reference_ingredient) {
-                        // Scale based on reference ingredient
-                        const refIng = ingredients.find(i => i.name === preparation.reference_ingredient || i.ingredient_id === preparation.reference_ingredient);
-                        const refIngBaseAmount = refIng?.amount;
-                        if (typeof refIngBaseAmount === 'number' && refIngBaseAmount > 0 && prepAmountInDish !== null) {
-                           const refScaleFactor = prepAmountInDish / refIngBaseAmount; // Use unscaled prepAmountInDish for ratio
-                           amountToDisplay = baseIngAmount * refScaleFactor * (recipeServingScale ?? 1);
-                        } else {
-                           amountToDisplay = baseIngAmount * (recipeServingScale ?? 1); // Fallback
-                        }
-                    } else {
-                        // Scale based on total yield
-                         const scaleForDishUsage = (prepBaseYield !== null && prepBaseYield > 0 && prepAmountInDish !== null)
-                                              ? (prepAmountInDish / prepBaseYield) // Use unscaled prepAmountInDish for ratio
-                                              : 1; // Fallback scale
-                        amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
-                    }
+                    // Scale based on total yield
+                    const scaleForDishUsage = (prepBaseYield !== null && prepBaseYield > 0 && prepAmountInDish !== null)
+                                          ? (prepAmountInDish / prepBaseYield) // Use unscaled prepAmountInDish for ratio
+                                          : 1; // Fallback scale
+                    amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
                 } else {
                     // Scale only by recipeServingScale (if viewing prep directly)
                     amountToDisplay = baseIngAmount * (recipeServingScale ?? 1);
@@ -406,7 +382,6 @@ const PreparationDetailScreen = () => {
                      yield_unit: null, // Not available here
                      yield_amount: null, // Not available here
                      cooking_notes: null,
-                     reference_ingredient: null, // Not available here
                      ingredients: [], // Not available here
                    },
                    rawIngredientDetails: null
@@ -419,7 +394,6 @@ const PreparationDetailScreen = () => {
                       onPress={() => handleNestedPreparationPress(component.ingredient_id)}
                       // Label indicates amount used *in this parent preparation's recipe*
                       amountLabel={t('common.amount')} 
-                      hideReferenceIngredient={false} // Or true, as details aren't loaded anyway
                       // Scale based on the PARENT prep's scaling
                       scaleMultiplier={currentServingScale} 
                     />
@@ -525,23 +499,6 @@ const styles = StyleSheet.create({
     ...FONTS.body3,
     color: COLORS.textLight,
     marginLeft: 4,
-  },
-  referenceIngredientContainer: {
-    marginBottom: SIZES.padding,
-    backgroundColor: COLORS.tertiary,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    ...SHADOWS.small,
-  },
-  referenceIngredientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  referenceIngredientText: {
-    ...FONTS.body2,
-    color: COLORS.white,
-    marginLeft: SIZES.base,
-    flex: 1,
   },
   amountAdjustContainer: {
     marginVertical: SIZES.padding,

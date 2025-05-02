@@ -1,4 +1,4 @@
-import { queryClient } from '../components/ReactQueryClientProvider';
+import { queryClient } from '../data/queryClient';
 
 /**
  * Utility function to refresh dish data after CRUD operations.

@@ -253,9 +253,8 @@ class DataPrefetchService {
             synonyms: prepJoinItem.ingredient.synonyms,
             // Fields from FetchedPreparationDetail (via prepJoinItem directly)
             preparation_id: prepJoinItem.preparation_id,
-            directions: prepJoinItem.directions,
+            directions: prepJoinItem.directions ?? '', // Provide default empty string for null
             total_time: prepJoinItem.total_time,
-            reference_ingredient: prepJoinItem.reference_ingredient,
             yield_unit: prepJoinItem.yield_unit,
             amount_unit_id: prepJoinItem.amount_unit_id,
             fingerprint: prepJoinItem.fingerprint,

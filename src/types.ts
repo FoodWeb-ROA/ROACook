@@ -20,7 +20,6 @@ export type Preparation = {
     total_time: number | null; // Re-added
     yield_unit: Unit | null;
     yield_amount: number | null; // Add yield amount
-    reference_ingredient: string | null; // New field for reference ingredient
     fingerprint?: string | null; // ADDED: Fingerprint for duplicate detection
     ingredients: PreparationIngredient[];
     cooking_notes: string | null;
@@ -123,7 +122,6 @@ export interface ParsedIngredient {
   ingredient_type?: "RawIngredient" | "Preparation";
   components?: ParsedIngredient[]; // For nested preparations
   instructions?: string[]; // For preparation-specific instructions
-  reference_ingredient?: string | null; // For preparations based on sysprompt
 }
 
 // Interface for the overall Recipe structure returned by the parser
@@ -154,7 +152,6 @@ export type EditablePrepIngredient = {
     // Carry over other potentially useful fields from ParsedIngredient if needed
     unit?: string | null; // Original unit string for reference
     item?: string | null; // Item description
-    reference_ingredient?: string | null;
     matched?: boolean; // Flag to indicate ingredient was auto-matched
 };
 
@@ -168,7 +165,6 @@ export type ComponentInput = {
     originalPrep?: ParsedIngredient; // keep full parsed preparation when confirming
     subIngredients?: ParsedIngredient[] | null; // Store parsed sub-ingredients
     item?: string | null; // Item description (e.g., "cloves") for raw ingredients
-    reference_ingredient?: string | null; // Store reference ingredient for preparations
     matched?: boolean; // Flag if auto-matched to a database entry
 
     // --- State Persistence for CreatePreparationScreen ---

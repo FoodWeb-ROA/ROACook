@@ -38,7 +38,6 @@ export type FetchedIngredientDetail = DbIngredient & {
 // Type for preparation details fetched separately
 export type FetchedPreparationDetail = DbPreparation & { 
     yield_unit: DbUnit | null; // Joined yield unit
-    reference_ingredient?: string | null; // Add reference_ingredient property as optional
 };
 
 // Type for preparation ingredients fetched separately
@@ -113,7 +112,6 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
           yield_unit: transformUnit(preparation.yield_unit), 
           // Yield amount comes from the base ingredient row linked to the prep
           yield_amount: ingredient.amount ?? null, 
-          reference_ingredient: preparation.reference_ingredient ?? null,
           // Use the already transformed ingredients list passed in
           ingredients: prepIngredients || [], 
           cooking_notes: ingredient.cooking_notes ?? null, // Notes come from the base ingredient
@@ -159,14 +157,11 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
           directions: null,
           total_time: null,
           yield_unit: transformUnit(null),
-          yield_amount: null, 
-          reference_ingredient: null, 
+          yield_amount: null,
           ingredients: [],
           cooking_notes: null 
         };
   }
-
-  const refIngredient = (combinedData as any).reference_ingredient;
 
   // --- ADDED: Robust parsing for directions --- 
   let processedDirections: string | null = null;
@@ -193,7 +188,6 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
     total_time: combinedData.total_time || 0, 
     yield_unit: transformUnit(combinedData.yield_unit), 
     yield_amount: combinedData.amount, // Get yield amount from ingredient data
-    reference_ingredient: refIngredient || null,
     ingredients: [], 
     cooking_notes: combinedData.cooking_notes ?? null, 
   };

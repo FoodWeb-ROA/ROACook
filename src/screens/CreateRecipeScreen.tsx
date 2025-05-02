@@ -422,8 +422,6 @@ const CreateRecipeScreen = () => {
                         isPreparation: false, 
                         unit: subIng.unit, 
                         item: subIng.item,
-                        reference_ingredient: null,
-                        // MODIFIED: Added ts-ignore to suppress persistent linter warning
                         // @ts-ignore 
                         matched: subMatched, 
                     });
@@ -447,7 +445,6 @@ const CreateRecipeScreen = () => {
           originalPrep: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing as ParsedIngredient) : undefined,
           subIngredients: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing.components ?? null) : null,
           item: ing.item || null,
-          reference_ingredient: ing.ingredient_type === 'Preparation' ? ing.reference_ingredient : null,
           matched: matched,
           prepStateEditableIngredients: initialPrepStateIngredients,
           prepStatePrepUnitId: initialPrepStateUnitId, 
@@ -673,8 +670,6 @@ const CreateRecipeScreen = () => {
                                  yieldUnitId: comp.unit_id, // Use unit from main component
                                  yieldAmount: isNaN(prepYieldAmount) ? null : prepYieldAmount, // Use amount from main component
                                  totalTimeMinutes: 30, // Default time - consider parsing if available
-                                 // MODIFIED: Ensure null is passed if undefined
-                                 reference_ingredient: comp.reference_ingredient ?? null, 
                                  cookingNotes: null // Add notes if available
                              }
                          );
@@ -697,8 +692,7 @@ const CreateRecipeScreen = () => {
                                  yieldUnitId: comp.unit_id,
                                  yieldAmount: isNaN(prepYieldAmount) ? null : prepYieldAmount,
                                  totalTimeMinutes: 30,
-                                 // MODIFIED: Ensure null is passed if undefined
-                                 reference_ingredient: comp.reference_ingredient ?? null, 
+                              
                                  cookingNotes: null
                              }
                          );
@@ -987,28 +981,11 @@ const CreateRecipeScreen = () => {
                const prepYieldUnitId = servingUnitId; // Use selected serving unit
                const prepTotalTime = parseInt(totalTimeHours || '0') * 60 + parseInt(totalTimeMinutes || '0');
                const prepCookingNotes = cookingNotes.trim() || null;
-               // Reference ingredient - How is this set for a *new* prep created directly? Assume null for now.
-               const prepReferenceIngredient = null;
-
-               // Map current 'components' state into the structure needed by createNewPreparation
-               // This re-uses the componentsToSave logic essentially
-               const prepComponentsForCreation = componentsToSave; // Use the already processed components
-
-               // Fingerprint calculation might need adjustment based on createNewPreparation's needs
+               // Finalize prep info
+               const formattedPrepDirections = prepDirections.map(d => d.trim()).filter(Boolean).join('\\n'); // Create the string version for DB/fingerprint
                const prepFingerprint = fingerprintPreparation(
-                  // MODIFIED: Adapt ProcessedComponent to match ComponentInput for fingerprinting
-                  prepComponentsForCreation.map(c => ({
-                       key: `fp-${c.ingredient_id}`, // Generate a placeholder key
-                       name: 'Placeholder Name', // Placeholder - fingerprint might not need actual name
-                       ingredient_id: c.ingredient_id,
-                       amount: String(c.amount), // Convert amount back to string
-                       amountStr: String(c.amount), // Add amountStr
-                       unit_id: c.unit_id,
-                       isPreparation: c.isPreparation,
-                       item: c.item,
-                       matched: true, // Assume matched for fingerprinting context
-                   })),
-                  formattedDirections
+                  components, // Use the 'components' state array (ComponentInput[])
+                  formattedPrepDirections // Use the joined string version
                );
 
                // ADDED: Check for duplicate preparation name
@@ -1036,9 +1013,8 @@ const CreateRecipeScreen = () => {
                   const { error: prepUpdateError } = await supabase
                      .from('preparations')
                      .update({
-                        directions: formattedDirections,
+                        directions: formattedPrepDirections, // Use the joined string version
                         total_time: prepTotalTime,
-                        reference_ingredient: prepReferenceIngredient
                      })
                      .eq('preparation_id', prepResolution.id);
                      
@@ -1061,12 +1037,12 @@ const CreateRecipeScreen = () => {
                   await supabase.from('preparation_ingredients').delete().eq('preparation_id', prepResolution.id);
                   
                   // Add new preparation ingredients
-                  const validComponents = prepComponentsForCreation
-                     .filter(c => c.ingredient_id && c.amount !== null)
+                  const validComponents = components // Use 'components' state array
+                     .filter(c => c.ingredient_id && c.amount !== null && !isNaN(parseFloat(c.amount))) // Ensure amount is parseable
                      .map(c => ({
                         preparation_id: prepResolution.id!,
                         ingredient_id: c.ingredient_id,
-                        amount: c.amount,
+                        amount: parseFloat(c.amount), // Parse amount to number
                         unit_id: c.unit_id || undefined
                      }));
                      
@@ -1091,7 +1067,7 @@ const CreateRecipeScreen = () => {
                      prepFingerprint,
                      null,
                      {
-                        components: prepComponentsForCreation.map(c => ({
+                        components: components.map(c => ({
                             key: `create-${c.ingredient_id}`,
                             name: 'Placeholder Name',
                             ingredient_id: c.ingredient_id,
@@ -1106,7 +1082,6 @@ const CreateRecipeScreen = () => {
                         yieldUnitId: prepYieldUnitId,
                         yieldAmount: prepYieldAmount,
                         totalTimeMinutes: prepTotalTime,
-                        reference_ingredient: prepReferenceIngredient,
                         cookingNotes: prepCookingNotes
                      }
                   );
@@ -1134,7 +1109,7 @@ const CreateRecipeScreen = () => {
                       null, // Pass null for _componentDetails (already processed)
                       { // Pass resolved data directly
                           // MODIFIED: Adapt ProcessedComponent to match ComponentInput for creation
-                          components: prepComponentsForCreation.map(c => ({
+                          components: components.map(c => ({
                               key: `create-${c.ingredient_id}`, // Placeholder key
                               name: 'Placeholder Name', // Placeholder name
                               ingredient_id: c.ingredient_id,
@@ -1149,7 +1124,6 @@ const CreateRecipeScreen = () => {
                           yieldUnitId: prepYieldUnitId,
                           yieldAmount: prepYieldAmount,
                           totalTimeMinutes: prepTotalTime,
-                          reference_ingredient: prepReferenceIngredient,
                           cookingNotes: prepCookingNotes
                       }
                   );
@@ -1345,7 +1319,6 @@ const savePrepLogic = async (existingPrepId?: string) => {
         yieldUnitId: string | null;
         yieldAmount: number | null;
         totalTimeMinutes: number; 
-        reference_ingredient: string | null;
         cookingNotes: string | null;
     }
   ): Promise<string | null> => { 
@@ -1356,7 +1329,6 @@ const savePrepLogic = async (existingPrepId?: string) => {
         yieldUnitId: string | null;
         yieldAmount: number | null;
         totalTimeMinutes: number; 
-        reference_ingredient: string | null;
         cookingNotes: string | null;
       };
       
@@ -1402,7 +1374,6 @@ const savePrepLogic = async (existingPrepId?: string) => {
           yieldUnitId,
           yieldAmount,
           totalTimeMinutes,
-          reference_ingredient: null,
           cookingNotes: null
         };
         
@@ -1449,8 +1420,7 @@ const savePrepLogic = async (existingPrepId?: string) => {
               directions: finalDirectionsStr || '', // Use empty string instead of undefined if directions must be string
               total_time: resolvedPrepData.totalTimeMinutes, 
               amount_unit_id: resolvedPrepData.yieldUnitId ?? undefined, // Use undefined if null
-              fingerprint: finalFingerprint, 
-              reference_ingredient: resolvedPrepData.reference_ingredient ?? undefined // Use undefined if null
+              fingerprint: finalFingerprint
           };
           const { error: prepError } = await supabase.from('preparations').insert(prepInsert);
           if (prepError) { /* ... handle error ... */ throw prepError; }
@@ -1631,9 +1601,6 @@ const savePrepLogic = async (existingPrepId?: string) => {
                            <View key={item.key} style={styles.componentItemContainer}>
                                 <Text style={styles.componentNameText}>
                                   {capitalizeWords(item.name)}
-                                  {item.matched && (
-                                    <Text style={styles.matchedBadge}> {t('common.matched')}</Text>
-                                  )}
                                 </Text>
                                 <View style={styles.componentControlsContainer}>
                                     {/* Editable Base Amount Input */}
@@ -1700,7 +1667,6 @@ const savePrepLogic = async (existingPrepId?: string) => {
                             total_time: null, 
                             yield_unit: prepUnit || null,
                             yield_amount: isNaN(prepAmountNum) ? null : prepAmountNum,
-                            reference_ingredient: item.reference_ingredient || null,
                             // Use stored state for ingredients preview
                             ingredients: (item.prepStateEditableIngredients || []).map(subIng => { 
                                 const subUnit = units.find(u => u.unit_id === subIng.unitId);
@@ -1904,7 +1870,7 @@ const savePrepLogic = async (existingPrepId?: string) => {
                                             })}
                                         >
                                             <Text style={styles.createNewButtonText}>
-                                                {t('screens.createRecipe.createButtonLabel', { query: componentSearchQuery.trim() })}  with interpolation
+                                                {`${t('screens.createRecipe.createButtonLabel', { query: componentSearchQuery.trim() })}  with interpolation`}
                                             </Text>
                                         </TouchableOpacity>
                                     </View>

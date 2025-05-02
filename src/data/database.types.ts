@@ -388,7 +388,6 @@ export type Database = {
           directions: string
           fingerprint: string | null
           preparation_id: string
-          reference_ingredient: string | null
           total_time: number | null
           updated_at: string | null
         }
@@ -399,7 +398,6 @@ export type Database = {
           directions: string
           fingerprint?: string | null
           preparation_id: string
-          reference_ingredient?: string | null
           total_time?: number | null
           updated_at?: string | null
         }
@@ -410,7 +408,6 @@ export type Database = {
           directions?: string
           fingerprint?: string | null
           preparation_id?: string
-          reference_ingredient?: string | null
           total_time?: number | null
           updated_at?: string | null
         }

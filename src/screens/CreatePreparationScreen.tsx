@@ -53,7 +53,6 @@ const CreatePreparationScreen = () => {
   const [prepUnitId, setPrepUnitId] = useState<string | null>(initialPrepUnitId ?? null);
   const [editableIngredients, setEditableIngredients] = useState<EditablePrepIngredient[]>(initialEditableIngredients ?? []);
   const [instructions, setInstructions] = useState<string[]>(initialInstructions ?? []);
-  const [referenceIngredient, setReferenceIngredient] = useState<string | null>(null);
 
   const [scaleMultiplier, setScaleMultiplier] = useState(parentScaleMultiplier);
   const [displayAmountStr, setDisplayAmountStr] = useState('');
@@ -75,7 +74,7 @@ const CreatePreparationScreen = () => {
   const [isDirty, setIsDirty] = useState(false);
 
   const mapParsedIngredients = useCallback(async () => {
-    const typedPrep = preparation as ParsedIngredient & { ingredients?: ParsedIngredient[]; instructions?: string[], reference_ingredient?: string | null };
+    const typedPrep = preparation as ParsedIngredient & { ingredients?: ParsedIngredient[]; instructions?: string[] };
     const mappedIngredients: EditablePrepIngredient[] = [];
     
     for (const ing of (typedPrep.components || [])) {
@@ -108,7 +107,6 @@ const CreatePreparationScreen = () => {
         isPreparation: ing.ingredient_type?.toLowerCase() === 'preparation',
         unit: ing.unit,
         item: ing.item || null,
-        reference_ingredient: ing.ingredient_type?.toLowerCase() === 'preparation' ? ing.reference_ingredient : null,
         matched: matched,
       });
     }
@@ -145,12 +143,8 @@ const CreatePreparationScreen = () => {
       setDisplayAmountStr(formatted.amount);
       
       let baseAmount: number | null = null;
-      if (referenceIngredient) {
-        const refIng = editableIngredients.find(ing => ing.name === referenceIngredient);
-        baseAmount = refIng ? parseFloat(refIng.amountStr) : null;
-      } else {
-        baseAmount = preparation.amount ?? null;
-      }
+
+      baseAmount = preparation.amount ?? null;
       if (baseAmount !== null && !isNaN(baseAmount) && baseAmount > 0) {
         const initialInternalScale = dishComponentScaledAmount / baseAmount;
         setScaleMultiplier(initialInternalScale);
@@ -163,15 +157,8 @@ const CreatePreparationScreen = () => {
     } else {
       console.log("dishComponentScaledAmount not provided, calculating display based on internal state and parent scale.");
       let baseAmountForScaling: number | null = null;
-      if (referenceIngredient) {
-        const refIng = editableIngredients.find(ing => ing.name === referenceIngredient);
-        if (refIng) {
-          baseAmountForScaling = parseFloat(refIng.amountStr);
-        }
-      } else {
-        baseAmountForScaling = preparation.amount ?? null;
-      }
-
+      baseAmountForScaling = preparation.amount ?? null;
+    
       if (baseAmountForScaling !== null && !isNaN(baseAmountForScaling)) {
         const initialScaledAmount = baseAmountForScaling * parentScaleMultiplier;
         const formatted = formatQuantityAuto(initialScaledAmount, unitAbbrForDisplay);
@@ -185,18 +172,16 @@ const CreatePreparationScreen = () => {
   }, [
     isScreenLoading, 
     preparation,
-    prepUnitId, 
-    referenceIngredient, 
+    prepUnitId,  
     dishComponentScaledAmount, 
     parentScaleMultiplier, 
     units
   ]);
 
   useEffect(() => {
-    const typedPrep = preparation as ParsedIngredient & { ingredients?: ParsedIngredient[]; instructions?: string[], reference_ingredient?: string | null };
+    const typedPrep = preparation as ParsedIngredient & { ingredients?: ParsedIngredient[]; instructions?: string[]};
     setPrepName(typedPrep.name || 'Preparation');
     setOriginalPrepBaseAmount(typedPrep.amount ?? null);
-    setReferenceIngredient(typedPrep.reference_ingredient || null);
 
     let needsParsing = false;
     if (initialEditableIngredients) {
@@ -329,18 +314,7 @@ const CreatePreparationScreen = () => {
           })
         );
         
-        // If it was the reference ingredient that was updated, recalculate the top display
         const updatedIngName = editableIngredients.find(ing => ing.key === key)?.name;
-        if (referenceIngredient && updatedIngName === referenceIngredient) {
-            const topUnitAbbr = units.find(u => u.unit_id === prepUnitId)?.abbreviation;
-            // Recalculate top display based on the NEW implied base amount and the CURRENT scale multiplier
-            newDisplayAmountStr = formatQuantityAuto(impliedBaseAmount * scaleMultiplier, topUnitAbbr).amount;
-            console.log(`Reference ingredient base amount updated via scaled input. New top display: ${newDisplayAmountStr}`);
-        }
-
-      } else {
-        // No need to warn if intermediate input is NaN, just don't update base amount
-        // console.warn(`Invalid scaled amount entered or scaleMultiplier is zero/NaN: ${value}`);
       }
     } else {
       // Original handling for unitId and item
@@ -434,12 +408,7 @@ const CreatePreparationScreen = () => {
     // Only calculate scale if input is a valid positive number
     if (!isNaN(newScaledAmount) && newScaledAmount > 0) { 
       let baseAmount: number | null = null;
-      if (referenceIngredient) {
-        const refIng = editableIngredients.find(ing => ing.name === referenceIngredient);
-        baseAmount = refIng ? parseFloat(refIng.amountStr) : null;
-      } else {
-        baseAmount = originalPrepBaseAmount; 
-      }
+      baseAmount = originalPrepBaseAmount; 
 
       // Also ensure baseAmount is valid and positive for scaling
       if (baseAmount !== null && !isNaN(baseAmount) && baseAmount > 0) {
@@ -486,36 +455,11 @@ const CreatePreparationScreen = () => {
 
   // Determine the correct unit abbreviation for the top display
   let topDisplayUnitAbbr = 'Unit';
-  if (referenceIngredient) {
-    const refIng = editableIngredients.find(ing => ing.name === referenceIngredient);
-    if (refIng) {
-      const refIngBaseAmount = parseFloat(refIng.amountStr);
-      const refIngUnit = units.find(u => u.unit_id === refIng.unitId);
-      const refIngBaseUnitAbbr = refIngUnit?.abbreviation;
-      if (!isNaN(refIngBaseAmount) && refIngBaseUnitAbbr) {
-        const scaledRefAmount = refIngBaseAmount * scaleMultiplier;
-        // Use formatQuantityAuto to get the potentially converted unit suffix
-        topDisplayUnitAbbr = formatQuantityAuto(scaledRefAmount, refIngBaseUnitAbbr).unit;
-      } else {
-         // Fallback if ref ing data is incomplete
-         const prepYieldUnit = units.find(u => u.unit_id === prepUnitId);
-         topDisplayUnitAbbr = prepYieldUnit?.abbreviation || 'Unit';
-      }
-    } else {
-       // Fallback if ref ing not found in state (shouldn't happen)
-       const prepYieldUnit = units.find(u => u.unit_id === prepUnitId);
-       topDisplayUnitAbbr = prepYieldUnit?.abbreviation || 'Unit';
-    }
-  } else {
-    // No reference ingredient, use the preparation's yield unit
-    const prepYieldUnit = units.find(u => u.unit_id === prepUnitId);
-    topDisplayUnitAbbr = prepYieldUnit?.abbreviation || 'Unit';
-  }
+  const prepYieldUnit = units.find(u => u.unit_id === prepUnitId);
+  topDisplayUnitAbbr = prepYieldUnit?.abbreviation || 'Unit';
   
   // Dynamically set the label based on whether there is a reference ingredient
-  const amountLabel = referenceIngredient 
-    ? t('screens.createPreparation.refIngredientAmountLabel', { ingredient: capitalizeWords(referenceIngredient) })
-    : t('screens.createPreparation.scaledPrepAmountLabel');
+  const amountLabel = t('screens.createPreparation.scaledPrepAmountLabel');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -531,13 +475,6 @@ const CreatePreparationScreen = () => {
         >
           <Text style={styles.prepName}>{capitalizeWords(prepName)}</Text>
 
-          {referenceIngredient && (
-            <View style={styles.refIngredientContainer}>
-              <Text style={styles.label}>{t('screens.createPreparation.refIngredientLabel')}:</Text>
-              <Text style={styles.itemText}>{capitalizeWords(referenceIngredient)}</Text>
-            </View>
-          )}
-
           <View style={styles.section}>
               <Text style={styles.label}>{amountLabel}:</Text>
               <View style={styles.componentControlsContainer}>
@@ -550,9 +487,8 @@ const CreatePreparationScreen = () => {
                        placeholderTextColor={COLORS.placeholder}
                    />
                    <TouchableOpacity
-                       style={[styles.componentUnitTrigger, !!referenceIngredient && styles.disabledPicker]}
+                       style={[styles.componentUnitTrigger]}
                        onPress={openPrepUnitModal}
-                       disabled={!!referenceIngredient}
                    >
                        <Text style={[styles.pickerText, !prepUnitId && styles.placeholderText]}>
                            {topDisplayUnitAbbr}
@@ -589,7 +525,7 @@ const CreatePreparationScreen = () => {
                                  name: item.name,
                                  yield_amount: isNaN(baseAmountNum) ? null : baseAmountNum,
                                  yield_unit: units.find(u => u.unit_id === item.unitId) || null,
-                                 directions: null, total_time: null, reference_ingredient: null, ingredients: [], cooking_notes: null,
+                                 directions: null, total_time: null, ingredients: [], cooking_notes: null,
                                },
                             rawIngredientDetails: null,
                              }}

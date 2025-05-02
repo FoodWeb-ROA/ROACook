@@ -189,8 +189,9 @@ This setup replaces the previous Redux Saga-based realtime handling, simplifying
 *   **Dish/Prep Creation Flow (`CreateRecipeScreen.tsx`):**
     *   The `handleSaveDish` function now integrates with `resolveDish` and `resolvePreparation` before attempting inserts.
     *   It handles different resolution modes (`existing`, `new`, `overwrite`, `rename`, `cancel`) to guide the saving process (update existing record, insert new, rename and insert, or abort).
-    *   Implicit creation of *new* preparations (identified during recipe parsing) during a *dish save* operation now correctly calls `createNewPreparation`, passing necessary data including `reference_ingredient` and `piece_type` (for sub-components).
-*   **Schema Corrections:** Save logic has been updated to use correct database column names (e.g., `piece_type` instead of `item` in `dish_components`) and avoids attempting to write to non-existent columns (e.g., `is_preparation` in `dish_components`).
+    *   Implicit creation of *new* preparations (identified during recipe parsing) during a *dish save* operation now correctly calls `createNewPreparation`, passing necessary data including `piece_type` (for sub-components).
+*   **Schema Corrections:** Save logic has been updated to use correct database column names (e.g., `piece_type` instead of `item` in `dish_components`) and avoids attempting to write to non-existent columns.
+*   **Reference Ingredient Removal:** As of November 2024, the `reference_ingredient` field has been removed from the codebase. Preparations now always have a logical amount and unit, and ingredient amounts are scaled based on the ratio of the preparation's yield.
 
 ## Recipe Image Management
 

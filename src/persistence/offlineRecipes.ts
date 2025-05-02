@@ -33,7 +33,6 @@ export interface OfflinePreparationPayload {
   yield_unit_id: string | null; // from ingredients table?
   yield_unit?: Unit | null; // Include unit details if available
   cooking_notes: string | null; // from ingredients table?
-  reference_ingredient: string | null; // from preparations table
   fingerprint?: string | null; // Add fingerprint if available
   // --- Components (from preparation_ingredients) ---
   ingredients: PreparationIngredient[]; // Use the transformed PreparationIngredient type

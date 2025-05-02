@@ -561,6 +561,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    paddingBottom: SIZES.padding*100
   },
   contentArea: {
     flexDirection: 'column',

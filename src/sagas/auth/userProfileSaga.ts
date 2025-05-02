@@ -9,19 +9,35 @@ export function* checkKitchenUserLink(
 ): Generator<any, { data: { kitchen_id: string } | null; error: any }, any> {
 	console.log(`* checkKitchenUserLink: Checking kitchen link for user ID: ${userId}`);
 
-	type KitchenUserResponse = { data: { kitchen_id: string } | null; error: any };
+	// Type for the array response
+	type KitchenUserResponse = { data: { kitchen_id: string }[] | null; error: any };
 
+	// Fetch all links, remove .maybeSingle()
 	const checkResponse: KitchenUserResponse = yield call(() =>
 		supabase
 			.from('kitchen_users')
 			.select('kitchen_id')
 			.eq('user_id', userId)
-			.maybeSingle()
+			// Removed .maybeSingle()
 	);
 
-	console.log(`* checkKitchenUserLink/checkResponse:`, checkResponse);
+	console.log(`* checkKitchenUserLink/checkResponse (raw array):`, checkResponse);
 
-	return checkResponse;
+	// Check for errors first
+	if (checkResponse.error) {
+		return { data: null, error: checkResponse.error };
+	}
+
+	// Check if data is an array and not empty
+	if (Array.isArray(checkResponse.data) && checkResponse.data.length > 0) {
+		// User is linked, return the first kitchen ID found
+		console.log(`* checkKitchenUserLink: Found ${checkResponse.data.length} links. Using first: ${checkResponse.data[0].kitchen_id}`);
+		return { data: { kitchen_id: checkResponse.data[0].kitchen_id }, error: null };
+	} else {
+		// No links found
+		console.log(`* checkKitchenUserLink: No kitchen links found for user.`);
+		return { data: null, error: null };
+	}
 }
 
 export function* linkUserToKitchen(

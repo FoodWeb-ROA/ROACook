@@ -39,68 +39,18 @@ import { getOfflineRecipe, saveOfflineRecipe, OfflineDishPayload, OfflinePrepara
 // ADDED: Import useQuery and QueryClient
 import { useQuery, useQueryClient } from '@tanstack/react-query'; 
 import { queryClient } from '../data/queryClient'; // Corrected import path
+import { useTypedSelector } from './useTypedSelector'; // Import useTypedSelector
 
 /**
- * Custom hook to get the current kitchen ID for the authenticated user.
- * Fetches the kitchen_id from the kitchen_users table based on auth.users.id.
+ * Custom hook to get the current active kitchen ID for the authenticated user.
+ * Reads the activeKitchenId directly from the Redux store.
  */
 export function useCurrentKitchenId(): string | null {
-  const [kitchenId, setKitchenId] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
-
-  useEffect(() => {
-    // Don't fetch if auth is still loading or user is not available
-    if (authLoading || !user) {
-      // Optionally set kitchenId to null explicitly if auth state changes to loading/null
-      if (!authLoading && !user) setKitchenId(null); 
-      return;
-    }
-
-    async function fetchKitchenId() {
-       // Add explicit check for user before accessing user.id
-       if (!user) return;
-
-      try {
-        // Fetch kitchen_id from kitchen_users table based on the current user's ID
-        const { data, error } = await supabase
-          .from('kitchen_users')
-          .select('kitchen_id')
-          .eq('user_id', user.id) // Safe to access user.id now
-          .limit(1)
-          .single();
-
-        if (error) {
-          // Handle specific errors e.g., RLS violation or row not found if using .single() without maybeSingle()
-          if (error.code === 'PGRST116') { // Error code for single row not found
-             // Add explicit check for user before accessing user.id
-             if (user) {
-               console.warn(`No kitchen link found for user ${user.id}`);
-             }
-          } else {
-            console.error('Error fetching kitchen_id:', error);
-          }
-          setKitchenId(null); // Set to null on error
-          return;
-        }
-
-        if (data) {
-          setKitchenId(data.kitchen_id);
-        } else {
-          // This case might be redundant if .single() throws an error when not found
-          console.warn('No kitchen associated with this user (data was null).');
-          setKitchenId(null); 
-        }
-      } catch (catchError) {
-        console.error('Unexpected error in kitchen ID fetch:', catchError);
-        setKitchenId(null); // Set to null on unexpected error
-      }
-    }
-
-    fetchKitchenId();
-  // Depend on user object (or user.id) and authLoading state
-  }, [user, authLoading]); 
-
-  return kitchenId;
+  // Read activeKitchenId directly from Redux state
+  const activeKitchenId = useTypedSelector(state => state.kitchens.activeKitchenId);
+  
+  // Return the value from Redux
+  return activeKitchenId;
 }
 
 /**
@@ -507,7 +457,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
     console.log(`[useDishDetail] Setting up listeners for nested preps: ${uniquePrepIds.join(', ')}`);
     
     uniquePrepIds.forEach(prepId => {
-      // 1. Listen to the preparation itself (e.g., reference_ingredient change)
+      // 1. Listen to the preparation itself
       const prepDetailChannel = supabase
         .channel(`dish-${dishId}-prep-${prepId}-details`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'preparations', filter: `preparation_id=eq.${prepId}`}, (payload) => {
@@ -753,7 +703,6 @@ export function usePreparationDetail(preparationId: string | undefined) {
         preparation_id: prepBaseDetails.preparation_id,
         directions: prepBaseDetails.directions,
         total_time: prepBaseDetails.total_time,
-        reference_ingredient: prepBaseDetails.reference_ingredient,
         yield_unit: prepBaseDetails.yield_unit,
         amount_unit_id: prepBaseDetails.amount_unit_id, // Include amount_unit_id
         fingerprint: prepBaseDetails.fingerprint, // Include fingerprint
@@ -844,7 +793,6 @@ export function usePreparationDetail(preparationId: string | undefined) {
         yield_unit_id: transformedPrep.yield_unit?.unit_id ?? null,
         yield_unit: transformedPrep.yield_unit ?? null,
         cooking_notes: transformedPrep.cooking_notes,
-        reference_ingredient: transformedPrep.reference_ingredient,
         ingredients: transformedPrep.ingredients || [],
         fingerprint: combinedDataForTransform.fingerprint ?? null // Add fingerprint to cache payload
       };
@@ -1053,7 +1001,6 @@ export function usePreparations() {
           preparation_id: prepBaseData.preparation_id,
           directions: prepBaseData.directions,
           total_time: prepBaseData.total_time,
-          reference_ingredient: prepBaseData.reference_ingredient,
           yield_unit: prepBaseData.yield_unit,
           amount_unit_id: prepBaseData.amount_unit_id,
           fingerprint: prepBaseData.fingerprint,
@@ -1444,7 +1391,6 @@ export type PreparationComponentDetail = {
     yield_unit: Unit | null;
     yield_amount: number | null;
     ingredients: PreparationIngredient[]; // Add ingredients for nested preps
-    reference_ingredient?: string | null; // Make reference_ingredient optional
   } | null;
   // Details specific to raw ingredients
   rawIngredientDetails?: {
