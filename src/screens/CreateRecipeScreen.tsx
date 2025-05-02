@@ -19,7 +19,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
-import { RootStackParamList } from '../navigation/types';
+import { RootStackParamList, OnUpdatePrepAmountCallback, OnNewPreparationCreatedCallback } from '../navigation/types';
 import { supabase } from '../data/supabaseClient';
 import { Unit, MenuSection, Ingredient, RecipeKind, ParsedIngredient, ParsedRecipe, Preparation, ComponentInput, EditablePrepIngredient } from '../types';
 import { useMenuSections, useUnits, useIngredients, useDishDetail, usePreparationDetail } from '../hooks/useSupabase';
@@ -47,6 +47,12 @@ import { Database } from '../data/database.types'; // <-- CORRECTED IMPORT PATH
 import { useCurrentKitchenId } from '../hooks/useSupabase';
 // ADDED: Import the refreshData utility
 import { refreshData } from '../utils/dataRefresh';
+
+// Import newly created components
+import DirectionsInputList from '../components/DirectionsInputList'; 
+import ComponentSearchModal, { SearchResultItem } from '../components/ComponentSearchModal';
+import IngredientListComponent from '../components/IngredientListComponent'; // ADDED
+import PreparationListComponent from '../components/PreparationListComponent'; // ADDED
 
 type CreateRecipeNavigationProp = StackNavigationProp<RootStackParamList>;
 // Define RouteProp type for this screen
@@ -87,7 +93,6 @@ const CreateRecipeScreen = () => {
   const { checkDishNameExists, lookupIngredient } = useLookup();
 
   // --- Form State --- 
-  const [recipeKind, setRecipeKind] = useState<RecipeKind>('dish');
   const [dishName, setDishName] = useState('');
   const [menuSectionId, setMenuSectionId] = useState<string | null>(null);
   const [directions, setDirections] = useState<string[]>(['']);
@@ -113,15 +118,14 @@ const CreateRecipeScreen = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  // Add state for unit modal related to components
-  const [componentUnitModalVisible, setComponentUnitModalVisible] = useState(false);
-  const [currentManagingComponentKey, setCurrentManagingComponentKey] = useState<string | null>(null);
-
   // State for Serving Item logic
   const [pieceUnitId, setPieceUnitId] = useState<string | null>(null);
 
   // State to track overall loading including edit data fetching
   const [isScreenLoading, setIsScreenLoading] = useState(true);
+
+  // ADDED: State to track search mode
+  const [searchMode, setSearchMode] = useState<'ingredient' | 'preparation'>('ingredient');
 
   // Get active kitchen ID from Redux
   const activeKitchenId = useSelector((state: RootState) => state.kitchens.activeKitchenId);
@@ -187,15 +191,27 @@ const CreateRecipeScreen = () => {
     }
     setSearchLoading(true);
     try {
-      const results = await lookupIngredient(query);
-      setSearchResults(results);
+      // MODIFIED: Search based on searchMode
+      if (searchMode === 'ingredient') {
+        // TODO: Potentially update lookupIngredient to filter out preparations
+        // Removed filter option for now
+        const results = await lookupIngredient(query); 
+        setSearchResults(results);
+      } else { // searchMode === 'preparation'
+        // TODO: Implement or ensure lookupIngredient can find preparations
+        // Removed filter option for now. Assumes lookupIngredient returns preparations too.
+        // We might need a dedicated lookupPreparation or filter client-side later.
+        const results = await lookupIngredient(query); 
+        // Ensure isPreparation flag is set for display, filter later if needed.
+        setSearchResults(results.map((r: any) => ({ ...r, isPreparation: true }))); 
+      }
     } catch (error) {
-      console.error('Error searching ingredients:', error);
+      console.error(`Error searching ${searchMode}s:`, error);
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
     }
-  }, [lookupIngredient]);
+  }, [lookupIngredient, searchMode]); // Added searchMode dependency
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -218,7 +234,6 @@ const CreateRecipeScreen = () => {
 
     if (dishIdToEdit && dishToEdit) {
       console.log("[Edit Mode] Populating form for editing dish:", JSON.stringify(dishToEdit, null, 2)); // Log fetched dish data
-      setRecipeKind('dish'); // Assuming dish for now
       setDishName(dishToEdit.dish_name || '');
       setMenuSectionId(dishToEdit.menu_section?.menu_section_id || null);
       
@@ -255,7 +270,6 @@ const CreateRecipeScreen = () => {
 
     } else if (preparationIdToEdit && prepToEdit) {
       console.log("[Edit Mode] Populating form for editing preparation:", JSON.stringify(prepToEdit, null, 2)); // Log fetched prep data
-      setRecipeKind('preparation');
       setDishName(prepToEdit.name || ''); // Use dishName state for prep name
       setMenuSectionId(null); // Preparations don't have menu sections
       
@@ -304,7 +318,6 @@ const CreateRecipeScreen = () => {
     console.log("Populating form from parsed recipe:", parsedRecipe);
 
     // --- Populate form fields directly (Dish Name, Directions, Time, Servings etc.) ---
-    setRecipeKind('dish'); 
     setDishName(parsedRecipe.recipe_name || '');
     setDirections(parsedRecipe.instructions || ['']);
     const totalMinutes = parsedRecipe.total_time || 30;
@@ -468,68 +481,109 @@ const CreateRecipeScreen = () => {
 
   // --- Handlers (Placeholder/Basic Structure) --- 
 
-  // Enhance handleAddComponent to better handle UUIDs and duplicates
-  const handleAddComponent = async (selectedIngredient: any) => {
-    const ingredient_id = selectedIngredient?.ingredient_id || '';
-    const name = selectedIngredient?.name || '';
+  // MODIFIED: handleAddComponent to handle different modes and navigation
+  const handleAddComponent = async (selectedItem: any) => {
+    const item_id = selectedItem?.ingredient_id || '';
+    const name = selectedItem?.name || '';
     const trimmedName = name.trim();
-    
+
     if (!trimmedName) {
-      console.error('Cannot add component: Missing name', selectedIngredient);
-      Alert.alert(t('common.error'), t('alerts.errorAddComponentMissingName')); 
+      console.error('Cannot add component: Missing name', selectedItem);
+      Alert.alert(t('common.error'), t('alerts.errorAddComponentMissingName'));
       return;
     }
 
-    // If we have an ID, add it directly (this came from search results)
-    if (ingredient_id) {
-      addComponentWithDetails(ingredient_id, trimmedName, !!selectedIngredient.isPreparation, true);
-      return;
-    }
-    
-    // No ID provided (user wants to create a new ingredient)
-    try {
-      // Use central duplicate resolver
-      const result = await resolveIngredient(trimmedName, t);
-      if (result.mode === 'existing' && result.id) {
-        addComponentWithDetails(result.id, trimmedName, false, true);
-        return;
-      }
-      // Otherwise treat as new
-      addComponentWithDetails('', trimmedName, false, false);
-    } catch (error) {
-      console.error(`Error checking for similar/exact ingredients "${trimmedName}":`, error);
-      Alert.alert(t('common.error'), t('alerts.errorCheckingDuplicates'));
-      addComponentWithDetails('', trimmedName, false, false);
-    }
+    setComponentSearchModalVisible(false); // Close modal immediately
+    setComponentSearchQuery('');
 
-    // Helper function to add the component with given details
-    function addComponentWithDetails(id: string, name: string, isPrep: boolean, matched: boolean) {
-      setComponents(prev => [
-        ...prev,
-        {
-          key: `component-${id || 'new'}-${Date.now()}`, // Adjusted key
-          ingredient_id: id, 
-          name: name,
-          amount: '', // Start with empty amount
-          unit_id: null, // Start with no unit selected
-          isPreparation: isPrep,
-          matched: matched, // Add the matched flag
+    if (searchMode === 'ingredient') {
+      // --- Ingredient Flow --- 
+      if (item_id) {
+        // Add existing ingredient directly
+        addComponentWithDetails(item_id, trimmedName, false, true);
+      } else {
+        // No ID provided (user wants to create a new ingredient)
+        try {
+          const result = await resolveIngredient(trimmedName, t);
+          if (result.mode === 'existing' && result.id) {
+            addComponentWithDetails(result.id, trimmedName, false, true);
+          } else if (result.mode === 'new') {
+            // Create and add new raw ingredient
+            const newIngId = await createNewIngredient(trimmedName);
+            if (newIngId) {
+              addComponentWithDetails(newIngId, trimmedName, false, false);
+            }
+          } // Handle cancel/error if necessary
+        } catch (error) {
+          console.error(`Error resolving/creating ingredient "${trimmedName}":`, error);
+          Alert.alert(t('common.error'), t('alerts.errorCheckingDuplicates'));
         }
-      ]);
-      setComponentSearchModalVisible(false); // Close modal
-      setComponentSearchQuery(''); // Reset search
+      }
+    } else { // searchMode === 'preparation'
+      // --- Preparation Flow --- 
+      if (item_id) {
+        // Add existing preparation directly
+        addComponentWithDetails(item_id, trimmedName, true, true);
+      } else {
+        // No ID provided (user wants to create a new preparation)
+        // Navigate to CreatePreparationScreen
+        console.log(`Navigating to CreatePreparationScreen to create new prep: ${trimmedName}`);
+        navigation.navigate('CreatePreparation', { 
+          preparation: { // Pass minimal data for a new prep
+            name: trimmedName,
+            // No components, yield, etc. initially
+          } as ParsedIngredient,
+          onNewPreparationCreated: handleNewPreparationCreated, // Pass the callback
+        });
+      }
     }
   };
 
-
-  const handleComponentUpdate = (key: string, field: 'amount' | 'unit_id' | 'item', value: string | null) => { // <-- Added 'item'
-      setComponents(prev => 
-          prev.map(c => c.key === key ? { ...c, [field]: value } : c)
-      );
-      // Close unit modal if a unit was selected
-      if (field === 'unit_id') {
-          setComponentUnitModalVisible(false);
+  // Helper function to add the component with given details (Unchanged)
+  function addComponentWithDetails(id: string, name: string, isPrep: boolean, matched: boolean) {
+    setComponents(prev => [
+      ...prev,
+      {
+        key: `component-${id || 'new'}-${Date.now()}`,
+        ingredient_id: id,
+        name: name,
+        amount: '',
+        unit_id: null,
+        isPreparation: isPrep,
+        matched: matched,
       }
+    ]);
+  }
+
+  // ADDED: Callback handler for when a new preparation is created via CreatePreparationScreen
+  const handleNewPreparationCreated: OnNewPreparationCreatedCallback = useCallback((newPrepData) => {
+    console.log('New preparation created, adding to dish components:', newPrepData);
+    addComponentWithDetails(
+      newPrepData.id, 
+      newPrepData.name, 
+      true, // It's a preparation
+      false // It's newly created, not matched initially
+    );
+    // Optionally set default amount/unit based on returned yield?
+    // For now, just adds it with empty amount/unit
+  }, [addComponentWithDetails]); // Include dependencies if needed
+
+  // MODIFIED: Update field type to match IngredientListComponent prop
+  const handleComponentUpdate = (key: string, field: 'amount' | 'amountStr' | 'unitId' | 'item' | 'scaledAmountStr' | 'unit_id', value: string | null) => {
+      setComponents(prev => 
+          // Map field names if necessary (e.g., unitId to unit_id)
+          prev.map(c => {
+              if (c.key === key) {
+                  let fieldToUpdate: keyof ComponentInput = field as any; // Cast initially
+                  if (field === 'unitId') fieldToUpdate = 'unit_id';
+                  // We ignore amountStr/scaledAmountStr/unitId here as we only deal with 'amount'/'unit_id'/'item'
+                  if (field === 'amount' || field === 'unit_id' || field === 'item') {
+                     return { ...c, [fieldToUpdate]: value };
+                  }
+              }
+              return c;
+          })
+      );
   };
 
   // TODO: Implement handler to remove a component from the list
@@ -537,12 +591,6 @@ const CreateRecipeScreen = () => {
       setComponents(prev => prev.filter(c => c.key !== key));
   };
 
-  // Handler to open the unit modal for a specific component
-  const openComponentUnitSelector = (key: string) => {
-      setCurrentManagingComponentKey(key);
-      setComponentUnitModalVisible(true);
-  };
-  
   // Handler to open category modal
   const openCategorySelector = () => {
       setCategoryModalVisible(true);
@@ -563,14 +611,6 @@ const CreateRecipeScreen = () => {
   const handleServingUnitSelect = (unit: Unit) => {
       setServingUnitId(unit.unit_id);
       setServingUnitModalVisible(false);
-  };
-
-  // Handler to select unit for a component
-   const handleComponentUnitSelect = (unit: Unit) => {
-      if (currentManagingComponentKey) {
-          handleComponentUpdate(currentManagingComponentKey, 'unit_id', unit.unit_id);
-      }
-      // Modal closing is handled in handleComponentUpdate
   };
 
   // --- Handlers for Directions List ---
@@ -623,88 +663,44 @@ const CreateRecipeScreen = () => {
         if (!finalIngredientId) { 
             if (comp.isPreparation) {
                  // --- Handle NEW Preparation --- 
-                console.log(`Attempting creation for new preparation: ${comp.name}`);
+                console.log(`Attempting resolution for new preparation component: ${comp.name}`);
                  try {
-                     // Prepare data needed for fingerprinting and creation
+                     // Prepare data needed for fingerprinting
                      const prepName = comp.name.trim();
                      const prepDirections = comp.prepStateInstructions || [];
                      const formattedPrepDirections = prepDirections.map(s => s.trim()).filter(Boolean).join('\n');
                      const prepComponents = comp.prepStateEditableIngredients || [];
-                     // Map EditablePrepIngredient to ComponentInput for fingerprinting
                      const componentsForFingerprint: ComponentInput[] = prepComponents.map(epi => ({
-                key: epi.key,
-                name: epi.name,
-                         ingredient_id: epi.ingredient_id || "",
-                amount: epi.amountStr,
-                         amountStr: epi.amountStr, // Add amountStr
-                         unit_id: epi.unitId || null,
-                         isPreparation: epi.isPreparation || false,
-                         item: epi.item,
-                matched: epi.matched || false,
-              }));
+                          key: epi.key,
+                          name: epi.name,
+                          ingredient_id: epi.ingredient_id || "",
+                          amount: epi.amountStr,
+                          amountStr: epi.amountStr, // Add amountStr
+                          unit_id: epi.unitId || null,
+                          isPreparation: epi.isPreparation || false,
+                          item: epi.item,
+                          matched: epi.matched || false,
+                      }));
                      const prepFingerprint = fingerprintPreparation(componentsForFingerprint, formattedPrepDirections);
 
                      // Resolve potential duplicates (fingerprint or name)
                      // Pass parent dish name if available for better renaming suggestions
+                     // RESOLUTION ONLY - CREATION IS HANDLED EXPLICITLY VIA NAVIGATION
                      const prepResolution = await resolvePreparation(prepName, prepFingerprint, dishName, t);
 
                      if (prepResolution.mode === 'existing' && prepResolution.id) {
                          finalIngredientId = prepResolution.id;
-                         console.log(`Resolved new prep "${prepName}" to existing ID: ${finalIngredientId} (identical content)`);
-                     } else if (prepResolution.mode === 'overwrite' && prepResolution.id) {
-                         // Implement overwrite logic for implicit prep creation if needed
-                         // For now, we'll treat overwrite like using existing for simplicity within dish save
-                         // Or potentially alert the user and block saving the dish?
-                         console.warn(`Overwrite requested for prep "${prepName}" during dish save. Using existing ID: ${prepResolution.id} for now.`);
-                         finalIngredientId = prepResolution.id;
-                     } else if (prepResolution.mode === 'rename' && prepResolution.newName) {
-                         console.log(`Creating new prep "${prepName}" with suggested rename: ${prepResolution.newName}`);
-                         const prepYieldAmount = parseFloat(comp.amount);
-                         const newPrepId = await createNewPreparation(
-                             prepResolution.newName, // Use renamed
-                             prepFingerprint,
-                             null,
-                             {
-                                 components: componentsForFingerprint, // Use mapped components
-                                 directions: prepDirections,
-                                 yieldUnitId: comp.unit_id, // Use unit from main component
-                                 yieldAmount: isNaN(prepYieldAmount) ? null : prepYieldAmount, // Use amount from main component
-                                 totalTimeMinutes: 30, // Default time - consider parsing if available
-                                 cookingNotes: null // Add notes if available
-                             }
-                         );
-                         if (newPrepId) {
-                             finalIngredientId = newPrepId;
-                          } else {
-                             console.error(`Failed to create renamed preparation "${prepResolution.newName}". Skipping component.`);
-                             return null;
-                         }
-                     } else { // mode === 'new' or cancel/error
-                         console.log(`Creating new prep "${prepName}" (no conflicts or rename chosen)`);
-                         const prepYieldAmount = parseFloat(comp.amount);
-                         const newPrepId = await createNewPreparation(
-                             prepName,
-                             prepFingerprint,
-                             null,
-                             {
-                                 components: componentsForFingerprint,
-                                 directions: prepDirections,
-                                 yieldUnitId: comp.unit_id,
-                                 yieldAmount: isNaN(prepYieldAmount) ? null : prepYieldAmount,
-                                 totalTimeMinutes: 30,
-                              
-                                 cookingNotes: null
-                             }
-                         );
-                         if (newPrepId) {
-                             finalIngredientId = newPrepId;
-                      } else {
-                             console.error(`Failed to create new preparation "${prepName}". Skipping component.`);
-                             return null;
-                         }
+                         console.log(`Resolved new prep component "${prepName}" to existing ID: ${finalIngredientId} (identical content or user chose existing)`);
+                     } else {
+                         // If resolvePreparation suggests rename/overwrite/new, it means the user hasn't explicitly created it.
+                         // The user should have been navigated to CreatePreparationScreen to handle this.
+                         // If we reach here, it implies an issue or the user added a prep name without going through the creation flow.
+                         console.warn(`Preparation component "${prepName}" needs explicit creation/resolution. Skipping.`);
+                         Alert.alert(t('common.error'), t('alerts.errorPrepNeedsCreation', { name: prepName }));
+                         return null; // Skip this component
                      }
                  } catch (error) {
-                     console.error(`Error processing new preparation "${comp.name}":`, error);
+                     console.error(`Error processing new preparation component "${comp.name}":`, error);
                      return null; // Skip component on error
                  }
               } else {
@@ -771,11 +767,11 @@ const CreateRecipeScreen = () => {
 
     try {
       // Validation logic... (e.g., check dishName)
-      if (recipeKind === 'dish' && !dishName.trim()) {
+      if (!dishName.trim()) {
          Alert.alert(t('common.error'), t('alerts.errorMissingDishName'));
          return;
       }
-       if (recipeKind === 'preparation' && !dishName.trim()) { // Prep name stored in dishName
+       if (!dishName.trim()) { // Prep name stored in dishName
          Alert.alert(t('common.error'), t('alerts.errorMissingPrepName'));
         return; 
       }
@@ -853,7 +849,7 @@ const CreateRecipeScreen = () => {
           }
       } else {
           // --- INSERT NEW DISH/PREP --- 
-        if (recipeKind === 'dish') {
+        if (dishIdToEdit) {
               // --- Insert into dishes table --- 
               // ADDED: Check for duplicate dish name first
               const trimmedDishName = dishName.trim();
@@ -967,11 +963,9 @@ const CreateRecipeScreen = () => {
                  setSubmitting(false);
                  return;
               }
-           } else if (recipeKind === 'preparation') {
-               // --- Insert NEW PREPARATION ---
-               // This needs adaptation - savePrepLogic is for updates. Use createNewPreparation.
-               // Need to resolve/prepare component data similar to componentsToSave
-               // For now, assuming the preparation details are primarily in the 'dishName' and 'components' state
+           } else if (preparationIdToEdit) {
+               // --- Insert NEW PREPARATION --- 
+               // REMOVED: This flow is now handled entirely by CreatePreparationScreen when creating a new prep.
                console.log("Attempting to create new preparation...");
 
                // Prepare data for createNewPreparation based on current state
@@ -1308,153 +1302,115 @@ const savePrepLogic = async (existingPrepId?: string) => {
   };
   // --- END createNewIngredient ---
 
-  // MODIFIED: createNewPreparation - Handle nullables for insert
+  // Add the createNewPreparation function before handleSaveDish
+  // (placed right after savePrepLogic)
+
   const createNewPreparation = async (
     prepName: string, 
-    prepFingerprint: string | null, // Explicitly allow null for fingerprint param
-    _componentDetails?: ComponentInput | null, 
-    _resolvedPrepData?: { 
-        components: ComponentInput[]; 
-        directions: string[];
-        yieldUnitId: string | null;
-        yieldAmount: number | null;
-        totalTimeMinutes: number; 
-        cookingNotes: string | null;
+    prepFingerprint: string | null, 
+    _componentDetails: any | null,
+    options: {
+      components: ComponentInput[],
+      directions: string[],
+      yieldUnitId: string | null,
+      yieldAmount: number | null,
+      totalTimeMinutes: number | null,
+      cookingNotes: string | null
     }
   ): Promise<string | null> => { 
-      // Create a local resolved data variable that will definitely be initialized
-      let resolvedPrepData: {
-        components: ComponentInput[]; 
-        directions: string[];
-        yieldUnitId: string | null;
-        yieldAmount: number | null;
-        totalTimeMinutes: number; 
-        cookingNotes: string | null;
-      };
+    try {
+      console.log(`Creating new preparation DB entry: ${prepName}`);
       
-      if (_resolvedPrepData) {
-        // Use the provided resolved data
-        resolvedPrepData = _resolvedPrepData;
-      } else {
-        // Derive resolvedPrepData from _componentDetails
-        if (!_componentDetails) {
-          console.error(`Cannot create preparation '${prepName}': Missing component details.`);
-          return null;
-        }
-
-        // Extract preparation directions
-        const directions = _componentDetails.prepStateInstructions || [];
-        
-        // Extract components
-        const components = _componentDetails.prepStateEditableIngredients?.map(epi => ({
-          key: epi.key,
-          ingredient_id: epi.ingredient_id || "",
-          name: epi.name,
-          amount: epi.amountStr,
-          unit_id: epi.unitId || null,
-          isPreparation: epi.isPreparation || false,
-          matched: epi.matched || false,
-        })) || [];
-
-        // Get the yield unit
-        let yieldUnitId: string | null = _componentDetails.prepStatePrepUnitId || null;
-        if (!yieldUnitId && _componentDetails.unit_id) {
-          yieldUnitId = _componentDetails.unit_id;
-        }
-        
-        // Get yield amount
-        const yieldAmount = parseFloat(_componentDetails.amount) || 1;
-        
-        // Set a reasonable default time - 30 minutes
-        const totalTimeMinutes = 30;
-        
-        resolvedPrepData = {
-          components,
-          directions,
-          yieldUnitId,
-          yieldAmount,
-          totalTimeMinutes,
-          cookingNotes: null
-        };
-        
-        console.log(`Derived resolvedPrepData from _componentDetails for ${prepName}:`, JSON.stringify(resolvedPrepData, null, 2));
+      if (!options.yieldUnitId) {
+        console.error(`Cannot create preparation '${prepName}': Missing yield unit ID.`);
+        Alert.alert(t('common.error'), t('alerts.errorMissingPrepYieldUnit'));
+        return null;
+      }
+      
+      if (!activeKitchenId) {
+        console.error(`Cannot create preparation '${prepName}': No active kitchen selected.`);
+        Alert.alert(t('common.error'), t('alerts.errorCreatingPreparationNoKitchen'));
+        return null;
       }
 
-      const finalDirectionsStr = resolvedPrepData.directions.map(s => s.trim()).filter(Boolean).join('\n');
+      const finalDirectionsStr = options.directions.map(d => d.trim()).filter(Boolean).join('\n');
       
-      // Calculate fingerprint inside if not provided
-      const finalFingerprint = prepFingerprint ?? fingerprintPreparation(resolvedPrepData.components, finalDirectionsStr);
-
-      try {
-          console.log(`Creating new preparation DB entry: ${prepName}`);
-          // 1. Insert parent ingredient row
-          // --- Add validation checks --- 
-          if (!resolvedPrepData.yieldUnitId) {
-            throw new Error(`Cannot create preparation '${prepName}': Missing yield unit ID.`);
-          }
-          if (!activeKitchenId) {
-            throw new Error(`Cannot create preparation '${prepName}': No active kitchen selected.`);
-          }
-          // --- End validation --- 
-
-          const ingredientInsert: Database['public']['Tables']['ingredients']['Insert'] = {
+      // Create the ingredient entry for the preparation
+      const ingredientInsert: Database['public']['Tables']['ingredients']['Insert'] = {
         name: prepName.trim(),
-              cooking_notes: resolvedPrepData.cookingNotes?.trim() || undefined,
-              // Use validated non-null values
-              unit_id: resolvedPrepData.yieldUnitId, 
-              amount: resolvedPrepData.yieldAmount ?? 1,
-              kitchen_id: activeKitchenId,
-          };
-          const { data: ingredientInsertData, error: ingredientError } = await supabase
-            .from('ingredients')
-            .insert(ingredientInsert)
-            .select('ingredient_id')
-            .single();
-          if (ingredientError) { /* ... handle specific errors ... */ throw ingredientError; }
-          if (!ingredientInsertData?.ingredient_id) throw new Error("Failed to insert ingredient row for preparation.");
-          const newPreparationId = ingredientInsertData.ingredient_id;
+        cooking_notes: options.cookingNotes?.trim() || undefined,
+        unit_id: options.yieldUnitId,
+        amount: options.yieldAmount ?? 1,
+        kitchen_id: activeKitchenId,
+      };
+      
+      const { data: ingredientInsertData, error: ingredientError } = await supabase
+        .from('ingredients')
+        .insert(ingredientInsert)
+        .select('ingredient_id')
+        .single();
+        
+      if (ingredientError) { 
+        console.error(`Error creating ingredient for preparation '${prepName}':`, ingredientError);
+        throw ingredientError; 
+      }
+      
+      if (!ingredientInsertData?.ingredient_id) {
+        throw new Error("Failed to insert ingredient row for preparation.");
+      }
+      
+      const newPreparationId = ingredientInsertData.ingredient_id;
 
-          // 2. Insert preparations row
-          const prepInsert: Database['public']['Tables']['preparations']['Insert'] = {
-          preparation_id: newPreparationId,
-              directions: finalDirectionsStr || '', // Use empty string instead of undefined if directions must be string
-              total_time: resolvedPrepData.totalTimeMinutes, 
-              amount_unit_id: resolvedPrepData.yieldUnitId ?? undefined, // Use undefined if null
-              fingerprint: finalFingerprint
-          };
-          const { error: prepError } = await supabase.from('preparations').insert(prepInsert);
-          if (prepError) { /* ... handle error ... */ throw prepError; }
+      // Create the preparation entry
+      const prepInsert = {
+        preparation_id: newPreparationId,
+        directions: finalDirectionsStr || undefined,
+        total_time: options.totalTimeMinutes,
+        fingerprint: prepFingerprint
+      } as Database['public']['Tables']['preparations']['Insert'];
+      
+      const { error: prepError } = await supabase.from('preparations').insert(prepInsert);
+      
+      if (prepError) { 
+        console.error(`Error creating preparation '${prepName}':`, prepError);
+        throw prepError; 
+      }
 
-          // 3. Insert preparation_ingredients rows
-          if (resolvedPrepData.components.length > 0) {
-             // Filter out components with missing required IDs
-             const validComponents = resolvedPrepData.components.filter(c => 
-               c.ingredient_id && c.unit_id && !isNaN(parseFloat(c.amount))
-             );
-             
-             if (validComponents.length !== resolvedPrepData.components.length) {
-               console.warn(`Skipped ${resolvedPrepData.components.length - validComponents.length} invalid components when creating preparation ${prepName}`);
-             }
-             
-             if (validComponents.length === 0) {
-               console.warn(`No valid components to insert for preparation ${prepName}`);
-             } else {
-               const prepIngredientsInsert = validComponents.map(c => ({
-                preparation_id: newPreparationId,
-                  ingredient_id: c.ingredient_id, // Already validated by filter
-                amount: parseFloat(c.amount) || 0,
-                  unit_id: c.unit_id, // Already validated by filter
-             }));
-             const { error: prepIngErr } = await supabase.from('preparation_ingredients').insert(prepIngredientsInsert);
-             if (prepIngErr) { /* ... handle error ... */ throw prepIngErr; }
-             }
+      // Add preparation ingredients if provided
+      if (options.components.length > 0) {
+        const validComponents = options.components.filter(c => 
+          c.ingredient_id && c.unit_id && !isNaN(parseFloat(c.amount))
+        );
+        
+        if (validComponents.length !== options.components.length) {
+          console.warn(`Skipped ${options.components.length - validComponents.length} invalid components when creating preparation ${prepName}`);
+        }
+        
+        if (validComponents.length > 0) {
+          const prepIngredientsInsert = validComponents.map(c => ({
+            preparation_id: newPreparationId,
+            ingredient_id: c.ingredient_id!,
+            amount: parseFloat(c.amount) || 0,
+            unit_id: c.unit_id!,
+          }));
+          
+          const { error: prepIngErr } = await supabase.from('preparation_ingredients').insert(prepIngredientsInsert);
+          
+          if (prepIngErr) { 
+            console.error(`Error adding ingredients to preparation '${prepName}':`, prepIngErr);
+            throw prepIngErr; 
           }
-    // Remove success alert for preparation creation
-    // Refresh preparation data
-    refreshData(kitchenId, 'preparations');
-    return newPreparationId;
-      } catch (error) { console.error(`Error in createNewPreparation for ${prepName}:`, error); throw error; }
-};
+        }
+      }
+      
+      console.log(`Successfully created preparation '${prepName}' with ID: ${newPreparationId}`);
+      return newPreparationId;
+    } catch (error) {
+      console.error(`Error in createNewPreparation for ${prepName}:`, error);
+      Alert.alert(t('common.error'), t('alerts.errorCreatingPreparation', { name: prepName }));
+      return null;
+    }
+  };
 
   // --- Render Logic --- 
   if (isScreenLoading) {
@@ -1468,6 +1424,17 @@ const savePrepLogic = async (existingPrepId?: string) => {
   // Filter components into ingredients and preparations for rendering
   const ingredientsList = components.filter(c => !c.isPreparation);
   const preparationsList = components.filter(c => c.isPreparation);
+
+  // ADDED: Handler to open unit modal (passed to IngredientListComponent)
+  const openComponentUnitSelector = (key: string) => {
+    // Need logic to find the component type and open the correct modal
+    // For now, assuming it always opens a generic unit modal tied to a key
+    // This might need more context depending on how unit selection modals are managed
+    console.log("Attempting to open unit selector for component key:", key);
+    // Example: Find component, set state for modal visibility + current key
+    // setEditingComponentKey(key);
+    // setComponentUnitModalVisible(true);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1581,160 +1548,32 @@ const savePrepLogic = async (existingPrepId?: string) => {
 
           {/* --- Components Section (Moved) --- */}
           <View style={styles.componentsSection}>
-            {/* Ingredients List */}
+            {/* === Ingredients List === */}
             <Text style={styles.sectionTitle}>{t('screens.createRecipe.ingredientsTitle')}</Text>
-            {ingredientsList.length === 0 ? (
-                <Text style={styles.emptyListText}>{t('screens.createRecipe.noRawIngredients')}</Text>
-            ) : (
-                ingredientsList.map((item) => (
-                    // --- Render Scaled Raw Ingredient --- 
-                    (() => {
-                        const baseAmount = parseFloat(item.amount);
-                        // Calculate scale dynamically
-                        const currentScale = originalServings > 0 ? numServings / originalServings : 1;
-                        const scaledAmount = isNaN(baseAmount) ? null : baseAmount * currentScale;
-                        const unitAbbr = units.find(u => u.unit_id === item.unit_id)?.abbreviation || 'Unit';
-                        // Pass item.item to formatQuantityAuto
-                        const formattedDisplay = formatQuantityAuto(scaledAmount, unitAbbr, item.item);
-                        
-                        return (
-                           <View key={item.key} style={styles.componentItemContainer}>
-                                <Text style={styles.componentNameText}>
-                                  {capitalizeWords(item.name)}
-                                </Text>
-                                <View style={styles.componentControlsContainer}>
-                                    {/* Editable Base Amount Input */}
-                                    <TextInput
-                                        style={styles.componentInputAmount} // Keep original style for base amount
-                                        placeholder={t('common.amount')} // Generic amount placeholder
-                                        placeholderTextColor={COLORS.placeholder}
-                                        value={item.amount} // Bind to base amount string
-                                        onChangeText={(value) => handleComponentUpdate(item.key, 'amount', value)}
-                                        keyboardType="numeric"
-                                    />
-                                    {/* Unit selector */}
-                                    <TouchableOpacity
-                                        style={[styles.componentUnitTrigger, { marginLeft: SIZES.base }]} // Added margin
-                                        onPress={() => openComponentUnitSelector(item.key)}
-                                    >
-                                        {/* Find unit abbreviation directly */}
-                                        <Text style={[styles.pickerText, !item.unit_id && styles.placeholderText]}>
-                                            {units.find(u => u.unit_id === item.unit_id)?.abbreviation || 'Unit'}
-                                        </Text>
-                                         <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
-                                    </TouchableOpacity>
+            {/* Use IngredientListComponent */}
+            <IngredientListComponent
+                ingredients={ingredientsList}
+                units={units}
+                pieceUnitId={pieceUnitId}
+                originalServings={originalServings}
+                numServings={numServings}
+                onUpdate={handleComponentUpdate} // Pass existing handler
+                onRemove={handleRemoveComponent} // Pass existing handler
+                onSelectUnit={openComponentUnitSelector} // Pass new handler for modal
+                isPrepScreen={false} // Indicate this is not the prep screen context
+            />
 
-                                    {/* Conditionally Render Item Input */}
-                                    {item.unit_id === pieceUnitId && (
-                                       <TextInput
-                                          style={styles.itemInput} // Style includes marginLeft/marginRight
-                                          placeholder="(e.g., large)"
-                                          placeholderTextColor={COLORS.placeholder}
-                                          value={item.item || ''}
-                                          onChangeText={(value) => handleComponentUpdate(item.key, 'item', value)}
-                                       />
-                                    )}
-
-                                    {/* Remove Button */}
-                                    <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButton}>
-                                        <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
-                                    </TouchableOpacity>
-                                </View>
-                           </View>
-                        );
-                    })()
-                ))
-            )}
-
-            {/* Preparations List */}
+            {/* === Preparations List === */}
             <Text style={styles.sectionTitle}>{t('screens.createRecipe.preparationsTitle')}</Text>
-            {preparationsList.length === 0 ? (
-                <Text style={styles.emptyListText}>{t('screens.createRecipe.noPreparations')}</Text>
-            ) : (
-                preparationsList.map((item) => (
-                    // --- Render PreparationCard --- 
-                    (() => {
-                        // *** ADD CONSOLE LOG ***
-                        console.log(`Rendering PrepCard for ${item.name} (key: ${item.key}), prepStateEditableIngredients:`, item.prepStateEditableIngredients);
-                        
-                        const prepUnit = units.find(u => u.unit_id === item.unit_id);
-                        const prepAmountNum = parseFloat(item.amount);
-
-                        const pseudoPreparationDetails: Preparation = {
-                            preparation_id: item.ingredient_id,
-                            name: item.name,
-                            directions: item.prepStateInstructions ? item.prepStateInstructions.join('\n') : null, 
-                            total_time: null, 
-                            yield_unit: prepUnit || null,
-                            yield_amount: isNaN(prepAmountNum) ? null : prepAmountNum,
-                            // Use stored state for ingredients preview
-                            ingredients: (item.prepStateEditableIngredients || []).map(subIng => { 
-                                const subUnit = units.find(u => u.unit_id === subIng.unitId);
-                                const subAmount = parseFloat(subIng.amountStr);
-                                return {
-                                    preparation_id: item.ingredient_id, 
-                                    ingredient_id: subIng.ingredient_id || subIng.name, 
-                                    name: capitalizeWords(subIng.name),
-                                    amount: isNaN(subAmount) ? null : subAmount,
-                                    unit: subUnit || null
-                                };
-                            }),
-                            cooking_notes: null 
-                        };
-
-                        const componentForCard: DishComponent = {
-                            dish_id: '', 
-                            ingredient_id: item.ingredient_id,
-                            name: item.name,
-                            amount: isNaN(prepAmountNum) ? null : prepAmountNum,
-                            unit: prepUnit || null,
-                            isPreparation: true,
-                            preparationDetails: pseudoPreparationDetails,
-                            rawIngredientDetails: null
-                        };
-
-                        const currentScale = originalServings > 0 ? numServings / originalServings : 1;
-
-                        return (
-                           <View key={item.key} style={styles.preparationCardContainer}>
-                               <PreparationCard
-                                   amountLabel={t('common.amount')} 
-                                   component={componentForCard}
-                                   onPress={() => handlePrepSelect(item)} 
-                                   scaleMultiplier={currentScale} 
-                               />
-                               <TouchableOpacity onPress={() => handleRemoveComponent(item.key)} style={styles.removeButtonPrepCard}>
-                                   <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
-                               </TouchableOpacity>
-                           </View>
-                        );
-                    })()
-                ))
-            )}
-
-            {/* Add Component Button */}
-            <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => setComponentSearchModalVisible(true)}
-            >
-                <Text style={styles.addButtonText}>{t('screens.createRecipe.addIngredientPreparationButton')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Recipe Type Toggle */}
-          <Text style={styles.label}>{t('screens.createRecipe.recipeTypeLabel')}</Text>
-          <View style={[styles.rowContainer, styles.inputGroup]}>
-              {(['dish','preparation'] as RecipeKind[]).map((k, index) => (
-                <TouchableOpacity
-                    key={k}
-                    style={[styles.toggleBtn, recipeKind===k && styles.toggleBtnActive, { flex: 1, marginRight: index === 0 ? SIZES.padding : 0 }]}
-                    onPress={()=>setRecipeKind(k)}
-                >
-                    <Text style={[styles.toggleText, recipeKind===k && styles.toggleTextActive, { textAlign: 'center' }]}>
-                        {k.charAt(0).toUpperCase()+k.slice(1)}
-                    </Text>
-                </TouchableOpacity>
-              ))}
+            {/* Use PreparationListComponent */}
+            <PreparationListComponent 
+                preparations={preparationsList}
+                units={units}
+                originalServings={originalServings}
+                numServings={numServings}
+                onSelectPrep={handlePrepSelect} // Pass existing handler
+                onRemove={handleRemoveComponent} // Pass existing handler
+            />
           </View>
 
           {/* Category Picker Trigger */}
@@ -1774,30 +1613,13 @@ const savePrepLogic = async (existingPrepId?: string) => {
               </View>
           </View>
 
-          {/* Directions Input */}
+          {/* Directions Input - USE COMPONENT */}
           <Text style={styles.label}>{t('screens.createRecipe.directionsLabel')}</Text>
-          <View style={styles.inputGroup}> 
-            {directions.map((step, index) => (
-              <View key={index} style={styles.directionStepContainer}>
-                <Text style={styles.stepNumber}>{index + 1}.</Text>
-                <TextInput 
-                  style={styles.directionInput}
-                  placeholderTextColor={COLORS.placeholder}
-                  value={step}
-                  onChangeText={(text) => handleDirectionChange(index, text)}
-                  multiline
-                />
-                {directions.length > 1 && (
-                    <TouchableOpacity onPress={() => handleRemoveDirectionStep(index)} style={styles.removeStepButton}>
-                        <MaterialCommunityIcons name="close-circle-outline" size={22} color={COLORS.textLight} />
-                    </TouchableOpacity>
-                )}
-              </View>
-            ))}
-            <TouchableOpacity onPress={handleAddDirectionStep} style={styles.addStepButton}>
-              <Text style={styles.addStepButtonText}>{t('screens.createRecipe.addStepButton')}</Text>
-            </TouchableOpacity>
-          </View>
+          <DirectionsInputList 
+            // Pass initial directions state and update callback
+            initialDirections={directions}
+            onDirectionsUpdate={setDirections} 
+          />
 
           {/* Cooking Notes Input */}
           <Text style={styles.label}>{t('screens.createRecipe.notesLabel')}</Text>
@@ -1824,73 +1646,28 @@ const savePrepLogic = async (existingPrepId?: string) => {
 
       {/* --- Modals --- */}
       
-      {/* Component Search Modal */}
-       <Modal
-            animationType="slide"
-            transparent={true}
-            visible={componentSearchModalVisible}
-            onRequestClose={() => setComponentSearchModalVisible(false)}
-        >
-           <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectComponentModalTitle')}</Text>
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder={t('screens.createRecipe.searchComponentPlaceholder')}
-                        value={componentSearchQuery}
-                        onChangeText={setComponentSearchQuery}
-                    />
-                    {searchLoading ? (
-                        <ActivityIndicator size="large" color={COLORS.primary} style={styles.searchLoader} />
-                    ) : (
-                        <FlatList
-                            data={searchResults}
-                            keyExtractor={(item, index) => item.ingredient_id || `search-result-${index}`} 
-                            renderItem={({ item }) => (
-                                <TouchableOpacity 
-                                    style={styles.modalItem}
-                                    onPress={() => handleAddComponent(item)} 
-                                >
-                                    <Text style={styles.modalItemText}>
-                                        {item.name} {item.isPreparation ? t('screens.createRecipe.prepSuffix') : ''} 
-                                    </Text> 
-                                </TouchableOpacity>
-                            )}
-                            ListEmptyComponent={
-                                componentSearchQuery.trim() !== '' ? (
-                                    <View>
-                                        <Text style={styles.emptyListText}>
-                                            {t('screens.createRecipe.searchNoResults')} 
-                                        </Text>
-                                        <TouchableOpacity 
-                                            style={[styles.createNewButton, { marginTop: SIZES.padding }]}
-                                            onPress={() => handleAddComponent({ 
-                                                name: componentSearchQuery.trim(),
-                                                isPreparation: false // New items are raw ingredients by default
-                                            })}
-                                        >
-                                            <Text style={styles.createNewButtonText}>
-                                                {`${t('screens.createRecipe.createButtonLabel', { query: componentSearchQuery.trim() })}  with interpolation`}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : (
-                                    <Text style={styles.emptyListText}>
-                                        {t('screens.createRecipe.searchPlaceholderComponents')} 
-                                    </Text>
-                                )
-                            }
-                        />
-                    )}
-                    <TouchableOpacity 
-                        style={styles.closeButton}
-                        onPress={() => setComponentSearchModalVisible(false)}
-                    >
-                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
+      {/* Component Search Modal - USE COMPONENT */} 
+       <ComponentSearchModal
+          visible={componentSearchModalVisible}
+          onClose={() => setComponentSearchModalVisible(false)}
+          searchMode={searchMode}
+          // Pass the actual search function from useLookup
+          performSearch={async (query) => {
+              // Adapt the return type to SearchResultItem[]
+              const results = await lookupIngredient(query);
+              // Ensure isPreparation flag exists for potential filtering/display
+              return results.map((r: any) => ({ 
+                  ingredient_id: r.ingredient_id,
+                  name: r.name,
+                  isPreparation: r.isPreparation || false, // Assume false if not present
+              }));
+          }}
+          onSelectItem={handleAddComponent} // Pass the existing handler
+          onCreateNew={(name, isPreparation) => {
+              // Call handleAddComponent, passing null for item_id and the correct isPreparation flag
+              handleAddComponent({ name: name, isPreparation: isPreparation, ingredient_id: null });
+          }}
+       />
 
         {/* Category Selection Modal */}
         <Modal
@@ -1951,39 +1728,6 @@ const savePrepLogic = async (existingPrepId?: string) => {
                     <TouchableOpacity 
                         style={styles.closeButton}
                         onPress={() => setServingUnitModalVisible(false)}
-                    >
-                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
-
-        {/* Component Unit Selection Modal */}
-         <Modal
-            animationType="slide"
-            transparent={true}
-            visible={componentUnitModalVisible}
-            onRequestClose={() => setComponentUnitModalVisible(false)}
-        >
-           <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>{t('screens.createRecipe.selectComponentUnitModalTitle')}</Text>
-                    <FlatList
-                        data={units}
-                        keyExtractor={(item) => item.unit_id}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity 
-                                style={styles.modalItem}
-                                onPress={() => handleComponentUnitSelect(item)}
-                            >
-                                <Text style={styles.modalItemText}>{item.unit_name} ({item.abbreviation || 'N/A'})</Text>
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noUnitsFound')}</Text>}
-                    />
-                     <TouchableOpacity 
-                        style={styles.closeButton}
-                        onPress={() => setComponentUnitModalVisible(false)}
                     >
                         <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                     </TouchableOpacity>
@@ -2209,18 +1953,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addButton: {
-    backgroundColor: COLORS.secondary,
-    borderColor: COLORS.primary,
-    borderWidth: 1,
-    padding: SIZES.padding,
-    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.secondary, // Match addStepButton
+    borderColor: COLORS.primary, // Match addStepButton
+    borderWidth: 1, // Match addStepButton
+    padding: SIZES.padding * 0.75, // Match addStepButton padding
+    borderRadius: SIZES.radius, // Match addStepButton
     alignItems: 'center',
-    marginTop: SIZES.padding,
+    marginTop: SIZES.base, // Match addStepButton margin
+    marginBottom: SIZES.padding, // Add margin below button before list starts
   },
   addButtonText: {
-    color: COLORS.primary,
+    color: COLORS.primary, // Match addStepButton
     ...FONTS.body3,
-    fontWeight: '600',
+    fontWeight: '600', // Match addStepButton
   },
   loadingContainer: {
     flex: 1,
@@ -2290,9 +2035,8 @@ const styles = StyleSheet.create({
     marginTop: SIZES.base, // Space above add button
   },
   addStepButtonText: {
-    color: COLORS.primary,
+    color: COLORS.white,
     ...FONTS.body3,
-    fontWeight: '600',
   },
   linkText: { textDecorationLine: 'underline', color: COLORS.primary },
   preparationCardContainer: {
@@ -2380,6 +2124,13 @@ const styles = StyleSheet.create({
   servingListItemText: { // Based on modalItemText
     ...FONTS.body3,
     color: COLORS.text,
+  },
+  disabledButton: {
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+  },
+  disabledButtonText: {
+    color: COLORS.textLight,
   },
 });
 

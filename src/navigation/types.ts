@@ -1,6 +1,7 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { ParsedRecipe, ParsedIngredient, Kitchen, EditablePrepIngredient } from '../types';
 import { DrawerParamList } from './AppNavigator';
+import { Ingredient, Unit, Preparation } from '../types';
 
 // Define the callback type CreatePreparationScreen will use
 export type OnUpdatePrepAmountCallback = (prepKey: string, updatedState: {
@@ -8,6 +9,14 @@ export type OnUpdatePrepAmountCallback = (prepKey: string, updatedState: {
   prepUnitId: string | null;
   instructions: string[];
   isDirty: boolean;
+}) => void;
+
+// ADDED: Define callback type for new preparation creation
+export type OnNewPreparationCreatedCallback = (newPrepData: { 
+  id: string; 
+  name: string; 
+  yieldAmount?: number | null; 
+  yieldUnitId?: string | null 
 }) => void;
 
 export type RootStackParamList = {
@@ -26,16 +35,17 @@ export type RootStackParamList = {
     prepAmountInDish?: number | null;
   };
   CreatePreparation: {
-    preparation: ParsedIngredient;
+    preparation: ParsedIngredient | Preparation; // Corrected type usage
     scaleMultiplier?: number;
-    prepKey?: string; // Key of the component in the parent screen's state
-    onUpdatePrepAmount?: OnUpdatePrepAmountCallback; // Callback function
+    prepKey?: string; // Key for updating within parent list
+    onUpdatePrepAmount?: OnUpdatePrepAmountCallback; // Callback to update parent state
     // --- Initial State Params ---
     initialEditableIngredients?: EditablePrepIngredient[] | null;
     initialPrepUnitId?: string | null;
     initialInstructions?: string[] | null;
     // --- ADDED: Specific amount used in parent dish ---
     dishComponentScaledAmount?: number | null; // The actual amount used in the parent recipe
+    onNewPreparationCreated?: OnNewPreparationCreatedCallback; // ADDED: Callback for new prep creation
   };
   Account: undefined;
   Preferences: undefined;

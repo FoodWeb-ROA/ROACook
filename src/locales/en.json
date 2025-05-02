@@ -58,7 +58,8 @@
       "unknownComponent": "Unknown Component",
       "unexpectedError": "An unexpected error occurred",
       "ofReferenceIngredient": "of {{ingredient}}",
-      "replace": "Replace"
+      "replace": "Replace",
+      "create": "Create"
     },
     "validation": {
       "required": "{{field}} is required",
@@ -149,7 +150,11 @@
           "documentPick": "Could not pick document.",
           "imagePick": "Could not pick images."
         },
-        "parsingIndicator": "Parsing Recipe..."
+        "parsingIndicator": "Parsing Recipe...",
+        "createDishOption": "Dish",
+        "createPreparationOption": "Preparation",
+        "createActionSheetTitle": "Create New Recipe",
+        "newPreparationName": "New Preparation"
       },
       "categories": {
         "loading": "Loading Categories...",
@@ -289,6 +294,16 @@
         "notesPlaceholder": "Optional notes, tips, variations",
         "selectComponentModalTitle": "Select Component",
         "searchComponentPlaceholder": "Search ingredients or preparations...",
+        "selectIngredientModalTitle": "Select Ingredient",
+        "selectPreparationModalTitle": "Select Preparation",
+        "searchPlaceholderIngredients": "Type to search for ingredients...",
+        "searchPlaceholderPreparations": "Type to search for preparations...",
+        "searchNoIngredientsFound": "No ingredients found matching \"{{query}}\"",
+        "searchNoPreparationsFound": "No preparations found matching \"{{query}}\"",
+        "createIngredientButtonLabel": "+ Create Ingredient \"{{query}}\"",
+        "createPreparationButtonLabel": "+ Create Preparation \"{{query}}\"",
+        "createIngredientButtonSimple": "+ Create Ingredient",
+        "createPreparationButtonSimple": "+ Create Preparation",
         "selectCategoryModalTitle": "Select Category",
         "noCategoriesFound": "No categories found.",
         "selectServingUnitModalTitle": "Select Serving Unit",
@@ -297,6 +312,8 @@
         "selectServingIngredientModalTitle": "Select Serving Ingredient",
         "noComponentsInRecipe": "No components added to recipe yet.",
         "addIngredientPreparationButton": "+ Add Ingredient / Preparation",
+        "addIngredientButton": "+ Add Ingredient",
+        "addPreparationButton": "+ Add Preparation",
         "recipeTypeLabel": "Recipe Type *",
         "addStepButton": "+ Add Step",
         "editDishTitle": "Edit Dish",
@@ -311,6 +328,7 @@
         "createButtonLabel": "+ Create \"{{query}}\"",
         "searchPlaceholderComponents": "Type to search for ingredients or preparations",
         "prepSuffix": "(Prep)",
+        "prepSuffixShort": "(Prep)",
         "info": {
           "noChanges": "No changes detected."
         }
@@ -326,7 +344,11 @@
         "instructionsTitle": "Preparation Instructions",
         "noInstructions": "No instructions provided.",
         "selectUnitModalTitle": "Select Unit for Ingredient",
-        "selectPrepUnitModalTitle": "Select Unit for Preparation Yield"
+        "selectPrepUnitModalTitle": "Select Unit for Preparation Yield",
+        "searchNoResults": "No matching ingredients found.",
+        "createIngredientButtonLabel": "+ Create Ingredient \"{{query}}\"",
+        "createIngredientButtonSimple": "+ Create Ingredient",
+        "searchPlaceholderComponents": "Type to search for ingredients..."
       },
       "support": {
         "title": "Support",
@@ -358,6 +380,8 @@
       }
     },
     "alerts": {
+      "errorMissingName": "Could not add recipe: Missing name",
+      "errorMissingDishName": "Please enter a dish name.",
       "errorAddComponentMissingName": "Could not add component: Missing name",
       "duplicateIngredientTitle": "Duplicate Ingredient",
       "duplicateIngredientMessage": "An ingredient named \"{{name}}\" already exists. Please search and select the existing ingredient instead of creating a duplicate.",
@@ -397,7 +421,11 @@
       "duplicateDishReplaceMessage": "A dish with the name \"{{dishName}}\" already exists. Replacing it will overwrite its current content.",
       "duplicatePrepTitle": "Duplicate Preparation Name",
       "duplicatePrepActionReplace": "Replace Existing",
-      "duplicatePrepActionNew": "Use New Name"
+      "duplicatePrepActionNew": "Use New Name",
+      "warningCannotCreatePrepInPrep": "Cannot create a new preparation directly within another preparation. Please create it separately first.",
+      "errorCreatingIngredient": "Error creating ingredient: {{name}}",
+      "errorCreatingIngredientNoKitchen": "Cannot create ingredient: No active kitchen selected.",
+      "errorCreatingIngredientNoDefaultUnit": "Cannot create ingredient: No default unit found."
     },
     "components": {
       "sidebar": {

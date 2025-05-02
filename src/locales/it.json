@@ -57,7 +57,8 @@
       "unknownComponent": "Componente Sconosciuto",
       "unexpectedError": "Si è verificato un errore imprevisto",
       "ofReferenceIngredient": "di {{ingredient}}",
-      "replace": "[TRANSLATE] Replace"
+      "replace": "[TRANSLATE] Replace",
+      "create": "Creare"
     },
     "validation": {
       "required": "{{field}} è richiesto",
@@ -148,7 +149,11 @@
         "parsingSuccessMessagePhotos": "Analisi foto simulata. Implementare logica reale.",
         "permissionDeniedTitle": "Permesso Negato",
         "permissionDeniedMessage": "È richiesto il permesso alla libreria multimediale per selezionare le foto.",
-        "parsingIndicator": "Analisi Ricetta..."
+        "parsingIndicator": "Analisi Ricetta...",
+        "createDishOption": "Piatto",
+        "createPreparationOption": "Preparazione",
+        "createActionSheetTitle": "Crea Nuova Ricetta",
+        "newPreparationName": "Nuova Preparazione"
       },
       "categories": {
         "loading": "Caricamento Categorie...",
@@ -276,6 +281,16 @@
         "notesPlaceholder": "Note opzionali, suggerimenti, variazioni",
         "selectComponentModalTitle": "Seleziona Componente",
         "searchComponentPlaceholder": "Cerca ingredienti o preparazioni...",
+        "selectIngredientModalTitle": "Seleziona Ingrediente",
+        "selectPreparationModalTitle": "Seleziona Preparazione",
+        "searchPlaceholderIngredients": "Digita per cercare ingredienti...",
+        "searchPlaceholderPreparations": "Digita per cercare preparazioni...",
+        "searchNoIngredientsFound": "Nessun ingrediente trovato corrispondente a \"{{query}}\"",
+        "searchNoPreparationsFound": "Nessuna preparazione trovata corrispondente a \"{{query}}\"",
+        "createIngredientButtonLabel": "+ Crea Ingrediente \"{{query}}\"",
+        "createPreparationButtonLabel": "+ Crea Preparazione \"{{query}}\"",
+        "createIngredientButtonSimple": "+ Crea Ingrediente",
+        "createPreparationButtonSimple": "+ Crea Preparazione",
         "selectCategoryModalTitle": "Seleziona Categoria",
         "noCategoriesFound": "Nessuna categoria trovata.",
         "selectServingUnitModalTitle": "Seleziona Unità di Porzione",
@@ -284,8 +299,10 @@
         "selectServingIngredientModalTitle": "Seleziona Ingrediente Porzione",
         "noComponentsInRecipe": "Nessun componente aggiunto alla ricetta ancora.",
         "addIngredientPreparationButton": "+ Aggiungi Ingrediente / Preparazione",
-        "recipeTypeLabel": "Tipo Ricetta *",
-        "addStepButton": "+ Aggiungi Passo",
+        "addIngredientButton": "+ Aggiungi Ingrediente",
+        "addPreparationButton": "+ Aggiungi Preparazione",
+        "recipeTypeLabel": "Tipo di Ricetta *",
+        "addStepButton": "+ Aggiungi Passaggio",
         "editDishTitle": "Modifica Piatto",
         "editPreparationTitle": "Modifica Preparazione",
         "confirmParsedTitle": "Conferma Ricetta Analizzata",
@@ -297,7 +314,8 @@
         "searchNoResults": "Nessun componente corrispondente trovato.",
         "createButtonLabel": "+ Crea \"{{query}}\"",
         "searchPlaceholderComponents": "Digita per cercare ingredienti o preparazioni",
-        "prepSuffix": "(Prep)"
+        "prepSuffix": "(Prep)",
+        "prepSuffixShort": "(Prep)"
       },
       "createPreparation": {
         "title": "Modifica Preparazione",
@@ -307,11 +325,15 @@
         "scaledAmountLabel": "Quantità Usata in Ricetta (Scalata)",
         "ingredientsTitle": "Ingredienti",
         "amountPlaceholder": "Quantità",
-        "noSubIngredients": "Nessun ingrediente elencato.",
+        "noSubIngredients": "Nessun ingrediente elencato per questa preparazione.",
         "instructionsTitle": "Istruzioni",
         "noInstructions": "Nessuna istruzione fornita.",
         "selectUnitModalTitle": "Seleziona Unità",
-        "selectPrepUnitModalTitle": "Seleziona Unità di Preparazione"
+        "selectPrepUnitModalTitle": "Seleziona Unità di Preparazione",
+        "searchNoResults": "Nessun ingrediente corrispondente trovato.",
+        "createIngredientButtonLabel": "+ Crea Ingrediente \"{{query}}\"",
+        "createIngredientButtonSimple": "+ Crea Ingrediente",
+        "searchPlaceholderComponents": "Digita per cercare ingredienti..."
       },
       "support": {
         "title": "Supporto",
@@ -348,6 +370,7 @@
       "duplicateIngredientMessage": "Un ingrediente chiamato \"{{name}}\" esiste già. Cerca e seleziona l'ingrediente esistente invece di creare un duplicato.",
       "missingInfoTitle": "Informazione Mancante",
       "enterRecipeName": "Inserisci un nome per la ricetta.",
+      "errorMissingDishName": "Inserisci un nome per il piatto.",
       "duplicateNameTitle": "Nome Duplicato",
       "duplicateDishMessage": "Un piatto chiamato \"{{name}}\" esiste già. Scegli un nome diverso.",
       "duplicatePrepMessage": "Una preparazione o un ingrediente chiamato \"{{name}}\" esiste già. Scegli un nome diverso.",
@@ -382,7 +405,11 @@
       "duplicateDishReplaceMessage": "[TRANSLATE] A dish with the name \"{{dishName}}\" already exists. Replacing it will overwrite its current content.",
       "duplicatePrepTitle": "[TRANSLATE] Duplicate Preparation Name",
       "duplicatePrepActionReplace": "[TRANSLATE] Replace Existing",
-      "duplicatePrepActionNew": "[TRANSLATE] Use New Name"
+      "duplicatePrepActionNew": "[TRANSLATE] Use New Name",
+      "warningCannotCreatePrepInPrep": "Impossibile creare una nuova preparazione direttamente all'interno di un'altra. Creala separatamente prima.",
+      "errorCreatingIngredient": "Errore nella creazione dell'ingrediente: {{name}}",
+      "errorCreatingIngredientNoKitchen": "Impossibile creare l'ingrediente: Nessuna cucina attiva selezionata.",
+      "errorCreatingIngredientNoDefaultUnit": "Impossibile creare l'ingrediente: Nessuna unità predefinita trovata."
     },
     "components": {
       "sidebar": {

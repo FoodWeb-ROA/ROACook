@@ -25,7 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList } from '../navigation/types';
 import { DrawerParamList } from '../navigation/AppNavigator';
-import { Category, Dish } from '../types';
+import { Category, Dish, ParsedIngredient } from '../types';
 import CategoryCard from '../components/CategoryCard';
 import AddCategoryCard from '../components/AddCategoryCard';
 import DishGridItem from '../components/DishGridItem';
@@ -417,6 +417,45 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
+  // --- FAB Action Sheet Logic ---
+  const handleAddButtonPress = () => {
+    // Use translation keys for options and title
+    const options = [
+      t('screens.home.createDishOption', 'Dish'), 
+      t('screens.home.createPreparationOption', 'Preparation'), 
+      t('common.cancel', 'Cancel')
+    ];
+    const cancelButtonIndex = 2;
+
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        title: t('screens.home.createActionSheetTitle', 'Create New Recipe'),
+        // message: 'Choose what you want to create', // Optional message
+      },
+      (selectedIndex?: number) => {
+        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex) return;
+
+        if (selectedIndex === 0) { // Dish selected
+          console.log("Navigating to CreateRecipeScreen (Dish)");
+          navigation.navigate('CreateRecipe', {});
+        } else if (selectedIndex === 1) { // Preparation selected
+          console.log("Navigating to CreatePreparationScreen (Preparation)");
+          navigation.navigate('CreatePreparation', {
+             // Use translation key for the default preparation name
+             preparation: { name: t('screens.home.newPreparationName', 'New Preparation') } as ParsedIngredient,
+             onNewPreparationCreated: (newPrepData) => {
+                console.log('New preparation created from HomeScreen FAB:', newPrepData);
+                queryClient.invalidateQueries({ queryKey: ['ingredients', { include_preparations: true }] });
+             },
+          });
+        }
+      }
+    );
+  };
+  // --- End FAB Action Sheet Logic ---
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
@@ -540,13 +579,13 @@ const HomeScreen = () => {
         </View>
       )}
       <View style={styles.fabContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.floatingButton}
-          onPress={() => navigation.navigate('CreateRecipe', {})}
+          onPress={handleAddButtonPress}
           disabled={isParsing}
         >
           <MaterialCommunityIcons name="plus" size={28} color={COLORS.white} />
-          <Text style={styles.floatingButtonText}>{t('screens.home.addRecipeButton')}</Text>
+          <Text style={styles.floatingButtonText}>{t('screens.home.addRecipeButton', 'Add Recipe')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

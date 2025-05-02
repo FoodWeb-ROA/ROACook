@@ -93,11 +93,6 @@ const AllRecipesScreen = () => {
       >
         <View style={styles.itemContent}>
           <Text style={styles.itemName}>{capitalizeWords(itemName)}</Text>
-          {isDish && (item as Dish).num_servings && (
-            <Text style={styles.itemSubInfo}>
-              {(item as Dish).num_servings} {t('screens.allRecipes.servings', 'servings')}
-            </Text>
-          )}
         </View>
         <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.primary} />
       </TouchableOpacity>
