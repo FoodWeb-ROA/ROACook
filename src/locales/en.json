@@ -129,9 +129,6 @@
         "errorLoadingDishes": "Error loading dishes",
         "noDishesFound": "No dishes found",
         "addRecipeButton": "Add Recipe",
-        "error": {
-          "missingKitchenId": "Kitchen ID is not configured. Cannot add section."
-        },
         "addSectionSuccessTitle": "Success",
         "addSectionSuccessMessage": "Section \"{{sectionName}}\" has been added successfully.",
         "addSectionError": "Failed to add section \"{{sectionName}}\". Please try again. Error: {{error}}",

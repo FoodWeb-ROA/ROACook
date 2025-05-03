@@ -22,7 +22,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.FoodWebAI.ROACook",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photo library to select recipe images."
       },
       "entitlements": {
         "com.apple.developer.applesignin": [
@@ -42,6 +43,16 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of recipes.",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for recipe videos (optional).",
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "2edb2be1-62aa-4f6d-89b8-1b0f3a722939"

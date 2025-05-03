@@ -135,6 +135,72 @@ const CreateRecipeScreen = () => {
 
   const existingId = useRef<string | undefined>(undefined);
 
+  // --- ADDED: Function to create a new basic ingredient (Moved Up) ---
+  const createNewIngredient = async (name: string): Promise<string | null> => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      console.error("Cannot create ingredient: Name is empty.");
+      return null;
+    }
+    if (!activeKitchenId) {
+      console.error(`Cannot create ingredient '${trimmedName}': No active kitchen selected.`);
+      Alert.alert(t('common.error'), t('alerts.errorCreatingIngredientNoKitchen'));
+      return null;
+    }
+    
+    // Find a default unit (e.g., 'piece' or the first available unit)
+    const defaultUnit = units.find(u => u.unit_name?.toLowerCase() === 'piece' || u.abbreviation?.toLowerCase() === 'x') || units[0];
+    const defaultUnitId = defaultUnit?.unit_id; // This might be null/undefined if units list is empty
+    
+    if (!defaultUnitId) {
+       console.error(`Cannot create ingredient '${trimmedName}': No default unit found.`);
+       Alert.alert(t('common.error'), t('alerts.errorCreatingIngredientNoDefaultUnit'));
+       return null;
+    }
+
+    console.log(`Creating new ingredient DB entry: ${trimmedName}`);
+    try {
+      // Basic insert - include default unit and amount
+      const ingredientInsert: Database['public']['Tables']['ingredients']['Insert'] = {
+        name: trimmedName,
+        kitchen_id: activeKitchenId,
+        unit_id: defaultUnitId, // Use resolved default unit ID
+        amount: 1, // Default amount
+            };
+      const { data, error } = await supabase
+        .from('ingredients')
+        .insert(ingredientInsert)
+        .select('ingredient_id')
+        .single();
+
+      if (error) {
+        // Handle potential duplicate name error (e.g., unique constraint)
+        if (error.code === '23505') { // Unique violation
+          console.warn(`Ingredient named \"${trimmedName}\" likely already exists (unique constraint). Attempting lookup.`);
+          // Attempt to lookup the existing ID as a fallback
+          const existingIdString: string | null = await checkIngredientNameExists(trimmedName);
+          // @ts-ignore - Linter might complain, but it's valid logic
+          if (existingIdString) return existingIdString;
+        }
+        console.error(`Error inserting new ingredient '${trimmedName}':`, error);
+        throw error; // Re-throw other errors
+      }
+
+      if (!data?.ingredient_id) {
+        throw new Error("Failed to retrieve new ingredient ID after insert.");
+      }
+      
+      console.log(`Successfully created ingredient '${trimmedName}' with ID: ${data.ingredient_id}`);
+      return data.ingredient_id;
+
+    } catch (error) {
+      console.error(`Error in createNewIngredient for ${trimmedName}:`, error);
+      Alert.alert(t('common.error'), t('alerts.errorCreatingIngredient', { name: trimmedName }));
+      return null; // Return null on failure
+    }
+  };
+  // --- END createNewIngredient (Moved Up) ---
+
   // MODIFIED: handlePrepSaveChanges - Store isDirty status
   const handlePrepSaveChanges = useCallback((prepKey: string, updatedState: {
     editableIngredients: EditablePrepIngredient[];
@@ -632,6 +698,7 @@ const CreateRecipeScreen = () => {
 
   // MODIFIED: handleSaveDish - Check prepStateIsDirty
   const handleSaveDish = async () => {
+    console.log("[handleSaveDish] Starting..."); // Log start
     // --- Define variables needed for save logic ---
     const isUpdating = !!dishIdToEdit || !!preparationIdToEdit; // Check if editing existing dish or prep
     const formattedDirections = directions.map(d => d.trim()).filter(Boolean).join('\n');
@@ -653,8 +720,10 @@ const CreateRecipeScreen = () => {
     // For now, creating a placeholder array. The actual implementation will involve async calls.
     // TODO: Implement full component processing logic here, resolving/creating ingredients/preps
     // This will likely involve mapping over `components` state and calling `resolveIngredient`, `resolvePreparation`, `createNewIngredient`, `createNewPreparation` etc.
-    const componentsToSave: ProcessedComponent[] = await Promise.all(
+    // MODIFIED: Filter nulls after Promise.all
+    const processedComponentsNullable = await Promise.all(
       components.map(async (comp): Promise<ProcessedComponent | null> => {
+        console.log(`[handleSaveDish] Processing component: ${comp.name} (ID: ${comp.ingredient_id}, isPrep: ${comp.isPreparation})`);
         // Placeholder logic: Assumes comp.ingredient_id is correct if present, otherwise needs resolution/creation.
         // Actual implementation needs to handle 'matched' flag and potential creation.
         let finalIngredientId = comp.ingredient_id;
@@ -663,44 +732,106 @@ const CreateRecipeScreen = () => {
         if (!finalIngredientId) { 
             if (comp.isPreparation) {
                  // --- Handle NEW Preparation --- 
-                console.log(`Attempting resolution for new preparation component: ${comp.name}`);
+                console.log(`Attempting resolution/creation for new preparation component: ${comp.name}`);
                  try {
-                     // Prepare data needed for fingerprinting
+                     // Prepare data needed for fingerprinting and creation
                      const prepName = comp.name.trim();
                      const prepDirections = comp.prepStateInstructions || [];
-                     const formattedPrepDirections = prepDirections.map(s => s.trim()).filter(Boolean).join('\n');
+                     const formattedPrepDirections = prepDirections.map(s => s.trim()).filter(Boolean).join('\\n');
                      const prepComponents = comp.prepStateEditableIngredients || [];
+                     const prepYieldUnitId = comp.prepStatePrepUnitId || null; // Get unit from state
+                     // Assuming it might be part of originalPrep or needs adding to ComponentInput state
+                     // For now, falling back to 1 if not easily available. Needs review.
+                     const prepYieldAmount = parseFloat(comp.amount || '1'); // Assuming comp.amount holds yield for prep
+                     // REINSTATED: Get from comp, cast if necessary
+                     const prepCookingNotes = (comp as any).cooking_notes || null; // Cast to any if type isn't updated yet
+                     // How is total time handled for parsed preps? Assume null for now.
+                     const prepTotalTimeMinutes = null; 
+
+                     // Check if essential data for creation is present
+                     if (!prepYieldUnitId || prepComponents.length === 0) {
+                         console.warn(`Preparation component "${prepName}" is missing yield unit or ingredients. Needs explicit review/creation via navigation.`);
+                         Alert.alert(t('common.error'), t('alerts.errorPrepNeedsReview', { name: prepName }));
+                         return null; // Skip this component - cannot create without basics
+                     }
+
                      const componentsForFingerprint: ComponentInput[] = prepComponents.map(epi => ({
                           key: epi.key,
                           name: epi.name,
                           ingredient_id: epi.ingredient_id || "",
                           amount: epi.amountStr,
-                          amountStr: epi.amountStr, // Add amountStr
+                          amountStr: epi.amountStr, 
                           unit_id: epi.unitId || null,
                           isPreparation: epi.isPreparation || false,
                           item: epi.item,
                           matched: epi.matched || false,
                       }));
                      const prepFingerprint = fingerprintPreparation(componentsForFingerprint, formattedPrepDirections);
-
+ 
                      // Resolve potential duplicates (fingerprint or name)
-                     // Pass parent dish name if available for better renaming suggestions
-                     // RESOLUTION ONLY - CREATION IS HANDLED EXPLICITLY VIA NAVIGATION
                      const prepResolution = await resolvePreparation(prepName, prepFingerprint, dishName, t);
-
+ 
                      if (prepResolution.mode === 'existing' && prepResolution.id) {
                          finalIngredientId = prepResolution.id;
                          console.log(`Resolved new prep component "${prepName}" to existing ID: ${finalIngredientId} (identical content or user chose existing)`);
-                     } else {
-                         // If resolvePreparation suggests rename/overwrite/new, it means the user hasn't explicitly created it.
-                         // The user should have been navigated to CreatePreparationScreen to handle this.
-                         // If we reach here, it implies an issue or the user added a prep name without going through the creation flow.
-                         console.warn(`Preparation component "${prepName}" needs explicit creation/resolution. Skipping.`);
-                         Alert.alert(t('common.error'), t('alerts.errorPrepNeedsCreation', { name: prepName }));
+                     } else if (prepResolution.mode === 'new' || (prepResolution.mode === 'rename' && prepResolution.newName)) {
+                         // Directly create the new preparation using the details from the component state
+                         const nameToCreate = prepResolution.mode === 'rename' ? prepResolution.newName! : prepName;
+                         console.log(`Attempting direct creation of new preparation "${nameToCreate}" from CreateRecipeScreen.`);
+                         
+                         // Map EditablePrepIngredient back to ComponentInput for createNewPreparation
+                         const componentsForCreation: ComponentInput[] = prepComponents.map(epi => ({
+                             key: `create-${epi.key}`, // Use a distinct key format
+                             name: epi.name, 
+                             ingredient_id: epi.ingredient_id || "", // Ensure string, fallback to empty
+                             amount: epi.amountStr, // Amount as string
+                             amountStr: epi.amountStr, // Add amountStr
+                             unit_id: epi.unitId,
+                             isPreparation: epi.isPreparation || false, // Should be false for sub-ingredients
+                             item: epi.item,
+                             matched: epi.matched || false, // Assume matched if ID exists
+                         }));
+
+                         // Validate sub-components before creation attempt
+                         const invalidSubComponents = componentsForCreation.filter(sub => !sub.ingredient_id || !sub.unit_id || isNaN(parseFloat(sub.amount)));
+                         if (invalidSubComponents.length > 0) {
+                            console.error(`Cannot create preparation "${nameToCreate}" - contains invalid sub-components:`, invalidSubComponents);
+                            Alert.alert(t('common.error'), t('alerts.errorPrepInvalidSubComponents', { name: nameToCreate }));
+                            return null; // Cannot proceed with creation
+                         }
+
+
+                         const createdPrepId = await createNewPreparation(
+                           nameToCreate,
+                           prepFingerprint,
+                           null, // _componentDetails not needed when passing options
+                           { // Pass resolved data directly
+                             components: componentsForCreation,
+                             directions: prepDirections,
+                             yieldUnitId: prepYieldUnitId,
+                             yieldAmount: prepYieldAmount,
+                             totalTimeMinutes: prepTotalTimeMinutes,
+                             cookingNotes: prepCookingNotes
+                           }
+                         );
+                         if (createdPrepId) {
+                             finalIngredientId = createdPrepId; // Assign if creation succeeded
+                             console.log(`Successfully created new preparation "${nameToCreate}" directly with ID: ${finalIngredientId}`);
+                         } else {
+                             console.error(`Failed to create new preparation "${nameToCreate}" directly. Skipping component.`);
+                             return null; // Skip if creation failed
+                         }
+                     } else if (prepResolution.mode === 'overwrite' && prepResolution.id) {
+                        // TODO: Implement overwrite logic directly if desired, or keep alerting user
+                        console.warn(`Overwrite requested for prep "${prepName}" (ID: ${prepResolution.id}) during dish save. Functionality not fully implemented here.`);
+                        Alert.alert(t('common.info'), t('alerts.infoPrepOverwriteNotImplemented', { name: prepName }));
+                        return null; // Skip for now
+                     } else { // cancel or unexpected mode
+                         console.log(`User cancelled or resolution failed for preparation "${prepName}". Skipping component.`);
                          return null; // Skip this component
                      }
                  } catch (error) {
-                     console.error(`Error processing new preparation component "${comp.name}":`, error);
+                     console.error(`Error processing new preparation component "${comp.name}" during save:`, error);
                      return null; // Skip component on error
                  }
               } else {
@@ -762,12 +893,18 @@ const CreateRecipeScreen = () => {
           item: comp.item || null,
         };
       })
-    ).then(results => results.filter((c): c is ProcessedComponent => c !== null)); // Filter out null results
+    );
 
-
+    console.log("[handleSaveDish] Finished processing components via Promise.all. Result (before filtering nulls):", processedComponentsNullable);
+ 
+    const componentsToSave: ProcessedComponent[] = processedComponentsNullable.filter((c): c is ProcessedComponent => c !== null);
+ 
+    console.log(`[handleSaveDish] Final components to save (after filtering nulls): ${componentsToSave.length} components`, componentsToSave);
+ 
     try {
       // Validation logic... (e.g., check dishName)
       if (!dishName.trim()) {
+        console.log("[handleSaveDish] Validation failed: Missing dish name.");
          Alert.alert(t('common.error'), t('alerts.errorMissingDishName'));
          return;
       }
@@ -779,7 +916,9 @@ const CreateRecipeScreen = () => {
 
       // --- Start Save Process ---
       setSubmitting(true);
-
+ 
+      console.log(`[handleSaveDish] Proceeding with ${isUpdating ? 'UPDATE' : 'INSERT'} logic.`);
+ 
       // Removed duplicate variable definitions from here
 
       if (isUpdating) {
@@ -849,15 +988,22 @@ const CreateRecipeScreen = () => {
           }
       } else {
           // --- INSERT NEW DISH/PREP --- 
-        if (dishIdToEdit) {
+        // REMOVED dishIdToEdit check - this block is for INSERT, dishIdToEdit implies UPDATE
+        // Logic now decides based on form intention (Dish vs Prep - assuming Dish for now)
+        // TODO: If this screen can also create *top-level* Preps, need a flag/state
+        const isCreatingDish = true; // Assume creating a dish unless specified otherwise
+
+        if (isCreatingDish) { // Check if creating a dish
               // --- Insert into dishes table --- 
               // ADDED: Check for duplicate dish name first
               const trimmedDishName = dishName.trim();
+              console.log(`[handleSaveDish] Checking for existing dish: ${trimmedDishName}`);
               const dishResolution = await resolveDish(trimmedDishName, t);
                
               // --- Handle User Choice from Duplicate Prompt --- 
               if (dishResolution.mode === 'cancel') {
                   // User cancelled the save operation
+                  console.log("[handleSaveDish] User cancelled dish save due to duplicate name.");
                   console.log("User cancelled dish save due to duplicate name.");
                   setSubmitting(false); // Reset submitting state
                   return; // Stop the save process
@@ -914,6 +1060,7 @@ const CreateRecipeScreen = () => {
               // --- Proceed with insert only if mode is 'new' --- 
               if (dishResolution.mode === 'new') {
                  console.log(`Proceeding to insert new dish: ${trimmedDishName}`);
+                 console.log(`[handleSaveDish] Inserting new dish: ${trimmedDishName}`);
                   const { data: dishInsertData, error: dishInsertError } = await supabase
                       .from('dishes')
                       .insert({
@@ -1136,6 +1283,7 @@ const CreateRecipeScreen = () => {
     } catch (error: any) { 
       // MODIFIED: Improved error logging and user feedback
       console.error("Error saving recipe:", error);
+      console.error("[handleSaveDish] Error caught during save:", error);
       const errorMessage = error.message || 'An unexpected error occurred.';
       // Optionally show specific messages for known Supabase errors
       if (error.code) {
@@ -1146,6 +1294,7 @@ const CreateRecipeScreen = () => {
         t('alerts.errorSavingRecipe', { message: errorMessage })
       );
     } finally { 
+      console.log("[handleSaveDish] Reached finally block. Setting submitting to false.");
       setSubmitting(false); 
     }
   }; // End of handleSaveDish
@@ -1233,77 +1382,6 @@ const savePrepLogic = async (existingPrepId?: string) => {
       return null;
     }
   };
-
-  // --- ADDED: Function to create a new basic ingredient ---
-  const createNewIngredient = async (name: string): Promise<string | null> => {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      console.error("Cannot create ingredient: Name is empty.");
-      return null;
-    }
-    if (!activeKitchenId) {
-      console.error(`Cannot create ingredient '${trimmedName}': No active kitchen selected.`);
-      Alert.alert(t('common.error'), t('alerts.errorCreatingIngredientNoKitchen'));
-      return null;
-    }
-    
-    // Find a default unit (e.g., 'piece' or the first available unit)
-    const defaultUnit = units.find(u => u.unit_name?.toLowerCase() === 'piece' || u.abbreviation?.toLowerCase() === 'x') || units[0];
-    const defaultUnitId = defaultUnit?.unit_id; // This might be null/undefined if units list is empty
-    
-    if (!defaultUnitId) {
-       console.error(`Cannot create ingredient '${trimmedName}': No default unit found.`);
-       Alert.alert(t('common.error'), t('alerts.errorCreatingIngredientNoDefaultUnit'));
-       return null;
-    }
-
-    console.log(`Creating new ingredient DB entry: ${trimmedName}`);
-    try {
-      // Basic insert - include default unit and amount
-      const ingredientInsert: Database['public']['Tables']['ingredients']['Insert'] = {
-        name: trimmedName,
-        kitchen_id: activeKitchenId,
-        unit_id: defaultUnitId, // Use resolved default unit ID
-        amount: 1, // Default amount
-            };
-      const { data, error } = await supabase
-        .from('ingredients')
-        .insert(ingredientInsert)
-        .select('ingredient_id')
-        .single();
-
-      if (error) {
-        // Handle potential duplicate name error (e.g., unique constraint)
-        if (error.code === '23505') { // Unique violation
-          console.warn(`Ingredient named "${trimmedName}" likely already exists (unique constraint). Attempting lookup.`);
-          // Attempt to lookup the existing ID as a fallback
-          // MODIFIED: Ensure existingId variable is correctly typed
-          const existingIdString: string | null = await checkIngredientNameExists(trimmedName);
-          // MODIFIED: Added ts-ignore to suppress persistent linter warning
-          // @ts-ignore
-          if (existingIdString) return existingIdString;
-        }
-        console.error(`Error inserting new ingredient '${trimmedName}':`, error);
-        throw error; // Re-throw other errors
-      }
-
-      if (!data?.ingredient_id) {
-        throw new Error("Failed to retrieve new ingredient ID after insert.");
-      }
-      
-      console.log(`Successfully created ingredient '${trimmedName}' with ID: ${data.ingredient_id}`);
-      return data.ingredient_id;
-
-    } catch (error) {
-      console.error(`Error in createNewIngredient for ${trimmedName}:`, error);
-      Alert.alert(t('common.error'), t('alerts.errorCreatingIngredient', { name: trimmedName }));
-      return null; // Return null on failure
-    }
-  };
-  // --- END createNewIngredient ---
-
-  // Add the createNewPreparation function before handleSaveDish
-  // (placed right after savePrepLogic)
 
   const createNewPreparation = async (
     prepName: string, 
