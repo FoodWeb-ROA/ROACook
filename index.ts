@@ -1,4 +1,5 @@
 import '@expo/metro-runtime';
+import 'react-native-get-random-values'; // Import polyfill 
 import { registerRootComponent } from 'expo';
 
 import App from './App';

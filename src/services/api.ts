@@ -1,5 +1,5 @@
 // Get Notion API keys from environment variables
-// In a real app, these would be provided via .env file
+// Will inject safely in production
 const NOTION_API_KEY = process.env.EXPO_PUBLIC_NOTION_API_KEY;
 const NOTION_DATABASE_ID = process.env.EXPO_PUBLIC_NOTION_DATABASE_ID;
 

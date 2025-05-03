@@ -58,24 +58,26 @@
       "unexpectedError": "Une erreur inattendue s'est produite",
       "ofReferenceIngredient": "de {{ingredient}}",
       "replace": "Remplacer",
-      "create": "Créer"
+      "create": "Créer",
+      "done": "Terminé"
     },
     "validation": {
       "required": "{{field}} est requis",
       "emailPasswordRequired": "Veuillez entrer l'e-mail et le mot de passe",
       "allFieldsRequired": "Veuillez entrer e-mail, mot de passe et nom d'utilisateur",
       "passwordLength": "Le mot de passe doit comporter au moins 6 caractères",
-      "invalidEmail": "Invalid email address",
-      "emailRequired": "Email is required",
-      "passwordRequired": "Password is required",
-      "fullnameRequired": "Fullname is required",
-      "passwordMinLength": "Password must be at least 6 characters",
-      "invalidLanguage": "Invalid language",
-      "languageRequired": "Language is required",
-      "placeholderMissing": "[TRANSLATE] Placeholder text missing for {{key}}"
+      "invalidEmail": "Adresse e-mail invalide",
+      "emailRequired": "L'email est requis",
+      "passwordRequired": "Le mot de passe est requis",
+      "fullnameRequired": "Le nom complet est requis",
+      "passwordMinLength": "Le mot de passe doit comporter au moins 6 caractères",
+      "invalidLanguage": "Langue invalide",
+      "languageRequired": "La langue est requise",
+      "placeholderMissing": "Texte de remplacement manquant pour {{key}}",
+      "passwordMinLength": "Le mot de passe doit comporter au moins 6 caractères"
     },
     "navigation": {
-      "home": "Accueil",
+      "accueil": "Accueil",
       "categories": "Catégories",
       "inventory": "Inventaire",
       "allRecipes": "Toutes les Recettes",
@@ -158,7 +160,9 @@
       "categories": {
         "loading": "Chargement des Catégories...",
         "newSection": "Nouvelle Section",
-        "addSectionModalTitle": "Ajouter Nouvelle Section"
+        "addSectionModalTitle": "Ajouter Nouvelle Section",
+        "addNewSection": "Ajouter Nouvelle Section",
+        "sectionName": "Nom de la Section"
       },
       "categoryRecipes": {
         "preparationsTitle": "Préparations",
@@ -174,7 +178,8 @@
         "title": "Toutes les Recettes",
         "retry": "Réessayer",
         "noSearchResults": "Aucune recette ne correspond à votre recherche",
-        "noRecipesFound": "Aucune recette trouvée"
+        "noRecipesFound": "Aucune recette trouvée",
+        "servings": "portions"
       },
       "search": {
         "searchPlaceholder": "Rechercher par nom de plat",
@@ -232,11 +237,13 @@
           "passwordUpdateFailed": "Échec de la mise à jour du mot de passe.",
           "passwordsDoNotMatch": "Les nouveaux mots de passe ne correspondent pas.",
           "currentPasswordRequired": "Le mot de passe actuel est requis pour changer le mot de passe.",
-          "newPasswordRequired": "Le nouveau mot de passe ne peut pas être vide."
+          "newPasswordRequired": "Le nouveau mot de passe ne peut pas être vide.",
+          "emailUpdateFailed": "Échec de la mise à jour de l'adresse e-mail."
         },
         "success": {
           "profileUpdated": "Profil mis à jour avec succès.",
-          "passwordUpdated": "Mot de passe mis à jour avec succès."
+          "passwordUpdated": "Mot de passe mis à jour avec succès.",
+          "emailUpdateInitiated": "E-mail de confirmation envoyé à {{email}}. Veuillez vérifier votre nouvelle adresse e-mail pour confirmer le changement."
         },
         "info": {
           "noChanges": "Aucun changement détecté.",
@@ -244,7 +251,9 @@
         },
         "newEmail": "Nouvel E-mail",
         "newEmailPlaceholder": "Entrez la nouvelle adresse e-mail",
-        "updateEmail": "Mettre à Jour E-mail"
+        "updateEmail": "Mettre à Jour E-mail",
+        "manageKitchens": "Gérer les Cuisines",
+        "goToManageKitchens": "Aller à Gérer les Cuisines"
       },
       "dishDetail": {
         "loading": "Chargement du Plat...",
@@ -258,7 +267,7 @@
         "noComponents": "Aucun composant listé pour ce plat.",
         "directionsTitle": "Instructions",
         "notesTitle": "Notes",
-        "errorMessage": "Une erreur est survenue lors de l'envoi de votre commentaire. Veuillez réessayer."
+        "errorMessage": "Une erreur s'est produite lors de l'envoi des commentaires. Veuillez réessayer."
       },
       "preparationDetail": {
         "loading": "Chargement de la Préparation...",
@@ -273,7 +282,8 @@
         "scaleSuffix": "x échelle",
         "preparationsUsedTitle": "Préparations Utilisées",
         "rawIngredientsTitle": "Ingrédients Bruts",
-        "noComponents": "Aucun composant listé pour cette préparation."
+        "noComponents": "Aucun ingrédient listé pour cette préparation.",
+        "yieldLabel": "Rendement"
       },
       "createRecipe": {
         "nameLabel": "Nom de la Recette *",
@@ -322,15 +332,14 @@
         "editPreparationTitle": "Modifier Préparation",
         "confirmParsedTitle": "Confirmer Recette Analysée",
         "createTitle": "Créer Nouvelle Recette",
-        "adjustServingsLabelProportions": "Ajuster Portions (Seulement pour Proportions)",
+        "adjustServingsLabelProportions": "Ajuster Portions (Proportions Seulement)",
         "updateRecipeButton": "Mettre à Jour Recette",
-        "confirmSaveButton": "Confirmer & Enregistrer",
+        "confirmSaveButton": "Confirmer et Enregistrer",
         "saveRecipeButton": "Enregistrer Recette",
         "searchNoResults": "Aucun composant correspondant trouvé.",
         "createButtonLabel": "+ Créer \"{{query}}\"",
         "searchPlaceholderComponents": "Tapez pour rechercher ingrédients ou préparations",
-        "prepSuffix": "(Prépa)",
-        "prepSuffixShort": "(Prépa)"
+        "prepSuffix": "(Prép)"
       },
       "createPreparation": {
         "title": "Créer une Préparation",
@@ -351,31 +360,30 @@
       },
       "support": {
         "title": "Support",
-        "helpAndSupport": "Aide & Support",
-        "about": "À Propos"
+        "helpAndSupport": "Aide et Commentaires",
+        "about": "À Propos",
+        "sendFeedbackTitle": "Envoyer des Commentaires",
+        "feedbackPlaceholder": "Décrivez votre problème ou suggestion...",
+        "sendFeedbackButton": "Envoyer Commentaires",
+        "feedbackEmptyError": "Veuillez entrer votre message de commentaire.",
+        "feedbackSuccess": "Commentaires envoyés avec succès. Merci !",
+        "feedbackError": "Échec de l'envoi des commentaires. Veuillez réessayer plus tard."
       },
       "help": {
-        "title": "Aide & Support",
-        "feedbackTitle": "Envoyer un Commentaire",
-        "feedbackLabel": "Votre Avis",
-        "feedbackPlaceholder": "Comment pouvons-nous améliorer ROACook?",
-        "submitButton": "Envoyer le Commentaire",
-        "successTitle": "Merci!",
-        "successMessage": "Votre commentaire a été envoyé avec succès.",
-        "errorTitle": "Erreur",
-        "errorMessage": "Une erreur est survenue lors de l'envoi de votre commentaire. Veuillez réessayer."
-      },
-      "manageKitchens": {
-        "title": "Gérer Vos Cuisines",
-        "noKitchens": "Vous n'êtes membre d'aucune cuisine",
-        "switchKitchenTitle": "Changer de Cuisine",
-        "switchKitchenMessage": "Vous avez changé de cuisine avec succès. L'application va se mettre à jour pour afficher le contenu de cette cuisine.",
-        "leaveKitchenTitle": "Quitter la Cuisine",
-        "leaveKitchenMessage": "Êtes-vous sûr de vouloir quitter \"{{name}}\" ? Vous perdrez l'accès à toutes les recettes de cette cuisine.",
-        "leaveButton": "Quitter"
+        "title": "Aide et Commentaires",
+        "feedbackTitle": "Envoyer des Commentaires",
+        "feedbackLabel": "Votre Message :",
+        "feedbackPlaceholder": "Entrez ici vos commentaires, rapport de bug ou suggestion...",
+        "submitButton": "Envoyer Commentaires",
+        "errorTitle": "Erreur d'Envoi",
+        "successTitle": "Commentaires Envoyés",
+        "successMessage": "Merci pour vos commentaires !"
       },
       "about": {
-        "moreToCome": "Plus à venir !"
+        "title": "À Propos de ROACook",
+        "version": "Version",
+        "description": "ROACook aide les cuisines de restaurant à gérer leurs recettes efficacement.",
+        "developer": "Développé par ROA"
       }
     },
     "alerts": {
@@ -405,21 +413,21 @@
       "errorSavingRecipeTitle": "Erreur lors de l'enregistrement de la recette",
       "errorSavingRecipeDefault": "Une erreur inattendue s'est produite. Veuillez réessayer.",
       "errorSavingRecipeKitchenIdMissing": "Impossible d'enregistrer la recette : Aucune cuisine active sélectionnée.",
-      "confirmDeleteTitle": "[TRANSLATE] Confirm Delete",
-      "confirmDeleteMessage": "[TRANSLATE] Are you sure you want to delete this item? This action cannot be undone.",
-      "unsavedChangesTitle": "[TRANSLATE] Unsaved Changes",
-      "unsavedChangesMessage": "[TRANSLATE] You have unsaved changes. Are you sure you want to leave?",
-      "errorAddComponentFailed": "[TRANSLATE] Failed to add component: {{error}}",
-      "errorUpdateComponentFailed": "[TRANSLATE] Failed to update component: {{error}}",
-      "errorRemoveComponentFailed": "[TRANSLATE] Failed to remove component: {{error}}",
-      "errorSaveRecipeMessage": "[TRANSLATE] There was an error saving the recipe: {{error}}",
-      "recipeSaveSuccessTitle": "[TRANSLATE] Recipe Saved",
-      "recipeSaveSuccessMessage": "[TRANSLATE] Recipe \"{{recipeName}}\" saved successfully!",
-      "duplicateDishTitle": "[TRANSLATE] Duplicate Dish Name",
-      "duplicateDishReplaceMessage": "[TRANSLATE] A dish with the name \"{{dishName}}\" already exists. Replacing it will overwrite its current content.",
-      "duplicatePrepTitle": "[TRANSLATE] Duplicate Preparation Name",
-      "duplicatePrepActionReplace": "[TRANSLATE] Replace Existing",
-      "duplicatePrepActionNew": "[TRANSLATE] Use New Name",
+      "confirmDeleteTitle": "Confirmer la suppression",
+      "confirmDeleteMessage": "Êtes-vous sûr de vouloir supprimer cet élément ? Cette action ne peut pas être annulée.",
+      "unsavedChangesTitle": "Modifications non enregistrées",
+      "unsavedChangesMessage": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir partir ?",
+      "errorAddComponentFailed": "Échec de l'ajout du composant : {{error}}",
+      "errorUpdateComponentFailed": "Échec de la mise à jour du composant : {{error}}",
+      "errorRemoveComponentFailed": "Échec de la suppression du composant : {{error}}",
+      "errorSaveRecipeMessage": "Une erreur s'est produite lors de l'enregistrement de la recette : {{error}}",
+      "recipeSaveSuccessTitle": "Recette enregistrée",
+      "recipeSaveSuccessMessage": "Recette \"{{recipeName}}\" enregistrée avec succès !",
+      "duplicateDishTitle": "Nom de plat dupliqué",
+      "duplicateDishReplaceMessage": "Un plat portant le nom \"{{dishName}}\" existe déjà. Le remplacer écrasera son contenu actuel.",
+      "duplicatePrepTitle": "Nom de préparation dupliqué",
+      "duplicatePrepActionReplace": "Remplacer l'existant",
+      "duplicatePrepActionNew": "Utiliser un nouveau nom",
       "warningCannotCreatePrepInPrep": "Impossible de créer une nouvelle préparation directement dans une autre. Veuillez la créer séparément d'abord.",
       "errorCreatingIngredient": "Erreur lors de la création de l'ingrédient : {{name}}",
       "errorCreatingIngredientNoKitchen": "Impossible de créer l'ingrédient : Aucune cuisine active sélectionnée.",
@@ -457,6 +465,30 @@
         "scaleSuffix": "x échelle",
         "servingsSuffix": "Portions"
       }
+    },
+    "errors": {
+      "genericMessage": "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter le support si le problème persiste."
+    },
+    "kitchens": {
+      "manageTitle": "Gérer les Cuisines",
+      "createKitchenTitle": "Créer Nouvelle Cuisine",
+      "joinKitchenTitle": "Rejoindre Cuisine Existante",
+      "kitchenNameLabel": "Nom de la Cuisine",
+      "kitchenNamePlaceholder": "Entrez le nom de la cuisine",
+      "createButton": "Créer Cuisine",
+      "joinButton": "Rejoindre Cuisine",
+      "searchPlaceholder": "Rechercher des cuisines à rejoindre...",
+      "noKitchensFound": "Aucune cuisine trouvée correspondant à votre recherche.",
+      "leaveKitchenConfirmTitle": "Quitter la Cuisine",
+      "leaveKitchenConfirmMessage": "Êtes-vous sûr de vouloir quitter '{{kitchenName}}'?",
+      "leaveButton": "Quitter",
+      "errorCreateFailed": "Échec de la création de la cuisine.",
+      "errorJoinFailed": "Échec de la jonction à la cuisine.",
+      "errorLeaveFailed": "Échec de la sortie de la cuisine.",
+      "errorFetchFailed": "Échec de la récupération des cuisines.",
+      "successCreate": "Cuisine '{{kitchenName}}' créée avec succès.",
+      "successJoin": "Rejoint '{{kitchenName}}' avec succès.",
+      "successLeave": "Quitté '{{kitchenName}}' avec succès."
     }
   }
 } 

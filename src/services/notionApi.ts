@@ -1,4 +1,9 @@
-import { submitToNotion } from './api';
+import { Client } from '@notionhq/client';
+import Constants from 'expo-constants';
+import { reportToNotion, NotionTicketData } from './notionService';
+
+const notionApiKey = process.env.EXPO_PUBLIC_NOTION_API_KEY;
+const notionDatabaseId = process.env.EXPO_PUBLIC_NOTION_DATABASE_ID;
 
 interface FeedbackData {
   feedbackText: string;
@@ -15,46 +20,40 @@ interface ErrorReportData {
   severity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
-export const submitFeedback = async (data: FeedbackData): Promise<boolean> => {
-  try {
-    const payload = {
-      feedbackText: data.feedbackText,
-      kitchenName: data.kitchenName || 'Unknown',
-      userId: data.userId || 'Anonymous',
-      timestamp: new Date().toISOString(),
-      isError: false,
-      title: `Feedback: ${data.feedbackText.substring(0, 50)}${data.feedbackText.length > 50 ? '...' : ''}`,
+interface FeedbackParams {
+  feedbackText: string;
+  userId?: string;
+  kitchenName?: string;
+}
+
+export const submitFeedback = async (params: FeedbackParams): Promise<boolean> => {
+  const ticketData: NotionTicketData = {
+    userMessage: params.feedbackText,
+    userName: params.userId ?? 'Anonymous',
+    kitchenName: params.kitchenName ?? 'N/A',
+    logContent: `User Feedback Submitted:\n----------------------\n${params.feedbackText}`,
     };
     
-    return await submitToNotion(payload);
-  } catch (error) {
-    console.error('Error submitting feedback:', error);
-    return false;
-  }
+  return await reportToNotion(ticketData);
 };
 
 export const submitErrorReport = async (data: ErrorReportData): Promise<boolean> => {
   try {
-    const payload = {
-      errorMessage: data.errorMessage,
-      errorStack: data.errorStack || 'No stack trace available',
-      componentName: data.componentName || 'Unknown component',
-      userId: data.userId || 'Anonymous',
-      additionalInfo: data.additionalInfo || '',
-      severity: data.severity || 'medium',
-      timestamp: new Date().toISOString(),
-      isError: true,
-      title: `Error: ${data.errorMessage.substring(0, 50)}${data.errorMessage.length > 50 ? '...' : ''}`,
+    const payload: NotionTicketData = {
+      userName: data.userId ?? 'System',
+      kitchenName: 'N/A',
+      userMessage: `Error Report [${data.severity}]: ${data.errorMessage}`,
+      error: new Error(data.errorMessage),
+      logContent: `Component: ${data.componentName ?? 'Unknown'}\nSeverity: ${data.severity ?? 'medium'}\nAdditional Info: ${data.additionalInfo ?? 'None'}\n\nStack Trace:\n${data.errorStack ?? 'Not available'}`,
     };
     
-    return await submitToNotion(payload);
+    return await reportToNotion(payload);
   } catch (error) {
     console.error('Error submitting error report:', error);
     return false;
   }
 };
 
-// Utility function to create an error handler that can be used in catch blocks
 export const reportError = (componentName: string, userId?: string) => {
   return (error: any, additionalInfo?: string, severity?: ErrorReportData['severity']) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -71,7 +70,6 @@ export const reportError = (componentName: string, userId?: string) => {
       console.error('Failed to report error:', e);
     });
     
-    // Return the original error for further handling
     return error;
   };
 }; 

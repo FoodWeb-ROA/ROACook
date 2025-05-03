@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -46,7 +45,7 @@ const SupportScreen = () => {
     onPress?: () => void,
   ) => {
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.settingItem}
         onPress={onPress}
         disabled={!onPress}
@@ -70,10 +69,10 @@ const SupportScreen = () => {
         showMenuButton={true}
         onMenuPress={openDrawerMenu}
       />
-      
+
       <ScrollView style={styles.container}>
         <View style={styles.section}>
-          {renderSettingItem('help-circle-outline', t('screens.support.helpAndSupport'), navigateToHelpScreen)}
+          {renderSettingItem('message-text-outline', t('screens.support.sendFeedbackTitle'), navigateToHelpScreen)}
           {renderSettingItem('information-outline', t('screens.support.about'), navigateToAboutScreen)}
         </View>
       </ScrollView>
@@ -91,6 +90,8 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: SIZES.padding * 2,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
   settingItem: {
     flexDirection: 'row',
@@ -101,8 +102,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
   },
   settingItemLeft: {
     flexDirection: 'row',

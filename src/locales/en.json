@@ -53,13 +53,13 @@
       "logout": "Logout",
       "info": "Info",
       "update": "Update",
-      "cancel": "Cancel",
       "unknownIngredient": "Unknown Ingredient",
       "unknownComponent": "Unknown Component",
       "unexpectedError": "An unexpected error occurred",
       "ofReferenceIngredient": "of {{ingredient}}",
       "replace": "Replace",
-      "create": "Create"
+      "create": "Create",
+      "done": "Done"
     },
     "validation": {
       "required": "{{field}} is required",
@@ -70,7 +70,10 @@
       "passwordMinLength": "Password must be at least 6 characters",
       "invalidLanguage": "Invalid language",
       "languageRequired": "Language is required",
-      "placeholderMissing": "Placeholder text missing for {{key}}"
+      "placeholderMissing": "Placeholder text missing for {{key}}",
+      "emailPasswordRequired": "Please enter both email and password",
+      "allFieldsRequired": "Please enter email, password, and username",
+      "passwordLength": "Password must be at least 6 characters long"
     },
     "navigation": {
       "home": "Home",
@@ -350,18 +353,23 @@
       "support": {
         "title": "Support",
         "helpAndSupport": "Help & Support",
-        "about": "About"
+        "about": "About",
+        "sendFeedbackTitle": "Send Feedback",
+        "feedbackPlaceholder": "Describe your issue or suggestion...",
+        "sendFeedbackButton": "Send Feedback",
+        "feedbackEmptyError": "Please enter your feedback message.",
+        "feedbackSuccess": "Feedback sent successfully. Thank you!",
+        "feedbackError": "Failed to send feedback. Please try again later."
       },
       "help": {
         "title": "Help & Support",
-        "feedbackTitle": "Send Feedback",
-        "feedbackLabel": "Your Feedback",
-        "feedbackPlaceholder": "How can we improve ROACook?",
+        "feedbackTitle": "Submit Feedback",
+        "feedbackLabel": "Your Message:",
+        "feedbackPlaceholder": "Enter your feedback, bug report, or suggestion here...",
         "submitButton": "Submit Feedback",
-        "successTitle": "Thank You!",
-        "successMessage": "Your feedback has been submitted successfully.",
-        "errorTitle": "Error",
-        "errorMessage": "There was an error submitting your feedback. Please try again."
+        "errorTitle": "Submission Error",
+        "successTitle": "Feedback Submitted",
+        "successMessage": "Thank you for your feedback!"
       },
       "manageKitchens": {
         "title": "Manage Your Kitchens",
@@ -373,7 +381,11 @@
         "leaveButton": "Leave"
       },
       "about": {
-        "moreToCome": "More to come!"
+        "moreToCome": "More to come!",
+        "title": "About ROACook",
+        "version": "Version",
+        "description": "ROACook helps restaurant kitchens manage their recipes efficiently.",
+        "developer": "Developed by ROA"
       }
     },
     "alerts": {
@@ -456,6 +468,30 @@
         "scaleSuffix": "x scale",
         "servingsSuffix": "Servings"
       }
+    },
+    "errors": {
+      "genericMessage": "An unexpected error occurred. Please try again or contact support if the issue persists."
+    },
+    "kitchens": {
+      "manageTitle": "Manage Kitchens",
+      "createKitchenTitle": "Create New Kitchen",
+      "joinKitchenTitle": "Join Existing Kitchen",
+      "kitchenNameLabel": "Kitchen Name",
+      "kitchenNamePlaceholder": "Enter the name of the kitchen",
+      "createButton": "Create Kitchen",
+      "joinButton": "Join Kitchen",
+      "searchPlaceholder": "Search for kitchens to join...",
+      "noKitchensFound": "No kitchens found matching your search.",
+      "leaveKitchenConfirmTitle": "Leave Kitchen",
+      "leaveKitchenConfirmMessage": "Are you sure you want to leave '{{kitchenName}}'?",
+      "leaveButton": "Leave",
+      "errorCreateFailed": "Failed to create kitchen.",
+      "errorJoinFailed": "Failed to join kitchen.",
+      "errorLeaveFailed": "Failed to leave kitchen.",
+      "errorFetchFailed": "Failed to fetch kitchens.",
+      "successCreate": "Kitchen '{{kitchenName}}' created successfully.",
+      "successJoin": "Successfully joined '{{kitchenName}}'.",
+      "successLeave": "Successfully left '{{kitchenName}}'."
     }
   }
 } 

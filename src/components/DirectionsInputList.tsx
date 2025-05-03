@@ -5,17 +5,23 @@ import { useTranslation } from 'react-i18next';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 
 interface DirectionsInputListProps {
-  initialDirections?: string[];
+  directions?: string[];
   onDirectionsUpdate: (directions: string[]) => void;
 }
 
 const DirectionsInputList: React.FC<DirectionsInputListProps> = ({
-  initialDirections,
+  directions,
   onDirectionsUpdate,
 }) => {
   const { t } = useTranslation();
 
-  const [internalDirections, setInternalDirections] = useState<string[]>(initialDirections || ['']);
+  const [internalDirections, setInternalDirections] = useState<string[]>(directions || ['']);
+
+  useEffect(() => {
+    if (directions && JSON.stringify(directions) !== JSON.stringify(internalDirections)) {
+      setInternalDirections(directions);
+    }
+  }, [directions]);
 
   useEffect(() => {
     onDirectionsUpdate(internalDirections);
