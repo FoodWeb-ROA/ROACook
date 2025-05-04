@@ -640,12 +640,19 @@ const CreateRecipeScreen = () => {
       console.log(`Operation type: ${operationType}`);
       // --- Resolve Dish Name (Create/Update Check) --- //
       if (!targetDishId) { // Only resolve if creating a new dish
-        const resolveResult = await resolveDish(trimmedDishName, activeKitchenId);
+        // --- FIX: Pass t function, not activeKitchenId ---
+        const resolveResult = await resolveDish(trimmedDishName, t);
         console.log("Dish resolve result:", resolveResult);
         if (resolveResult.mode === 'existing' && resolveResult.id) {
+          // This handles the theoretical 'existing' mode (currently unused by resolveDish)
           targetDishId = resolveResult.id;
           operationType = 'update';
           console.log(`Resolved to existing dish ID: ${targetDishId}, switching to update.`);
+        } else if (resolveResult.mode === 'overwrite' && resolveResult.id) {
+           // >>> FIX: Explicitly handle 'overwrite' mode <<<
+           targetDishId = resolveResult.id;
+           operationType = 'update';
+           console.log(`Resolved to overwrite existing dish ID: ${targetDishId}, switching to update.`);
         } else if (resolveResult.mode === 'cancel') {
           console.log("Dish save cancelled by user.");
           setSubmitting(false);
@@ -711,8 +718,8 @@ const CreateRecipeScreen = () => {
                    }
         } else {
                    // If the sub-component is an ingredient, resolve it using resolveIngredient
-                   // Requires ingredient name and kitchen ID.
-                   const ingResolveResult = await resolveIngredient(subComp.name.trim(), activeKitchenId);
+                   // --- FIX: Pass t function, not activeKitchenId ---
+                   const ingResolveResult = await resolveIngredient(subComp.name.trim(), t);
                    
                    // Handle different resolution modes - Trust resolver to return ID if successful
                    if ((ingResolveResult.mode === 'existing' || ingResolveResult.mode === 'new') && ingResolveResult.id) {
@@ -795,17 +802,35 @@ const CreateRecipeScreen = () => {
                   const nameToCreate = resolveResult.mode === 'rename' ? resolveResult.newName! : component.name.trim();
                   console.log(`  User confirmed creation of preparation: ${nameToCreate}`);
                   
+                  // Calculate total minutes from top-level state
+                  const prepTotalMinutes = (parseInt(totalTimeHours, 10) || 0) * 60 + (parseInt(totalTimeMinutes, 10) || 0);
+                  // Parse yield amount from top-level state
+                  const prepYieldAmount = parseFloat(servingSize);
+                  // Get yield unit from component state
+                  const prepYieldUnitId = component.prepStatePrepUnitId ?? null;
+
+                  // --- >>> ADD LOGGING <<< ---
+                  console.log(`  [handleSaveDish] Pre-createNewPreparation Log for: ${nameToCreate}`);
+                  console.log(`    Component State (Key ${component.key}):`, JSON.stringify(component, null, 2));
+                  console.log(`    Calculated prepTotalMinutes: ${prepTotalMinutes}`);
+                  console.log(`    Calculated prepYieldAmount: ${prepYieldAmount}`);
+                  console.log(`    Using prepYieldUnitId: ${prepYieldUnitId}`);
+                  // --- >>> END LOGGING <<< ---
+
                   const newPrepId = await createNewPreparation(
                     nameToCreate,
                     prepFingerprint, // Pass calculated fingerprint
-                    null,
+                    null, // _componentDetails is unused
                     {
                       components: resolvedSubComponentsInput, 
                       directions: component.prepStateInstructions || [],
-                      yieldUnitId: component.prepStatePrepUnitId ?? null, 
-                      yieldAmount: 1, // Default yield amount?
-                      totalTimeMinutes: null, // Default time?
-                      cookingNotes: null, // Default notes?
+                      yieldUnitId: prepYieldUnitId, // Use the variable captured above
+                      // Pass parsed top-level yield amount, default to 1 if NaN
+                      yieldAmount: isNaN(prepYieldAmount) ? 1 : prepYieldAmount, 
+                      // Pass calculated total minutes, default to null if 0
+                      totalTimeMinutes: prepTotalMinutes > 0 ? prepTotalMinutes : null, 
+                      // TODO: Decide where cooking notes for a new sub-prep should come from. Defaulting to null.
+                      cookingNotes: null, 
                     }
                   );
 
@@ -862,8 +887,8 @@ REMOVED BLOCK END */
           // --- Handling Ingredients --- //
           if (!ingredientId) {
             console.log(`Resolving ingredient: ${component.name}`);
-            // Pass only required args
-            const resolveResult = await resolveIngredient(component.name.trim(), activeKitchenId);
+            // --- FIX: Pass t function, not activeKitchenId ---
+            const resolveResult = await resolveIngredient(component.name.trim(), t);
             console.log(`  Resolve result: ${JSON.stringify(resolveResult)}`);
             if ((resolveResult.mode === 'existing' || resolveResult.mode === 'new') && resolveResult.id) {
               ingredientId = resolveResult.id;
@@ -890,6 +915,59 @@ REMOVED BLOCK END */
           setSubmitting(false);
                   return;
                } 
+
+        // --- >>> NEW: Update Existing Preparation Details if applicable <<< ---
+        if (component.isPreparation && component.ingredient_id && component.originalPrep) {
+            // This is an existing preparation that came from the parser.
+            // Update its details based on parsed information.
+            console.log(`Updating existing preparation details for: ${component.name} (ID: ${component.ingredient_id})`);
+        
+            // 1. Update Preparation Time
+            // --- FIX: Cast originalPrep to access nested properties ---
+            const parsedPrepTime = (component.originalPrep as any)?.total_time;
+            if (parsedPrepTime != null) { // Check if parser provided time
+                 const { error: prepUpdateError } = await supabase
+                    .from('preparations')
+                    .update({ total_time: parsedPrepTime })
+                    .eq('preparation_id', component.ingredient_id);
+                if (prepUpdateError) {
+                    console.error(`Error updating preparation time for ${component.name}:`, prepUpdateError);
+                    // Decide if this is critical - maybe just warn?
+                } else {
+                    console.log(`  Updated preparation total_time to: ${parsedPrepTime}`);
+                }
+            }
+        
+            // 2. Update Ingredient Yield (amount/unit in ingredients table)
+            // Use the unit ID matched during pre-processing (stored in component.unit_id)
+            // Use the amount parsed for the prep component itself (stored in component.originalPrep.amount)
+            // --- FIX: Cast originalPrep to access nested properties ---
+            const parsedYieldAmount = (component.originalPrep as any)?.amount;
+            const matchedYieldUnitId = component.unit_id; // Unit ID matched by recipeProcessor
+        
+            if (parsedYieldAmount != null && matchedYieldUnitId) {
+                 const { error: ingredientUpdateError } = await supabase
+                    .from('ingredients')
+                    .update({ amount: parsedYieldAmount, unit_id: matchedYieldUnitId })
+                    .eq('ingredient_id', component.ingredient_id); // Use prep ID = ingredient ID
+                 if (ingredientUpdateError) {
+                    console.error(`Error updating ingredient yield for ${component.name}:`, ingredientUpdateError);
+                    // Decide if this is critical - maybe just warn?
+                } else {
+                     console.log(`  Updated ingredient yield to: ${parsedYieldAmount} (Unit: ${matchedYieldUnitId})`);
+                }
+            }
+        
+            // 3. (Future Improvement) Update Preparation Ingredients
+            // We could potentially delete/re-insert preparation_ingredients here
+            // using component.prepStateEditableIngredients, ensuring the 'cauliflower'
+            // entry with ingredient_id=null is handled correctly (skipped or resolved).
+            // For now, we'll skip this to avoid complexity and focus on time/yield.
+            // The existing bad entry might remain until manually fixed or a dedicated prep update function is built.
+            console.log(`  Skipping update of sub-ingredients for existing prep ${component.name} in this flow.`);
+        
+        }
+        // --- >>> END: Update Existing Preparation Details <<< ---
 
         const amountNum = parseFloat(component.amount);
         const dishComponentInsert: Database['public']['Tables']['dish_components']['Insert'] = {

@@ -84,12 +84,24 @@ export const processParsedRecipe = async (
                     let subMatchedIngredient = null;
                     let subMatched = false;
                     let subMatchedUnitId: string | null = null;
+                    let subMatchedId: string | null = null; // Variable to hold the final ID
+
                     try {
                         const subCloseMatches = await findCloseIngredientFn(subIng.name);
                         if (subCloseMatches.length > 0) {
-                            subMatchedIngredient = subCloseMatches[0];
-                            subMatched = true;
-                            console.log(`    Matched sub-ingredient: ${subIng.name} -> ${subMatchedIngredient.name} (ID: ${subMatchedIngredient.ingredient_id})`);
+                            const potentialMatch = subCloseMatches[0];
+                            // >>> CRITICAL FIX: Check if the matched ID is the same as the parent prep ID <<<
+                            console.log(`    [recipeProcessor] Checking sub-ing: ${subIng.name}. Potential match: ${potentialMatch.name} (${potentialMatch.ingredient_id}). Parent Prep ID: ${matchedPrepId}`);
+                            if (potentialMatch.ingredient_id === matchedPrepId) {
+                                console.log(`    Sub-ingredient '${subIng.name}' matched parent prep ID '${matchedPrepId}'. Treating as unmatched.`);
+                                // Do not set subMatchedIngredient or subMatchedId, leave them null/false
+                            } else {
+                                // Match is valid (not the parent prep)
+                                subMatchedIngredient = potentialMatch;
+                                subMatchedId = potentialMatch.ingredient_id; // Store the valid ID
+                                subMatched = true;
+                                console.log(`    Matched sub-ingredient: ${subIng.name} -> ${subMatchedIngredient.name} (ID: ${subMatchedId})`);
+                            }
                         } else {
                             console.log(`    No close match found for sub-ingredient: ${subIng.name}`);
                         }
@@ -107,14 +119,14 @@ export const processParsedRecipe = async (
 
                     initialPrepStateIngredients.push({
                         key: `prep-sub-${subIng.name}-${Date.now()}`,
-                        ingredient_id: subMatched ? subMatchedIngredient?.ingredient_id : null,
+                        ingredient_id: subMatchedId, // Use the validated/filtered ID
                         name: subIng.name || '',
                         amountStr: String(subIng.amount ?? ''),
                         unitId: subMatchedUnitId,
                         isPreparation: false, // Sub-components within a prep are treated as ingredients here
                         unit: subIng.unit || '',
                         item: subIng.item || '',
-                        matched: subMatched, 
+                        matched: subMatched, // Reflects if a *valid* match was found
                     } as any);
                 }
             } else {
