@@ -292,7 +292,7 @@
         "servingSizePlaceholder": "ej., 4",
         "servingUnitLabel": "Unidad de Porción *",
         "servingItemLabel": "Elemento de Porción (ej., \"pechuga\", \"rollo\", \"rebanada\")",
-        "servingItemPlaceholder": "Descripción manual o seleccionar...",
+        "servingItemPlaceholder": "Tipo de Pieza (ej. rebanada)",
         "ingredientsTitle": "Ingredientes",
         "noRawIngredients": "Aún no se han añadido ingredientes crudos.",
         "preparationsTitle": "Preparaciones",

@@ -115,8 +115,8 @@ const CreateRecipeScreen = () => {
   const [cookingNotes, setCookingNotes] = useState('');
   const [servingItem, setServingItem] = useState(''); // State for serving item description
   
-  // State for the list of components to be added
-  const [components, setComponents] = useState<ComponentInput[]>([]); 
+  // MODIFIED: Initialize components state directly from route params if available
+  const [components, setComponents] = useState<ComponentInput[]>(route.params?.initialComponents ?? []); 
 
   // --- UI State --- 
   const [loading, setLoading] = useState(false); // For initial data load
@@ -299,6 +299,8 @@ const CreateRecipeScreen = () => {
 
   // --- Effects --- (Now defined AFTER ALL top-level hooks including search)
   useEffect(() => {
+    // Screen is loading if base data is loading, or editing data is loading
+    // REMOVED isMappingParsedData from condition
     const isLoading = loadingSections || loadingUnits || loadingComponents || (isEditing && (loadingDish || loadingPrep));
     setIsScreenLoading(isLoading);
   }, [loadingSections, loadingUnits, loadingComponents, isEditing, loadingDish, loadingPrep]);
@@ -386,174 +388,56 @@ const CreateRecipeScreen = () => {
     }
   }, [components, isEditing]);
 
-  // Effect to populate form from parsed recipe data
+  // --- ADDED BACK: Effect to populate top-level form fields from parsed recipe data --- 
   useEffect(() => {
-    if (!isConfirming || isScreenLoading) return;
-    if (!parsedRecipe) return; 
+    // Only run if confirming (coming from parser) and units are loaded
+    if (!isConfirming || loadingUnits || !parsedRecipe) return;
 
-    console.log("Populating form from parsed recipe:", parsedRecipe);
+    console.log("[Effect] Populating top-level form fields from parsed recipe:", parsedRecipe);
 
-    // --- Populate form fields directly (Dish Name, Directions, Time, Servings etc.) ---
+    // Set top-level fields
     setDishName(parsedRecipe.recipe_name || '');
     setDirections(parsedRecipe.instructions || ['']);
-    const totalMinutes = parsedRecipe.total_time || 30;
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    setTotalTimeHours(String(hours));
-    setTotalTimeMinutes(String(minutes));
+    setNumServings(parsedRecipe.num_servings || 1);
+    setOriginalServings(parsedRecipe.num_servings || 1); // Set base for scaling
     setServingSize(String(parsedRecipe.serving_size || 1));
     setCookingNotes(parsedRecipe.cook_notes || '');
-    const initialParsedServings = parsedRecipe.num_servings ?? 1;
-    setNumServings(initialParsedServings);
-    setOriginalServings(initialParsedServings);
+    // Assuming total_time from parser is in minutes
+    const parsedMinutes = parsedRecipe.total_time || 30;
+    setTotalTimeHours(String(Math.floor(parsedMinutes / 60)));
+    setTotalTimeMinutes(String(parsedMinutes % 60));
     setServingItem(parsedRecipe.serving_item || '');
-    // --- End Form Field Population ---
 
-    // Declare matchedServingUnitId here, BEFORE mapParsedComponents is defined
-    let matchedServingUnitId: string | null = null; 
-
-    // --- Define mapParsedComponents INSIDE useEffect --- 
-    const mapParsedComponents = async () => {
-      const mappedComponents: ComponentInput[] = [];
-      
-      if (!parsedRecipe.components) {
-        setComponents([]); 
-        return;
-      }
-      
+    // Match the top-level serving unit
       const unitsMap = new Map<string, string>(); 
       units.forEach((u: Unit) => { 
         if(u.unit_name) unitsMap.set(u.unit_name.toLowerCase(), u.unit_id);
         if (u.abbreviation) unitsMap.set(u.abbreviation.toLowerCase(), u.unit_id);
       });
-
-      // Match the top-level serving unit (assign to outer scope variable)
       const parsedServingUnit = parsedRecipe.serving_unit?.toLowerCase().trim();
-      // Remove internal 'let' or 'const' declaration for matchedServingUnitId here
+    let matchedServingUnitId: string | null = null;
       if (parsedServingUnit && unitsMap.has(parsedServingUnit)) {
-          matchedServingUnitId = unitsMap.get(parsedServingUnit) || null; // Assign to outer variable
+        matchedServingUnitId = unitsMap.get(parsedServingUnit) || null;
           setServingUnitId(matchedServingUnitId); 
+        console.log(`  Matched serving unit: '${parsedServingUnit}' -> ID: ${matchedServingUnitId}`);
       } else if (parsedServingUnit) {
-          console.warn(`Parsed serving unit "${parsedRecipe.serving_unit}" not found.`);
-      }
-      
-      for (const ing of parsedRecipe.components) {
-        let matchedIngredient = null;
-        let matched = false;
-        let matchedUnitId: string | null = null;
-        let matchedPrepId: string | null = null; // Variable to hold matched prep ID
-        
-        try {
-          if (ing.ingredient_type !== 'Preparation') {
-            // Lookup for raw ingredients
-            const closeMatches = await findCloseIngredient(ing.name);
-            if (closeMatches.length > 0) {
-              matchedIngredient = closeMatches[0];
-              matched = true;
-            }
-          } else {
-            // Lookup for existing preparations by name
-            // REMOVED incorrect type assertion
-            // const prepExists = await checkPreparationNameExists(ing.name);
-            // MODIFIED: Get the actual ID if the prep name exists
-            matchedPrepId = await checkPreparationNameExists(ing.name);
-            // MODIFIED: Logic to handle boolean result
-            // if (prepExists) {
-            if (matchedPrepId) { // Check if we got an ID back
-              console.log(`Preparation '${ing.name}' exists with ID: ${matchedPrepId}. Marking as matched.`);
-              matched = true; // Mark as matched
-              // matchedPrepId remains null here. We don't have the ID yet.
-              // The save logic will handle finding/creating based on fingerprint.
-            } else {
-              console.log(`No existing preparation found for: ${ing.name}. Will be treated as new.`);
-            }
-            // END MODIFIED Logic
-          }
-        } catch (error) { console.error(`Error matching component ${ing.name}:`, error); }
-        
-        const parsedUnit = ing.unit?.toLowerCase().trim();
-        if (parsedUnit) {
-            matchedUnitId = unitsMap.get(parsedUnit) || null;
-        }
-
-        let initialPrepStateIngredients: EditablePrepIngredient[] | null = null;
-        let initialPrepStateUnitId: string | null = null;
-        let initialPrepStateInstructions: string[] | null = null;
-
-        if (ing.ingredient_type === 'Preparation') {
-            initialPrepStateInstructions = ing.instructions || [];
-            initialPrepStateUnitId = matchedUnitId; 
-            initialPrepStateIngredients = [];
-            if (ing.components) {
-                for (const subIng of ing.components) {
-                    let subMatchedIngredient = null;
-                    let subMatched = false;
-                    let subMatchedUnitId: string | null = null;
-                    try {
-                        const subCloseMatches = await findCloseIngredient(subIng.name);
-                        if (subCloseMatches.length > 0) {
-                            subMatchedIngredient = subCloseMatches[0];
-                            subMatched = true;
-                        }
-                    } catch (error) { console.error(`Error matching sub-ingredient ${subIng.name}:`, error); }
-
-                    const subParsedUnit = subIng.unit?.toLowerCase().trim();
-                    if (subParsedUnit) {
-                        subMatchedUnitId = unitsMap.get(subParsedUnit) || null;
-                    }
-
-                    initialPrepStateIngredients.push({
-                        key: `prep-sub-${subIng.name}-${Date.now()}`,
-                        ingredient_id: subMatched ? subMatchedIngredient?.ingredient_id : null,
-                        name: subMatched ? subMatchedIngredient?.name || subIng.name : (subIng.name || 'Unknown Ingredient'),
-                        amountStr: String(subIng.amount ?? ''),
-                        unitId: subMatchedUnitId,
-                        isPreparation: false, 
-                        unit: subIng.unit, 
-                        item: subIng.item,
-                        // @ts-ignore 
-                        matched: subMatched, 
-                    });
-                }
-            }
-        }
-        
-        // Determine the final ingredient ID string
-        // MODIFIED: Use null for matchedPrepId if prepExists was true but ID wasn't fetched
-        // MODIFIED AGAIN: Directly use matchedPrepId if found, otherwise use matchedIngredient ID, fallback to empty string
-        const finalIngredientId = matchedPrepId ? matchedPrepId : (matchedIngredient?.ingredient_id ? matchedIngredient.ingredient_id : '');
-        console.log(`[Map Flow] Determined finalIngredientId for ${ing.name}: ${finalIngredientId} (Type: ${typeof finalIngredientId})`); // Log ID before push
-
-        mappedComponents.push({
-          key: `parsed-${ing.name}-${Date.now()}`,
-          ingredient_id: finalIngredientId, // Use the determined ID
-          name: matchedPrepId ? ing.name : (matchedIngredient?.name || ing.name), // Use parsed name if it's a matched prep
-          amount: String(ing.amount || ''), 
-          unit_id: matchedUnitId, 
-          isPreparation: ing.ingredient_type === 'Preparation',
-          originalPrep: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing as ParsedIngredient) : undefined,
-          subIngredients: ing.ingredient_type?.toLowerCase() === 'preparation' ? (ing.components ?? null) : null,
-          item: ing.item || null,
-          matched: matched,
-          prepStateEditableIngredients: initialPrepStateIngredients,
-          prepStatePrepUnitId: initialPrepStateUnitId, 
-          prepStateInstructions: initialPrepStateInstructions,
-        });
-      }
-      
-      setComponents(mappedComponents);
-    };
-    // --- END mapParsedComponents Definition ---
-    
-    mapParsedComponents(); // Execute the async mapping function
-
-    // Set default serving unit if it wasn't matched (use outer scope variable)
-    if (!matchedServingUnitId && units.length > 0) { 
+        console.warn(`  Parsed serving unit "${parsedRecipe.serving_unit}" not found in units map.`);
+        // Set default serving unit if not matched
         const defaultUnit = units.find((u: Unit) => u.unit_name.toLowerCase() === 'serving') || units[0];
         setServingUnitId(defaultUnit?.unit_id || null);
+        console.log(`  Set default serving unit ID: ${defaultUnit?.unit_id}`);
+    } else if (units.length > 0) {
+        // Set default if no unit was parsed at all
+        const defaultUnit = units.find((u: Unit) => u.unit_name.toLowerCase() === 'serving') || units[0];
+        setServingUnitId(defaultUnit?.unit_id || null);
+        console.log(`  No serving unit parsed. Set default serving unit ID: ${defaultUnit?.unit_id}`);
     }
 
-  }, [parsedRecipe, units, loadingUnits, findCloseIngredient, isConfirming, isScreenLoading, t]);
+    // NOTE: Component mapping logic is INTENTIONALLY OMITTED here
+    // as it's now handled in HomeScreen before navigation.
+
+  }, [isConfirming, loadingUnits, parsedRecipe, units, t]); // Added units and t to dependencies
+  // --- END ADDED BACK Effect ---
 
   // --- Handlers (Placeholder/Basic Structure) --- 
 
@@ -834,7 +718,7 @@ const CreateRecipeScreen = () => {
                    if ((ingResolveResult.mode === 'existing' || ingResolveResult.mode === 'new') && ingResolveResult.id) {
                        resolvedSubId = ingResolveResult.id;
                        console.log(`    Resolved sub-ingredient ${subComp.name} to ID: ${resolvedSubId} (Mode: ${ingResolveResult.mode})`);
-                   } else {
+        } else {
                        // If no ID was returned (includes cancel or unexpected errors), fail resolution
                        console.error(`    Failed to resolve sub-ingredient ${subComp.name}. Mode: ${ingResolveResult.mode}, ID: ${ingResolveResult.id}`);
                        subResolutionFailed = true;
@@ -933,9 +817,9 @@ const CreateRecipeScreen = () => {
                   } else {
                     console.error(`  Failed to create the preparation '${nameToCreate}'. Aborting dish save.`);
                     Alert.alert(t('common.error'), t('alerts.errorCreatePreparationFailed', { name: nameToCreate }));
-                    setSubmitting(false); 
-                    return; 
-                  }
+                  setSubmitting(false); 
+                  return; 
+              }
               } else if (resolveResult.mode === 'cancel') {
                   // User cancelled the save during preparation resolution
                   console.log(`Save cancelled by user during resolution of ${component.name}.`);
@@ -964,7 +848,7 @@ const CreateRecipeScreen = () => {
                 preparationId = resolveResult.id;
                 ingredientId = resolveResult.id; // Update ingredientId as well
                 console.log(`  Resolved to existing prep ID: ${preparationId}`);
-              } else {
+                  } else {
                 console.error(`Could not resolve preparation '${component.name}' to an existing ID.`);
                 Alert.alert(t('common.error'), t('alerts.errorResolvePrepFailed', { name: component.name }));
                 setSubmitting(false);
@@ -974,7 +858,7 @@ const CreateRecipeScreen = () => {
 REMOVED BLOCK END */
           }
           // --- End Handling Preparations --- //
-        } else {
+              } else {
           // --- Handling Ingredients --- //
           if (!ingredientId) {
             console.log(`Resolving ingredient: ${component.name}`);
@@ -1265,19 +1149,19 @@ const savePrepLogic = async (existingPrepId?: string) => {
         // --- Create the ingredient entry for the preparation --- //
         const ingredientInsert = {
           name: trimmedPrepName,
-          cooking_notes: options.cookingNotes?.trim() || undefined,
-          unit_id: options.yieldUnitId,
-          amount: options.yieldAmount ?? 1,
-          kitchen_id: activeKitchenId,
-        };
+        cooking_notes: options.cookingNotes?.trim() || undefined,
+        unit_id: options.yieldUnitId,
+        amount: options.yieldAmount ?? 1,
+        kitchen_id: activeKitchenId,
+      };
+      
+      const { data: ingredientInsertData, error: ingredientError } = await supabase
+        .from('ingredients')
+        .insert(ingredientInsert)
+        .select('ingredient_id')
+        .single();
         
-        const { data: ingredientInsertData, error: ingredientError } = await supabase
-          .from('ingredients')
-          .insert(ingredientInsert)
-          .select('ingredient_id')
-          .single();
-          
-        if (ingredientError) { 
+      if (ingredientError) { 
           console.error(`Error creating ingredient row for preparation '${trimmedPrepName}':`, ingredientError);
           // Don't re-throw immediately, handle below
         } else if (!ingredientInsertData?.ingredient_id) {

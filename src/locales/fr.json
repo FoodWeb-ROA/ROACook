@@ -292,7 +292,7 @@
         "servingSizePlaceholder": "ex., 4",
         "servingUnitLabel": "Unité de Portion *",
         "servingItemLabel": "Élément de Portion (ex., \"poitrine\", \"rouleau\", \"tranche\")",
-        "servingItemPlaceholder": "Description manuelle ou sélectionner...",
+        "servingItemPlaceholder": "Type de Pièce (ex. tranche)",
         "ingredientsTitle": "Ingrédients",
         "noRawIngredients": "Aucun ingrédient brut ajouté pour le moment.",
         "preparationsTitle": "Préparations",

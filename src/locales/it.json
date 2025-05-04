@@ -277,7 +277,7 @@
         "servingSizePlaceholder": "es., 4",
         "servingUnitLabel": "Unità di Porzione *",
         "servingItemLabel": "Elemento Porzione (es., \"petto\", \"involtino\", \"fetta\")",
-        "servingItemPlaceholder": "Descrizione manuale o seleziona...",
+        "servingItemPlaceholder": "Tipo di Pezzo (es. fetta)",
         "ingredientsTitle": "Ingredienti",
         "noRawIngredients": "Nessun ingrediente crudo aggiunto ancora.",
         "preparationsTitle": "Preparazioni",

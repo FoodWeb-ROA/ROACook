@@ -241,8 +241,7 @@ const CreatePreparationScreen = () => {
     if (initialInstructions) {
         console.log("Using initial instructions state provided via params.");
     } else {
-        console.log("No initial instructions state provided, will parse...");
-        setInstructions(getPreparationInstructions(preparation));
+        console.log("Initial instructions state was not provided via params, relying on useState initializer fallback.");
     }
     
     if (initialPrepUnitId) {
@@ -852,6 +851,11 @@ const CreatePreparationScreen = () => {
                </TouchableOpacity>
            </View>
 
+           {/* --- ADDED Preparations Header --- */}
+           <Text style={styles.sectionHeader}>{t('common.preparations', 'Preparations')}</Text>
+           {/* Intentionally empty section for now, as requested header is added below ingredients */}
+           {/* --- END ADDED Header --- */}
+
            {/* ADDED: Button to search for existing Preparations */}
            <TouchableOpacity
               style={styles.addButton} // Reuse same style
@@ -868,7 +872,7 @@ const CreatePreparationScreen = () => {
           <View style={styles.section}>
               <Text style={styles.sectionHeader}>{t('screens.createPreparation.instructionsTitle')}</Text>
               <DirectionsInputList
-                 initialDirections={instructions}
+                 directions={instructions}
                  onDirectionsUpdate={setInstructions}
               />
            </View>

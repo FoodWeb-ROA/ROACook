@@ -280,7 +280,7 @@
         "servingSizePlaceholder": "e.g., 4",
         "servingUnitLabel": "Serving Unit *",
         "servingItemLabel": "Serving Item (e.g., \"breast\", \"roll\", \"slice\")",
-        "servingItemPlaceholder": "Manual description or select...",
+        "servingItemPlaceholder": "Piece Type (e.g. slice)",
         "ingredientsTitle": "Ingredients",
         "noRawIngredients": "No raw ingredients added yet.",
         "preparationsTitle": "Preparations",

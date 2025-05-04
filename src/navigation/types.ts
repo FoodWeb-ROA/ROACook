@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
-import { ParsedRecipe, ParsedIngredient, Kitchen, EditablePrepIngredient } from '../types';
+import { ParsedRecipe, ParsedIngredient, Kitchen, EditablePrepIngredient, ComponentInput } from '../types';
 import { DrawerParamList } from './AppNavigator';
 import { Ingredient, Unit, Preparation } from '../types';
 
@@ -62,6 +62,7 @@ export type RootStackParamList = {
     } | null;
     useDuplicates?: boolean;
     scaleMultiplier?: number;
+    initialComponents?: ComponentInput[];
   } | undefined;
   Inventory: undefined;
   ManageKitchens: undefined;

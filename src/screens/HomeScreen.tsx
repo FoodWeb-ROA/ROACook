@@ -34,10 +34,14 @@ import { useAuth } from '../context/AuthContext';
 import { useMenuSections, useDishes } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
 import { uploadRecipeImages } from '../services/recipeParser';
+import { processParsedRecipe } from '../utils/recipeProcessor';
 import { useTranslation } from 'react-i18next';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import { queryClient } from '../data/queryClient';
 import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
+import { useUnits } from '../hooks/useSupabase';
+import { useLookup } from '../hooks/useLookup';
+import { findCloseIngredient, checkPreparationNameExists } from '../data/dbLookup';
 
 // Helper function to chunk array with type annotations
 const chunk = <T,>(array: T[], size: number): T[][] => { // Add generic type T and return type T[][]
@@ -120,6 +124,8 @@ const HomeScreen = () => {
   // Get hooks data, including lastUpdateTime
   const { menuSections, isLoading: loadingCategories, error: categoriesError, lastUpdateTime: categoriesLastUpdate } = useMenuSections();
   const { dishes, loading: loadingDishes, error: dishesError, lastUpdateTime: dishesLastUpdate } = useDishes();
+  const { units, loading: loadingUnits } = useUnits();
+  const lookupFunctions = useLookup();
 
   const [isParsing, setIsParsing] = useState(false);
 
@@ -376,16 +382,36 @@ const HomeScreen = () => {
                 setIsParsing(true);
                 try {
                     const parsedRecipes = await uploadRecipeImages(imageUris);
-                    console.log('Parsed Recipes:', parsedRecipes);
+                    console.log('Raw Parsed Recipes:', parsedRecipes);
                     if (parsedRecipes && parsedRecipes.length > 0) {
-                        // Navigate to CreateRecipeScreen with the first parsed recipe
-                        navigation.navigate('CreateRecipe', { parsedRecipe: parsedRecipes[0] });
+                        // --- MODIFIED: Process the recipe before navigation, ensuring units are loaded ---
+                        if (!loadingUnits && units) { // Check if units are loaded
+                            console.log("Units loaded. Starting pre-processing of parsed recipe...");
+                            const initialComponents = await processParsedRecipe(
+                                parsedRecipes[0],
+                                units, 
+                                findCloseIngredient, 
+                                checkPreparationNameExists,
+                                t // Pass translation function
+                            );
+                            console.log("Finished pre-processing. Navigating...");
+                            // Navigate to CreateRecipeScreen with the first parsed recipe AND pre-processed components
+                            navigation.navigate('CreateRecipe', { 
+                                parsedRecipe: parsedRecipes[0],
+                                initialComponents: initialComponents // <-- PASS PROCESSED COMPONENTS
+                            });
+                        } else {
+                            console.warn("Units not loaded yet. Cannot process parsed recipe immediately.");
+                            // Handle this case - e.g., show alert, different loading state, or retry later
+                            Alert.alert("Processing Delay", "Recipe data is being prepared, please wait a moment."); 
+                        }
+                        // --- END MODIFIED ---
                     } else {
                         Alert.alert('Parsing Failed', 'Could not extract recipes from the provided image(s).');
                     }
-                } catch (parseError: any) {
-                    console.error('Error parsing recipe images:', parseError);
-                    Alert.alert('Parsing Error', parseError.message || 'An error occurred during parsing.');
+                } catch (processError: any) { // Catch errors from either parsing or processing
+                    console.error('Error parsing recipe images or processing recipe:', processError);
+                    Alert.alert('Processing Error', processError.message || 'An error occurred during processing.');
                 }
                 finally {
                     setIsParsing(false);

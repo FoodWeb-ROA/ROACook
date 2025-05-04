@@ -84,43 +84,44 @@ const IngredientListComponent: React.FC<IngredientListComponentProps> = ({
                  <Text style={styles.componentNameText}>
                      {capitalizeWords(item.name)}
                  </Text>
-                 <View style={styles.componentControlsContainer}>
-                     {/* Amount Input: Behavior depends on context */}
-                     <TextInput
-                         style={styles.componentInputAmount}
-                         placeholder={t('common.amount')}
-                         placeholderTextColor={COLORS.placeholder}
-                         // In PrepScreen, edit scaled amount; In RecipeScreen, edit base amount
-                         value={isPrepScreen ? formattedDisplay.amount : baseAmountStr}
-                         onChangeText={(value) => onUpdate(itemKey, isPrepScreen ? 'scaledAmountStr' : 'amount', value)}
-                         keyboardType="numeric"
-                     />
-                     {/* Unit selector */}
-                     <TouchableOpacity
-                         style={[styles.componentUnitTrigger, { marginLeft: SIZES.base }]}
-                         onPress={() => onSelectUnit(itemKey)} // Trigger parent modal
-                     >
-                         <Text style={[styles.pickerText, !itemUnitId && styles.placeholderText]}>
-                             {unitAbbr}
-                         </Text>
-                          <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
-                     </TouchableOpacity>
+                 {/* Wrapper for controls on the right */}
+                 <View style={styles.controlsWrapper}>
+                    {/* Row 1: Amount, Unit, Remove */}
+                    <View style={styles.controlsRow1}>
+                         <TextInput
+                             style={styles.componentInputAmount}
+                             placeholder={t('common.amount')}
+                             placeholderTextColor={COLORS.placeholder}
+                             value={isPrepScreen ? formattedDisplay.amount : baseAmountStr}
+                             onChangeText={(value) => onUpdate(itemKey, isPrepScreen ? 'scaledAmountStr' : 'amount', value)}
+                             keyboardType="numeric"
+                         />
+                         <TouchableOpacity
+                             style={[styles.componentUnitTrigger, { marginLeft: SIZES.base }]}
+                             onPress={() => onSelectUnit(itemKey)} // Trigger parent modal
+                         >
+                             <Text style={[styles.pickerText, !itemUnitId && styles.placeholderText]}>
+                                 {unitAbbr}
+                             </Text>
+                              <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
+                         </TouchableOpacity>
+                         <TouchableOpacity onPress={() => onRemove(itemKey)} style={styles.removeButton}>
+                             <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
+                         </TouchableOpacity>
+                    </View>
 
-                     {/* Conditionally Render Item Input */}
-                     {itemUnitId === pieceUnitId && (
-                        <TextInput
-                           style={styles.itemInput}
-                           placeholder={t('screens.createRecipe.servingItemPlaceholder', '(e.g., large)')} // Reused key
-                           placeholderTextColor={COLORS.placeholder}
-                           value={itemDesc || ''}
-                           onChangeText={(value) => onUpdate(itemKey, 'item', value)}
-                        />
+                    {/* Row 2: Item Input (Conditional) */}
+                    {itemUnitId === pieceUnitId && (
+                        <View style={styles.controlsRow2}> 
+                             <TextInput
+                                style={styles.itemInput}
+                                placeholder={t('screens.createRecipe.servingItemPlaceholder')} 
+                                placeholderTextColor={COLORS.placeholder}
+                                value={itemDesc || ''}
+                                onChangeText={(value) => onUpdate(itemKey, 'item', value)}
+                             />
+                        </View>
                      )}
-
-                     {/* Remove Button */}
-                     <TouchableOpacity onPress={() => onRemove(itemKey)} style={[styles.removeButton, itemUnitId !== pieceUnitId && { marginLeft: SIZES.base } ]}>
-                         <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
-                     </TouchableOpacity>
                  </View>
               </View>
             );
@@ -159,6 +160,22 @@ const styles = StyleSheet.create({
     flex: 0.6, // Adjust flex ratio if needed
     justifyContent: 'flex-end',
   },
+  controlsWrapper: {
+    flex: 0.6, // Takes up the right portion
+    flexDirection: 'column',
+    alignItems: 'flex-end', // Align controls to the right
+  },
+  controlsRow1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end', // Keep controls packed right
+    width: '100%', // Ensure row takes full width of wrapper
+  },
+  controlsRow2: {
+    marginTop: SIZES.base / 2, // Add space above item input
+    justifyContent: 'flex-end', // Push content (itemInput + its margin) to the right
+    width: '100%', // Ensure it spans the wrapper width to allow justifyContent to work
+  },
   componentInputAmount: {
     backgroundColor: COLORS.surface,
     color: COLORS.text,
@@ -167,9 +184,9 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     borderWidth: 1,
     borderColor: COLORS.border,
-    minWidth: 60, // Increased minWidth slightly
-    textAlign: 'right',
     fontSize: SIZES.font,
+    textAlign: 'right',
+    marginRight: 32, // Add margin equal to remove button space (approx 8 + 24)
   },
   componentUnitTrigger: {
     flexDirection: 'row',
@@ -181,13 +198,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.base,
     paddingVertical: SIZES.base / 2,
     minHeight: 36,
-    minWidth: 60, // Match input width
+    width: 80, // INCREASED fixed width
+    marginLeft: SIZES.base, // Add margin for spacing
     justifyContent: 'space-between',
   },
   pickerText: {
     ...FONTS.body3,
     color: COLORS.text,
     marginRight: 4,
+    fontSize: SIZES.font,
+    textAlign: 'right',
   },
   placeholderText: {
     color: COLORS.placeholder,
@@ -195,18 +215,17 @@ const styles = StyleSheet.create({
   itemInput: {
     backgroundColor: COLORS.surface,
     color: COLORS.text,
-    paddingHorizontal: SIZES.base,
+    paddingHorizontal: SIZES.padding,
     paddingVertical: SIZES.base / 2,
     borderRadius: SIZES.radius,
     borderWidth: 1,
     borderColor: COLORS.border,
-    minWidth: 80,
     fontSize: SIZES.font,
-    marginLeft: SIZES.base,
-    marginRight: SIZES.base,
+    textAlign: 'right',
   },
   removeButton: {
     paddingLeft: SIZES.base,
+    marginLeft: SIZES.base, // Ensure space before remove button
   },
 });
 
