@@ -40,6 +40,7 @@ import { getOfflineRecipe, saveOfflineRecipe, OfflineDishPayload, OfflinePrepara
 import { useQuery, useQueryClient } from '@tanstack/react-query'; 
 import { queryClient } from '../data/queryClient'; // Corrected import path
 import { useTypedSelector } from './useTypedSelector'; // Import useTypedSelector
+import { fetchPreparationDetailsFromDB } from '../data/dbLookup';
 
 /**
  * Custom hook to get the current active kitchen ID for the authenticated user.
@@ -659,161 +660,169 @@ export function usePreparationDetail(preparationId: string | undefined) {
       }
 
       // Fetch preparation data (requires joining with ingredients for combined info)
-      const { data: prepJoinData, error: preparationError } = await supabase
-        .from('preparations')
-        .select(`
-          *,
-          yield_unit:units!preparations_amount_unit_id_fkey (*),
-          ingredient:ingredients!preparations_preparation_id_fkey (
-            *,
-            base_unit:ingredients_unit_id_fkey(*)
-          )
-        `)
-        .eq('preparation_id', preparationId)
-        .single(); // Fetch all columns from preparations
+      // const { data: prepJoinData, error: preparationError } = await supabase
+      //   .from('preparations')
+      //   .select(`
+      //     *,
+      //     yield_unit:units!preparations_amount_unit_id_fkey (*),
+      //     ingredient:ingredients!preparations_preparation_id_fkey (
+      //       *,
+      //       base_unit:ingredients_unit_id_fkey(*)
+      //     )
+      //   `)
+      //   .eq('preparation_id', preparationId)
+      //   .single(); // Fetch all columns from preparations
 
-      // --- ADD LOGGING: Raw fetched prep data ---
-      console.log(`[usePreparationDetail] Raw prepJoinData for ${preparationId}:`, JSON.stringify(prepJoinData, null, 2));
-      // --- END LOGGING ---
+      // // --- ADD LOGGING: Raw fetched prep data ---
+      // console.log(`[usePreparationDetail] Raw prepJoinData for ${preparationId}:`, JSON.stringify(prepJoinData, null, 2));
+      // // --- END LOGGING ---
 
-      if (preparationError) throw preparationError;
-      // Safely access potentially null ingredient data
-      const ingredientDetails = prepJoinData?.ingredient as (FetchedIngredientDetail & { amount: number, kitchen_id: string | null }) | null;
-      // Type assertion for prepJoinData base properties
-      const prepBaseDetails = prepJoinData as FetchedPreparationDetail | null;
+      // if (preparationError) throw preparationError;
+      // // Safely access potentially null ingredient data
+      // const ingredientDetails = prepJoinData?.ingredient as (FetchedIngredientDetail & { amount: number, kitchen_id: string | null }) | null;
+      // // Type assertion for prepJoinData base properties
+      // const prepBaseDetails = prepJoinData as FetchedPreparationDetail | null;
 
-      if (!prepBaseDetails || !ingredientDetails) {
-        throw new Error(`Preparation ${preparationId} or its linked ingredient not found.`);
-      }
+      // if (!prepBaseDetails || !ingredientDetails) {
+      //   throw new Error(`Preparation ${preparationId} or its linked ingredient not found.`);
+      // }
 
-      // Construct the combined data for transformation
-      // Ensure all required fields are included
-      const combinedDataForTransform: FetchedPreparationDataCombined = {
-        // Fields from FetchedIngredientDetail
-        ingredient_id: ingredientDetails.ingredient_id,
-        name: ingredientDetails.name,
-        cooking_notes: ingredientDetails.cooking_notes,
-        storage_location: ingredientDetails.storage_location,
-        unit_id: ingredientDetails.unit_id,
-        base_unit: ingredientDetails.base_unit,
-        deleted: ingredientDetails.deleted,
-        kitchen_id: ingredientDetails.kitchen_id || '',
-        synonyms: ingredientDetails.synonyms,
-        // Fields from FetchedPreparationDetail (using prepBaseDetails)
-        preparation_id: prepBaseDetails.preparation_id,
-        directions: prepBaseDetails.directions,
-        total_time: prepBaseDetails.total_time,
-        yield_unit: prepBaseDetails.yield_unit,
-        amount_unit_id: prepBaseDetails.amount_unit_id, // Include amount_unit_id
-        fingerprint: prepBaseDetails.fingerprint, // Include fingerprint
-        // Fields explicitly required by FetchedPreparationDataCombined
-        amount: ingredientDetails.amount ?? 0,
-        created_at: ingredientDetails.created_at ?? null,
-        updated_at: ingredientDetails.updated_at ?? null,
-      };
+      // // Construct the combined data for transformation
+      // // Ensure all required fields are included
+      // const combinedDataForTransform: FetchedPreparationDataCombined = {
+      //   // Fields from FetchedIngredientDetail
+      //   ingredient_id: ingredientDetails.ingredient_id,
+      //   name: ingredientDetails.name,
+      //   cooking_notes: ingredientDetails.cooking_notes,
+      //   storage_location: ingredientDetails.storage_location,
+      //   unit_id: ingredientDetails.unit_id,
+      //   base_unit: ingredientDetails.base_unit,
+      //   deleted: ingredientDetails.deleted,
+      //   kitchen_id: ingredientDetails.kitchen_id || '',
+      //   synonyms: ingredientDetails.synonyms,
+      //   // Fields from FetchedPreparationDetail (using prepBaseDetails)
+      //   preparation_id: prepBaseDetails.preparation_id,
+      //   directions: prepBaseDetails.directions,
+      //   total_time: prepBaseDetails.total_time,
+      //   yield_unit: prepBaseDetails.yield_unit,
+      //   amount_unit_id: prepBaseDetails.amount_unit_id, // Include amount_unit_id
+      //   fingerprint: prepBaseDetails.fingerprint, // Include fingerprint
+      //   // Fields explicitly required by FetchedPreparationDataCombined
+      //   amount: ingredientDetails.amount ?? 0,
+      //   created_at: ingredientDetails.created_at ?? null,
+      //   updated_at: ingredientDetails.updated_at ?? null,
+      // };
 
-      // Transform the base preparation details
-      const transformedPrep = transformPreparation(combinedDataForTransform);
+      // // Transform the base preparation details
+      // const transformedPrep = transformPreparation(combinedDataForTransform);
 
-      // Fetch sub-ingredients for the preparation
-      const { data: ingredientsData, error: ingredientsError } = await supabase
-        .from('preparation_ingredients')
-        .select(`
-          *,
-          unit:units!fk_prep_ingredients_unit (*),
-          ingredient:ingredients!fk_prep_ingredients_ing (
-            name, 
-            ingredient_id
-          )
-        `)
-        .eq('preparation_id', preparationId) as { 
-            data: (FetchedPreparationIngredient & {
-                unit: DbUnit | null, 
-                ingredient: { 
-                  name: string, 
-                  ingredient_id: string, 
-                } | null 
-            })[] | null, 
-            error: any 
-        };
+      // // Fetch sub-ingredients for the preparation
+      // const { data: ingredientsData, error: ingredientsError } = await supabase
+      //   .from('preparation_ingredients')
+      //   .select(`
+      //     *,
+      //     unit:units!fk_prep_ingredients_unit (*),
+      //     ingredient:ingredients!fk_prep_ingredients_ing (
+      //       name, 
+      //       ingredient_id
+      //     )
+      //   `)
+      //   .eq('preparation_id', preparationId) as { 
+      //       data: (FetchedPreparationIngredient & {
+      //           unit: DbUnit | null, 
+      //           ingredient: { 
+      //             name: string, 
+      //             ingredient_id: string, 
+      //           } | null 
+      //       })[] | null, 
+      //       error: any 
+      //   };
 
-      if (ingredientsError) throw ingredientsError;
+      // if (ingredientsError) throw ingredientsError;
       
-      // Get list of ingredient IDs from the fetched data
-      const ingredientIds = (ingredientsData || [])
-        .map(ing => ing.ingredient?.ingredient_id)
-        .filter(id => id !== null) as string[];
+      // // Get list of ingredient IDs from the fetched data
+      // const ingredientIds = (ingredientsData || [])
+      //   .map(ing => ing.ingredient?.ingredient_id)
+      //   .filter(id => id !== null) as string[];
         
-      // Perform a separate query to check which of these IDs are also preparations
-      let preparationIdSet = new Set<string>();
-      if (ingredientIds.length > 0) {
-          const { data: prepCheckData, error: prepCheckError } = await supabase
-              .from('preparations')
-              .select('preparation_id')
-              .in('preparation_id', ingredientIds);
+      // // Perform a separate query to check which of these IDs are also preparations
+      // let preparationIdSet = new Set<string>();
+      // if (ingredientIds.length > 0) {
+      //     const { data: prepCheckData, error: prepCheckError } = await supabase
+      //         .from('preparations')
+      //         .select('preparation_id')
+      //         .in('preparation_id', ingredientIds);
               
-          if (prepCheckError) {
-              console.warn(`[usePreparationDetail] Failed to check for nested preparations:`, prepCheckError);
-              // Continue without prep checks if this fails
-          } else {
-              preparationIdSet = new Set(prepCheckData?.map(p => p.preparation_id) || []);
-          }
-      }
+      //     if (prepCheckError) {
+      //         console.warn(`[usePreparationDetail] Failed to check for nested preparations:`, prepCheckError);
+      //         // Continue without prep checks if this fails
+      //     } else {
+      //         preparationIdSet = new Set(prepCheckData?.map(p => p.preparation_id) || []);
+      //     }
+      // }
 
-      // Add transformed ingredients to the preparation object
-      transformedPrep.ingredients = (ingredientsData || []).map(ing => {
-          // Check if ingredient data exists before accessing properties
-          const ingredientName = ing.ingredient?.name || 'Unknown Ingredient';
-          const ingredientId = ing.ingredient?.ingredient_id || '';
-          // Use the result from the separate query
-          const isPreparation = preparationIdSet.has(ingredientId); 
+      // // Add transformed ingredients to the preparation object
+      // transformedPrep.ingredients = (ingredientsData || []).map(ing => {
+      //     // Check if ingredient data exists before accessing properties
+      //     const ingredientName = ing.ingredient?.name || 'Unknown Ingredient';
+      //     const ingredientId = ing.ingredient?.ingredient_id || '';
+      //     // Use the result from the separate query
+      //     const isPreparation = preparationIdSet.has(ingredientId); 
           
-          // --- ADD LOGGING: Check isPreparation flag ---
-          console.log(`[usePreparationDetail] Ingredient: ${ingredientName} (${ingredientId}), isPreparation: ${isPreparation}`);
+      //     // --- ADD LOGGING: Check isPreparation flag ---
+      //     console.log(`[usePreparationDetail] Ingredient: ${ingredientName} (${ingredientId}), isPreparation: ${isPreparation}`);
           
-          return {
-              preparation_id: ing.preparation_id || '',
-              ingredient_id: ingredientId,
-              name: ingredientName,
-              amount: ing.amount ?? 0,
-              unit: transformUnit(ing.unit),
-              isPreparation: isPreparation
-          };
-      });
+      //     return {
+      //         preparation_id: ing.preparation_id || '',
+      //         ingredient_id: ingredientId,
+      //         name: ingredientName,
+      //         amount: ing.amount ?? 0,
+      //         unit: transformUnit(ing.unit),
+      //         isPreparation: isPreparation
+      //     };
+      // });
 
-      // Construct the payload for offline caching
-      const payloadToCache: OfflinePreparationPayload = {
-        schemaVersion: 1,
-        fetchedAt: Date.now(),
-        preparation_id: transformedPrep.preparation_id,
-        name: transformedPrep.name,
-        directions: transformedPrep.directions,
-        total_time: transformedPrep.total_time,
-        yield_amount: transformedPrep.yield_amount,
-        yield_unit_id: transformedPrep.yield_unit?.unit_id ?? null,
-        yield_unit: transformedPrep.yield_unit ?? null,
-        cooking_notes: transformedPrep.cooking_notes,
-        ingredients: transformedPrep.ingredients || [],
-        fingerprint: combinedDataForTransform.fingerprint ?? null // Add fingerprint to cache payload
-      };
+      // // Construct the payload for offline caching
+      // const payloadToCache: OfflinePreparationPayload = {
+      //   schemaVersion: 1,
+      //   fetchedAt: Date.now(),
+      //   preparation_id: transformedPrep.preparation_id,
+      //   name: transformedPrep.name,
+      //   directions: transformedPrep.directions,
+      //   total_time: transformedPrep.total_time,
+      //   yield_amount: transformedPrep.yield_amount,
+      //   yield_unit_id: transformedPrep.yield_unit?.unit_id ?? null,
+      //   yield_unit: transformedPrep.yield_unit ?? null,
+      //   cooking_notes: transformedPrep.cooking_notes,
+      //   ingredients: transformedPrep.ingredients || [],
+      //   fingerprint: combinedDataForTransform.fingerprint ?? null // Add fingerprint to cache payload
+      // };
 
-      // Save to offline cache
-      try {
-        await saveOfflineRecipe(preparationId, 'prep', payloadToCache); // Correct: Use 'prep'
-      } catch (cacheError) {
-        console.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId}:`, cacheError);
-        // Non-fatal, continue without caching
-      }
+      // // Save to offline cache
+      // try {
+      //   await saveOfflineRecipe(preparationId, 'prep', payloadToCache); // Correct: Use 'prep'
+      // } catch (cacheError) {
+      //   console.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId}:`, cacheError);
+      //   // Non-fatal, continue without caching
+      // }
 
-      // --- ADD LOGGING: Final transformed prep object before return ---
-      console.log(`[usePreparationDetail] Final transformedPrep object for ${preparationId}:`, JSON.stringify(transformedPrep, null, 2));
-      // --- END LOGGING ---
+      // // --- ADD LOGGING: Final transformed prep object before return ---
+      // console.log(`[usePreparationDetail] Final transformedPrep object for ${preparationId}:`, JSON.stringify(transformedPrep, null, 2));
+      // // --- END LOGGING ---
+
+      // return {
+      //   preparation: transformedPrep,
+      //   ingredients: transformedPrep.ingredients || [],
+      //   loading: false,
+      //   error: null
+      // };
+       const { preparation, ingredients } = await fetchPreparationDetailsFromDB(preparationId);
 
       return {
-        preparation: transformedPrep,
-        ingredients: transformedPrep.ingredients || [],
+        preparation: preparation,
+        ingredients: ingredients,
         loading: false,
-        error: null
+        error: null,
       };
     } catch (error) {
       console.error(`[usePreparationDetail] Error fetching preparation ${preparationId}:`, error);

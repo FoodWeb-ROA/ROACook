@@ -10,6 +10,22 @@ export type Ingredient = Database['public']['Tables']['ingredients']['Row'] & {
     item?: string | null; // Added: Item description for counts
 };
 
+// export interface Ingredient {
+//   name: string;
+//   synonyms: string[];
+//   ingredient_id: string;
+//   cooking_notes: string;
+//   unit_id: string;
+//   amount: number;
+//   storage_location: string;
+//   kitchen_id: string;
+//   deleted: boolean;
+
+//   isPreparation?: boolean; // Added by useIngredients hook
+//   base_unit?: Unit | null; // Potentially added by useIngredients hook
+//   item?: string | null; // Added: Item description for counts
+// }
+
 export type MenuSection = Database['public']['Tables']['menu_section']['Row'];
 
 // Define Preparation type based on DB + transformed structure
@@ -23,6 +39,12 @@ export type Preparation = {
     fingerprint?: string | null; // ADDED: Fingerprint for duplicate detection
     ingredients: PreparationIngredient[];
     cooking_notes: string | null;
+
+    amount_unit_id?: string | null;
+    yield_unit_id?: string | null;
+    // ingredient_id: string;
+    created_at?: string | null;
+    updated_at?: string | null;
 };
 
 // Define PreparationIngredient based on transformed structure

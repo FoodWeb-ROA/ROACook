@@ -136,7 +136,8 @@ const AppNavigator = () => {
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
   const session = useTypedSelector(state => state.auth.session);
   const loading = useTypedSelector(state => state.auth.loading);
-  const kitchenId = useCurrentKitchenId();
+  // const kitchenId = useCurrentKitchenId();
+  const kitchenId = useTypedSelector(state => state.kitchens.activeKitchenId);
 
   console.log(`--- AppNavigator render: loading=${loading}, session=${session ? 'exists' : 'null'}`);
 
@@ -162,14 +163,18 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={session ? "MainDrawer" : "Login"}
+        // initialRouteName={session ? "MainDrawer" : "Login"}
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: COLORS.background },
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         }}
       >
-        <Stack.Screen
+        {
+          session
+          ?
+          <>
+          <Stack.Screen
           name="MainDrawer"
           component={DrawerNavigator}
           options={{ cardStyleInterpolator: CardStyleInterpolators.forNoAnimation }}
@@ -224,11 +229,15 @@ const AppNavigator = () => {
           name="Preferences"
           component={PreferencesScreen}
         />
-        <Stack.Screen
+          </>
+          :
+          <Stack.Screen
           name="Login"
           component={LoginScreen}
           options={{ headerShown: false }}
         />
+
+        }
       </Stack.Navigator>
     </NavigationContainer>
   );

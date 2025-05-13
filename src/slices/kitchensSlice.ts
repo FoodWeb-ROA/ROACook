@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Kitchen } from '../types';
 
-interface KitchensState {
+export interface KitchensState {
   kitchens: Kitchen[];
   activeKitchenId: string | null;
   loading: boolean;
