@@ -36,6 +36,8 @@ const IngredientListComponent: React.FC<IngredientListComponentProps> = ({
   amountLabel, // Use the passed label
   isPrepScreen = false, // Default to false
 }) => {
+  console.log('--- IngredientListComponent: passed ingredients:', ingredients);
+
   const { t } = useTranslation();
 
   // Helper to get string amount, handling both types

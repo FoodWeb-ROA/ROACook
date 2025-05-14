@@ -39,21 +39,21 @@ interface SignUpValues {
 
 const LoginScreen = () => {
 	const dispatch = useDispatch();
-	const navigation = useNavigation<LoginScreenNavigationProp>();
+	// const navigation = useNavigation<LoginScreenNavigationProp>();
 	const [selectedForm, setSelectedForm] = useState<'SignIn' | 'SignUp'>(
 		'SignIn'
 	);
 
 	const errorSelector = useTypedSelector(state => state.auth.error);
-	const session = useTypedSelector(state => state.auth.session);
+	// const session = useTypedSelector(state => state.auth.session);
 	const { t } = useTranslation();
 
-	useEffect(() => {
-		if (session) {
-			console.log("Session detected in LoginScreen, navigating to MainDrawer...");
-			navigation.replace('MainDrawer');
-		}
-	}, [session, navigation]);
+	// useEffect(() => {
+	// 	if (session) {
+	// 		console.log("Session detected in LoginScreen, navigating to MainDrawer...");
+	// 		navigation.replace('MainDrawer');
+	// 	}
+	// }, [session, navigation]);
 
 	const signInValidationSchema = Yup.object().shape({
 		email: Yup.string()

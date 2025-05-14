@@ -1,88 +1,94 @@
-import { call } from 'redux-saga/effects';
+import { call, SagaReturnType } from 'redux-saga/effects';
 import { supabase } from '../../data/supabaseClient';
-import { User } from '@supabase/supabase-js';
-import { CheckUser, CreateUser } from './types';
+import { User, CheckUser, CreateUser } from './types';
 import { ILanguage, IUser } from '../../types';
+import { PostgrestSingleResponse } from '@supabase/supabase-js';
 
-export function* checkKitchenUserLink(
+export function* checkExistingUser(
 	userId: string
-): Generator<any, { data: { kitchen_id: string } | null; error: any }, any> {
-	console.log(`* checkKitchenUserLink: Checking kitchen link for user ID: ${userId}`);
+): Generator<any, CheckUser, any> {
+	console.log(`* checkExistingUser: Checking user with ID: ${userId}`);
 
-	// Type for the array response
-	type KitchenUserResponse = { data: { kitchen_id: string }[] | null; error: any };
-
-	// Fetch all links, remove .maybeSingle()
-	const checkResponse: KitchenUserResponse = yield call(() =>
-		supabase
-			.from('kitchen_users')
-			.select('kitchen_id')
-			.eq('user_id', userId)
-			// Removed .maybeSingle()
+	const checkResponse: CheckUser = yield call(() =>
+		supabase.from('users').select('*').eq('user_id', userId).single()
 	);
 
-	console.log(`* checkKitchenUserLink/checkResponse (raw array):`, checkResponse);
+	console.log(`* checkExistingUser/checkResponse:`, checkResponse);
 
-	// Check for errors first
-	if (checkResponse.error) {
-		return { data: null, error: checkResponse.error };
-	}
-
-	// Check if data is an array and not empty
-	if (Array.isArray(checkResponse.data) && checkResponse.data.length > 0) {
-		// User is linked, return the first kitchen ID found
-		console.log(`* checkKitchenUserLink: Found ${checkResponse.data.length} links. Using first: ${checkResponse.data[0].kitchen_id}`);
-		return { data: { kitchen_id: checkResponse.data[0].kitchen_id }, error: null };
-	} else {
-		// No links found
-		console.log(`* checkKitchenUserLink: No kitchen links found for user.`);
-		return { data: null, error: null };
-	}
+	return checkResponse;
 }
 
-export function* linkUserToKitchen(
-	user: User
-): Generator<any, { data: any; error: any }, any> {
-	const userId = user.id;
-	const defaultKitchenId = process.env.EXPO_PUBLIC_DEFAULT_KITCHEN_ID;
+export function* insertPublicUser(
+	user: User,
+	fullname: string,
+	language: ILanguage['ISO_Code']
+): Generator<any, CreateUser, any> {
+	console.log(`* insertPublicUser: Inserting user for ${user.email}`);
 
-	if (!defaultKitchenId) {
-		const errMsg = 'EXPO_PUBLIC_DEFAULT_KITCHEN_ID is not set. Cannot link user to a kitchen.';
-		console.error(`* linkUserToKitchen: ${errMsg}`);
-		return { data: null, error: new Error(errMsg) };
-	}
-
-	console.log(`* linkUserToKitchen: Linking user ${userId} to kitchen ${defaultKitchenId}`);
-
-	// Define the shape of the data to insert into kitchen_users
-	type KitchenUserInsert = {
-		user_id: string;
-		kitchen_id: string;
-	};
-
-	const insertResponse: { data: any; error: any } = yield call(() =>
+	const insertResponse: CreateUser = yield call(() =>
 		supabase
-			.from('kitchen_users')
-			.insert<KitchenUserInsert>({
-				user_id: userId,
-				kitchen_id: defaultKitchenId
+			.from('users')
+			.insert<IUser>({
+				user_id: user.id,
+				user_fullname: fullname,
+				user_language: language,
+				user_email: user.email!
 			})
-			.select() // Select the inserted row (or handle potential errors)
-			.maybeSingle() // Use maybeSingle in case insert fails or returns nothing
+			.select('*')
+			.single()
 	);
 
-	console.log(`* linkUserToKitchen/insertResponse:`, insertResponse);
+	console.log(`* insertPublicUser/insertResponse:`, insertResponse);
 
-	// Handle potential insertion errors
-	if (insertResponse.error) {
-		console.error(`* linkUserToKitchen: Error inserting link:`, insertResponse.error);
-	}
+	return insertResponse;
+}
 
-	// We might not need to return the inserted data itself, 
-	// but the kitchen_id is important for subsequent steps.
-	// Return the kitchen_id if successful, otherwise propagate the error.
-	return {
-		data: insertResponse.error ? null : { kitchen_id: defaultKitchenId },
-		error: insertResponse.error
-	};
+export type LinkUserToDefaultKitchen = SagaReturnType<() => PostgrestSingleResponse<{ kitchen_id: string } | null>>;
+
+export function* linkUserToKitchen(
+    userId: string
+): Generator<any, LinkUserToDefaultKitchen, any> {
+    const defaultKitchenId = process.env.EXPO_PUBLIC_DEFAULT_KITCHEN_ID;
+
+    if (!defaultKitchenId) {
+        const errMsg = 'EXPO_PUBLIC_DEFAULT_KITCHEN_ID is not set. Cannot link user to a kitchen.';
+        console.error(`* linkUserToKitchen: ${errMsg}`);
+        return { data: null, error: new Error(errMsg) } as LinkUserToDefaultKitchen;
+    }
+
+    console.log(`* linkUserToKitchen: Linking user ${userId} to kitchen ${defaultKitchenId}`);
+
+    const insertResponse: LinkUserToDefaultKitchen = yield call(() =>
+        supabase
+            .from('kitchen_users')
+            .insert<{ user_id: string; kitchen_id: string }>({
+                user_id: userId,
+                kitchen_id: defaultKitchenId
+            })
+            .select('kitchen_id')
+            .maybeSingle()
+    );
+
+    console.log(`* linkUserToKitchen/insertResponse:`, insertResponse);
+
+    return insertResponse;
+}
+
+export type CheckKitchenLink = SagaReturnType<() => PostgrestSingleResponse<{ kitchen_id: string }[]>>;
+
+export function* checkKitchenUserLink(
+    userId: string
+): Generator<any, CheckKitchenLink, any> {
+    console.log(`* checkKitchenUserLink: Checking kitchen link for user ID: ${userId}`);
+
+    const checkResponse: CheckKitchenLink = yield call(() =>
+        supabase
+            .from('kitchen_users')
+            .select('kitchen_id')
+            .eq('user_id', userId)
+    );
+
+    console.log(`* checkKitchenUserLink/checkResponse:`, checkResponse);
+
+    return checkResponse;
 }

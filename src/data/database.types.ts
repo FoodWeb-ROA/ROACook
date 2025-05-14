@@ -228,15 +228,15 @@ export type Database = {
       kitchen: {
         Row: {
           kitchen_id: string
-          name: string | null
+          name: string
         }
         Insert: {
           kitchen_id?: string
-          name?: string | null
+          name?: string
         }
         Update: {
           kitchen_id?: string
-          name?: string | null
+          name?: string
         }
         Relationships: []
       }
@@ -472,6 +472,41 @@ export type Database = {
           unit_name?: string
         }
         Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string
+          updated_at: string
+          user_email: string | null
+          user_fullname: string | null
+          user_id: string
+          user_language: string | null
+        }
+        Insert: {
+          created_at?: string
+          updated_at?: string
+          user_email?: string | null
+          user_fullname?: string | null
+          user_id: string
+          user_language?: string | null
+        }
+        Update: {
+          created_at?: string
+          updated_at?: string
+          user_email?: string | null
+          user_fullname?: string | null
+          user_id?: string
+          user_language?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_user_language_fkey"
+            columns: ["user_language"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["ISO_Code"]
+          },
+        ]
       }
     }
     Views: {

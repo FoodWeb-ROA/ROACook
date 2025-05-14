@@ -19,6 +19,10 @@ export type SetSessionResponse = SagaReturnType<
 export type CheckUser = SagaReturnType<() => PostgrestSingleResponse<IUser>>;
 export type CreateUser = SagaReturnType<() => PostgrestSingleResponse<IUser>>;
 
+export type LinkUserToDefaultKitchen = SagaReturnType<() => PostgrestSingleResponse<{ kitchen_id: string } | null>>;
+
+export type CheckKitchenLink = SagaReturnType<() => PostgrestSingleResponse<{ kitchen_id: string }[]>>;
+
 export type AuthEventPayload = {
 	session: Session | null;
 };
