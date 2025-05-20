@@ -1,14 +1,37 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { Category } from '../types';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { useTranslation } from 'react-i18next';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface CategoryCardProps {
   category: Category;
   onPress: (category: Category) => void;
+  onDelete: (categoryId: string) => void;
 }
 
-const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
+const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress, onDelete }) => {
+  const { t } = useTranslation();
+
+  const handleDelete = () => {
+    Alert.alert(
+      t('common.confirmDelete', 'Confirm Delete'),
+      category.name,
+      [
+        {
+          text: t('common.cancel', 'Cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.delete', 'Delete'),
+          style: 'destructive',
+          onPress: () => onDelete(category.menu_section_id),
+        },
+      ]
+    );
+  };
+
   return (
     <TouchableOpacity 
       style={styles.container}
@@ -16,6 +39,10 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
       activeOpacity={0.8}
     >
       <Text style={styles.title}>{category.name}</Text>
+
+      <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+        <MaterialCommunityIcons name="delete" size={20} color={COLORS.error} />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 };
@@ -30,6 +57,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...SHADOWS.small,
     minHeight: 130,
+    position: 'relative',
+    overflow: 'hidden'
   },
   title: {
     fontSize: SIZES.medium,
@@ -38,6 +67,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: '100%',
   },
+  deleteButton: {
+    position: 'absolute',
+    bottom: SIZES.padding,
+    right: SIZES.padding,
+    width: SIZES.base * 4,
+    height: SIZES.base * 4,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 export default CategoryCard;

@@ -73,6 +73,15 @@ const ComponentSearchModal: React.FC<ComponentSearchModalProps> = ({
     }
   };
 
+  const filteredSearchResults = searchResults.filter(item => {
+    if (searchMode === 'ingredient') {
+      return item.isPreparation === false;
+    } else if (searchMode === 'preparation') {
+      return item.isPreparation === true;
+    }
+    return true;
+  });
+
   return (
     <Modal
       animationType="slide"
@@ -104,7 +113,8 @@ const ComponentSearchModal: React.FC<ComponentSearchModalProps> = ({
             <ActivityIndicator size="large" color={COLORS.primary} style={styles.searchLoader} />
           ) : (
             <FlatList
-              data={searchResults}
+              // data={searchResults}
+              data={filteredSearchResults}
               keyExtractor={(item) => item.ingredient_id || `search-result-${item.name}-${Math.random()}`}
               renderItem={({ item }) => (
                 <TouchableOpacity

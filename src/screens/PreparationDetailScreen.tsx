@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -25,6 +26,9 @@ import ScaleSliderInput from '../components/ScaleSliderInput';
 import { useTranslation } from 'react-i18next';
 import PreparationCard from '../components/PreparationCard';
 import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
+import { useTypedSelector } from '../hooks/useTypedSelector';
+import { supabase } from '../data/supabaseClient';
+import { queryClient } from '../data/queryClient';
 import { appLogger } from '../services/AppLogService';
 
 type PreparationDetailRouteProp = RouteProp<RootStackParamList, 'PreparationDetails'>;
@@ -36,21 +40,22 @@ const PreparationDetailScreen = () => {
   const navigation = useNavigation<PreparationDetailNavigationProp>();
   const route = useRoute<PreparationDetailRouteProp>();
   const { preparationId, recipeServingScale, prepAmountInDish } = route.params;
-  
+
+  console.log(`--- PreparationDetailScreen/route.params:`, route.params);
+
   // Determine if navigated from a dish context
   const isFromDishContext = prepAmountInDish !== null && prepAmountInDish !== undefined;
-  
-  const { preparation, ingredients, loading, error, lastUpdateTime } = usePreparationDetail(preparationId) as { 
-      preparation: Preparation | null, 
-      ingredients: (PreparationIngredient & { isPreparation?: boolean })[], 
-      loading: boolean, 
-      error: Error | null,
-      lastUpdateTime: number | null
+
+  const { preparation, ingredients, loading, error, lastUpdateTime } = usePreparationDetail(preparationId) as {
+    preparation: Preparation | null,
+    ingredients: (PreparationIngredient & { isPreparation?: boolean })[],
+    loading: boolean,
+    error: Error | null,
+    lastUpdateTime: number | null
   };
-  
-  // ADD LOG: Log ingredients received from hook
+
   appLogger.log('[PreparationDetailScreen] Received ingredients:', JSON.stringify(ingredients, null, 2));
-  
+ 
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
   const { t } = useTranslation();
   const [showBanner, setShowBanner] = useState(false);
@@ -76,7 +81,7 @@ const PreparationDetailScreen = () => {
       kg: { g: 1000 },
       ml: { l: 0.001 },
       l: { ml: 1000 },
-      tsp: { tbsp: 1/3 },
+      tsp: { tbsp: 1 / 3 },
       tbsp: { tsp: 3 },
       oz: { lb: 0.0625 },
       lb: { oz: 16 },
@@ -94,15 +99,15 @@ const PreparationDetailScreen = () => {
     const scaledQuantity = quantity * currentServingScale;
     const currentUnit = selectedUnit[ingredientId] || unit;
     let displayValue: number;
-    
+
     if (currentUnit !== unit) {
       displayValue = convertUnit(scaledQuantity, unit, currentUnit);
     } else {
-        displayValue = scaledQuantity;
+      displayValue = scaledQuantity;
     }
-    
-    return displayValue % 1 === 0 ? 
-      displayValue.toString() : 
+
+    return displayValue % 1 === 0 ?
+      displayValue.toString() :
       displayValue.toFixed(1);
   };
 
@@ -115,7 +120,7 @@ const PreparationDetailScreen = () => {
     const currentSelected = (selectedUnit[ingredientId] || baseUnitKey) as MeasurementUnit;
     const currentIndex = currentOptions.indexOf(currentSelected);
     const nextIndex = (currentIndex + 1) % currentOptions.length;
-    
+
     setSelectedUnit({
       ...selectedUnit,
       [ingredientId]: currentOptions[nextIndex],
@@ -125,15 +130,15 @@ const PreparationDetailScreen = () => {
   const handleEditPress = () => {
     if (!preparationId) return;
     // Navigate to CreateRecipeScreen with preparationId for editing
-    navigation.navigate('CreateRecipe', { preparationId }); 
+    navigation.navigate('CreateRecipe', { preparationId });
   };
 
   // Use the ingredients array directly from the hook
-  const nestedPreparations = useMemo(() => 
-    ingredients?.filter(c => c.isPreparation === true) || [], 
+  const nestedPreparations = useMemo(() =>
+    ingredients?.filter(c => c.isPreparation === true) || [],
     [ingredients]
   );
-  // ADD LOG: Log nested preparations array
+
   appLogger.log('[PreparationDetailScreen] Filtered nestedPreparations:', JSON.stringify(nestedPreparations, null, 2));
   
   const rawIngredients = useMemo(() => 
@@ -203,10 +208,85 @@ const PreparationDetailScreen = () => {
 
   const handleNestedPreparationPress = (nestedPrepId: string) => {
     // Pass the currentServingScale down to the nested preparation screen
-    navigation.push('PreparationDetails', { 
-        preparationId: nestedPrepId, 
-        recipeServingScale: currentServingScale // Pass the scale down
+    navigation.push('PreparationDetails', {
+      preparationId: nestedPrepId,
+      recipeServingScale: currentServingScale // Pass the scale down
     });
+  };
+
+  const handleDeletePreparation = async () => {
+    if (!preparationId) {
+      console.warn('Attempted to delete preparation with invalid ID');
+      return;
+    }
+
+    console.log(`Checking if preparation ${preparationId} is used in any dishes...`);
+    try {
+      const { count, error: countError } = await supabase
+        .from('dish_components')
+        .select('dish_id', { count: 'exact', head: true })
+        .eq('ingredient_id', preparationId);
+
+      if (countError) throw countError;
+
+      console.log(`Preparation ${preparationId} used in ${count} dish components.`);
+
+      if (count && count > 0) {
+        Alert.alert(
+          'Cannot Delete Preparation',
+          `This preparation cannot be deleted because it is used in ${count} dish component(s). Please remove it from the relevant dishes first.`,
+          [{ text: t('common.ok', 'OK') }]
+        );
+        return;
+      }
+    } catch (checkError: any) {
+      console.error(`Error checking preparation usage for ${preparationId}:`, JSON.stringify(checkError, null, 2));
+
+      Alert.alert(t('common.error', 'Error'), t('alerts.errorCheckingPrepUsage', 'Failed to check if preparation is used.'));
+      return;
+    }
+
+    Alert.alert(
+      t('alerts.confirmDeletePrepTitle', 'Confirm Deletion'),
+      t('alerts.confirmDeletePrepMessage', 'Are you sure you want to delete this preparation? This action cannot be undone.'),
+      [
+        {
+          text: t('common.cancel', 'Cancel'),
+          style: 'cancel',
+          onPress: () => console.log('Delete cancelled'),
+        },
+        {
+          text: t('common.delete', 'Delete'),
+          style: 'destructive',
+          onPress: async () => {
+            console.log(`Preparation ${preparationId} is not used. Proceeding with deletion...`);
+            try {
+              const { error: deletePrepError } = await supabase
+                .from('preparations')
+                .delete()
+                .eq('preparation_id', preparationId);
+
+
+              if (deletePrepError) {
+                console.error(`Error deleting preparation ${preparationId}:`, deletePrepError);
+                Alert.alert(t('common.error', 'Error'), t('alerts.errorDeletingPrep', 'Failed to delete preparation.'));
+              } else {
+                console.log(`Preparation ${preparationId} deleted successfully.`);
+                Alert.alert(t('common.success', 'Success'), t('alerts.prepDeletedSuccessfully', 'Preparation deleted successfully.'));
+
+                queryClient.invalidateQueries({ queryKey: ['preparations'] });
+
+                navigation.goBack();
+              }
+            } catch (error: any) {
+              console.error("Unexpected error during preparation deletion:", error);
+              Alert.alert(t('common.error', 'Error'), error.message || t('alerts.errorDeletingPrep', 'Failed to delete preparation.'));
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
@@ -222,15 +302,15 @@ const PreparationDetailScreen = () => {
           </TouchableOpacity>
         }
       />
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}
       >
-        <Image 
-          source={{ uri: 'https://via.placeholder.com/600x400' }} 
-          style={styles.preparationImage} 
+        <Image
+          source={{ uri: 'https://via.placeholder.com/600x400' }}
+          style={styles.preparationImage}
         />
-        
+
         <View style={styles.contentContainer}>
           <View style={styles.headerContainer}>
             <View style={styles.infoContainer}>
@@ -240,18 +320,18 @@ const PreparationDetailScreen = () => {
                   {preparation.total_time} {t('screens.preparationDetail.minutesSuffix')}
                 </Text>
               </View>
-              
+
               {/* CONDITIONAL: Display Amount in Recipe OR Base Yield */}
               {isFromDishContext && (
                 // --- Display Amount Used In Recipe ---
                 (() => {
                   const actualAmountNeeded = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
                   let displayAmountText = 'N/A';
-                  
+
                   const prepUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
                   const formattedAmount = formatQuantityAuto(actualAmountNeeded, prepUnitAbbr);
                   displayAmountText = `${formattedAmount.amount} ${formattedAmount.unit}`;
-                  
+
                   return (
                     <View style={styles.infoItem}>
                       <MaterialCommunityIcons name="scale" size={18} color={COLORS.textLight} />
@@ -263,7 +343,7 @@ const PreparationDetailScreen = () => {
                 })()
               )}
               {!isFromDishContext && preparation.yield_amount !== null && (
-                 // --- Display Base Yield (Scaled) ---
+                // --- Display Base Yield (Scaled) ---
                 (() => {
                   const baseYield = preparation.yield_amount ?? 0;
                   const scale = recipeServingScale ?? 1; // Apply recipe scale if passed directly
@@ -282,47 +362,46 @@ const PreparationDetailScreen = () => {
               )}
             </View>
           </View>
-          
+
           {/* --- Raw Ingredients Section --- */}
           {rawIngredients.length > 0 && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.preparationDetail.rawIngredientsTitle')}</Text>
               {rawIngredients.map((ingredient) => {
                 const unitKey = (ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
                 const isToggleable = ingredient.unit && (unitOptions[unitKey]?.length || 0) > 1;
                 const displayUnit = (selectedUnit[ingredient.ingredient_id] || ingredient.unit?.abbreviation || ingredient.unit?.unit_name) as MeasurementUnit;
-                
+
                 // --- CONDITIONAL SCALING for main ingredient list ---
                 let amountToDisplay = 0;
                 const baseIngAmount = ingredient.amount ?? 0;
-                
+
                 if (isFromDishContext) {
-                    // Scale based on amount used in dish
-                    const prepBaseYield = preparation.yield_amount;
-                    const scaledTargetAmount = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
-                    
-                    // Scale based on total yield
-                    const scaleForDishUsage = (prepBaseYield !== null && prepBaseYield > 0 && prepAmountInDish !== null)
-                                          ? (prepAmountInDish / prepBaseYield) // Use unscaled prepAmountInDish for ratio
-                                          : 1; // Fallback scale
-                    amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
+                  // Scale based on amount used in dish
+                  const prepBaseYield = preparation.yield_amount;
+                  const scaledTargetAmount = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
+
+                  // Scale based on total yield
+                  const scaleForDishUsage = (prepBaseYield !== null && prepBaseYield > 0 && prepAmountInDish !== null)
+                    ? (prepAmountInDish / prepBaseYield) // Use unscaled prepAmountInDish for ratio
+                    : 1; // Fallback scale
+                  amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
                 } else {
-                    // Scale only by recipeServingScale (if viewing prep directly)
-                    amountToDisplay = baseIngAmount * (recipeServingScale ?? 1);
-                    // --- ADD LOGGING for direct view ---
-                    appLogger.log(`[PrepDetailDirectView] Ingredient: ${ingredient.name}, Base: ${baseIngAmount}, Scale: ${recipeServingScale ?? 1}, Display: ${amountToDisplay}`);
-                    // --- END LOGGING ---
-                }
+
+                  // Scale only by recipeServingScale (if viewing prep directly)
+                  amountToDisplay = baseIngAmount * (recipeServingScale ?? 1);
+
+                  appLogger.log(`[PrepDetailDirectView] Ingredient: ${ingredient.name}, Base: ${baseIngAmount}, Scale: ${recipeServingScale ?? 1}, Display: ${amountToDisplay}`);
                 // --- END CONDITIONAL SCALING ---
-                
+
                 // Display value might still use unit conversion
                 let displayValue: number;
                 if (unitKey && displayUnit !== unitKey) {
-                    displayValue = convertUnit(amountToDisplay, unitKey, displayUnit);
+                  displayValue = convertUnit(amountToDisplay, unitKey, displayUnit);
                 } else {
-                    displayValue = amountToDisplay;
+                  displayValue = amountToDisplay;
                 }
-                
+
                 // --- MODIFIED FORMATTING ---
                 // Use formatQuantityAuto for consistency, pass null for item
                 const formattedOutput = formatQuantityAuto(displayValue, displayUnit);
@@ -337,20 +416,20 @@ const PreparationDetailScreen = () => {
                 return (
                   <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
                     <Text style={styles.ingredientName}>{capitalizeWords(ingredient.name)}</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.ingredientQuantity}
                       onPress={() => toggleUnit(ingredient.ingredient_id, ingredient.unit)}
                       disabled={!isToggleable}
                     >
                       <Text style={styles.ingredientQuantityText}>
-                        {/* MODIFIED: Use formattedUnit from formatQuantityAuto */} 
+                        {/* MODIFIED: Use formattedUnit from formatQuantityAuto */}
                         {formattedValue} {formattedUnit}
                       </Text>
                       {isToggleable && (
-                        <MaterialCommunityIcons 
-                          name="swap-horizontal" 
-                          size={16} 
-                          color={COLORS.primary} 
+                        <MaterialCommunityIcons
+                          name="swap-horizontal"
+                          size={16}
+                          color={COLORS.primary}
                         />
                       )}
                     </TouchableOpacity>
@@ -359,61 +438,61 @@ const PreparationDetailScreen = () => {
               })}
             </View>
           )}
-          
+
           {/* --- Preparations Section --- */}
           {nestedPreparations.length > 0 && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.preparationDetail.preparationsTitle')}</Text>
               {nestedPreparations.map((component) => {
-                 // For nested preparations, we need to fetch their details when clicked
-                 // Construct a basic DishComponent structure for PreparationCard props
-                 const prepComponentForCard: DishComponent = {
-                   dish_id: '', // Not relevant here
-                   ingredient_id: component.ingredient_id,
-                   name: component.name,
-                   amount: component.amount, // Base amount from parent prep recipe
-                   unit: component.unit,
-                   isPreparation: true,
-                   // We don't have full nested details here, card will show limited info
-                   preparationDetails: {
-                     preparation_id: component.ingredient_id, // ID of the nested prep
-                     name: component.name,
-                     directions: null,
-                     total_time: null, // Not available here
-                     yield_unit: null, // Not available here
-                     yield_amount: null, // Not available here
-                     cooking_notes: null,
-                     ingredients: [], // Not available here
-                   },
-                   rawIngredientDetails: null
-                 };
+                // For nested preparations, we need to fetch their details when clicked
+                // Construct a basic DishComponent structure for PreparationCard props
+                const prepComponentForCard: DishComponent = {
+                  dish_id: '', // Not relevant here
+                  ingredient_id: component.ingredient_id,
+                  name: component.name,
+                  amount: component.amount, // Base amount from parent prep recipe
+                  unit: component.unit,
+                  isPreparation: true,
+                  // We don't have full nested details here, card will show limited info
+                  preparationDetails: {
+                    preparation_id: component.ingredient_id, // ID of the nested prep
+                    name: component.name,
+                    directions: null,
+                    total_time: null, // Not available here
+                    yield_unit: null, // Not available here
+                    yield_amount: null, // Not available here
+                    cooking_notes: null,
+                    ingredients: [], // Not available here
+                  },
+                  rawIngredientDetails: null
+                };
                 return (
-                  <View key={component.ingredient_id} style={styles.componentWrapper}> 
+                  <View key={component.ingredient_id} style={styles.componentWrapper}>
                     <PreparationCard
                       // Pass the constructed basic details
-                      component={prepComponentForCard} 
+                      component={prepComponentForCard}
                       onPress={() => handleNestedPreparationPress(component.ingredient_id)}
                       // Label indicates amount used *in this parent preparation's recipe*
-                      amountLabel={t('common.amount')} 
+                      amountLabel={t('common.amount')}
                       // Scale based on the PARENT prep's scaling
-                      scaleMultiplier={currentServingScale} 
+                      scaleMultiplier={currentServingScale}
                     />
                   </View>
                 );
               })}
             </View>
           )}
-          
+
           {/* Show message if NO components exist at all */}
           {nestedPreparations.length === 0 && rawIngredients.length === 0 && (
-             <View style={styles.sectionContainer}> 
-                <Text style={styles.noIngredientsText}>{t('screens.preparationDetail.noComponents', 'No components listed for this preparation.')}</Text>
-             </View>
+            <View style={styles.sectionContainer}>
+              <Text style={styles.noIngredientsText}>{t('screens.preparationDetail.noComponents', 'No components listed for this preparation.')}</Text>
+            </View>
           )}
-          
+
           {/* --- Instructions Section --- */}
           {directions.length > 0 && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.preparationDetail.directionsTitle')}</Text>
               {directions.map((instruction: string, index: number) => (
                 <View key={`instruction-${index}`} style={styles.instructionItem}>
@@ -425,10 +504,10 @@ const PreparationDetailScreen = () => {
               ))}
             </View>
           )}
-          
+
           {/* --- Notes Section --- */}
           {preparation.cooking_notes && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.preparationDetail.cookingNotesTitle')}</Text>
               <Text style={styles.notesText}>
                 {preparation.cooking_notes}
@@ -436,6 +515,18 @@ const PreparationDetailScreen = () => {
             </View>
           )}
         </View>
+
+        <View style={styles.deleteButtonContainer}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeletePreparation}
+          >
+            <Text style={styles.deleteButtonText}>
+              {t('common.delete', 'Delete')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -626,6 +717,23 @@ const styles = StyleSheet.create({
     ...FONTS.body2,
     color: COLORS.textLight,
     textAlign: 'center',
+  },
+
+  deleteButtonContainer: {
+    paddingHorizontal: SIZES.padding,
+    marginTop: SIZES.padding * 2,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.error,
+    borderRadius: SIZES.radius,
+    paddingVertical: SIZES.padding,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    ...FONTS.h3,
+    color: COLORS.white,
+    fontWeight: 'bold',
   },
 });
 

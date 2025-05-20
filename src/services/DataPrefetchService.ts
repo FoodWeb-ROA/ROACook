@@ -95,10 +95,14 @@ class DataPrefetchService {
         `)
         .eq('kitchen_id', kitchenId);
 
+        // console.log('[DataPrefetchService] fetchDishes', fetchDishes);
+
       const { data: dishesData, error: dishesError } = await query.order('dish_name') as { 
         data: FetchedDishData[] | null, 
         error: any 
       };
+
+       console.log("[Prefetch] dishesData after fetch:", dishesData);
 
       if (dishesError) throw dishesError;
       if (!dishesData) return [];
@@ -171,6 +175,11 @@ class DataPrefetchService {
         // Also prefetch individual dish details
         // This sets the detail data in the query cache
         const dishDetail = { ...transformDish(dish as FetchedDishData), components: transformedComponents };
+
+      console.log(`[Prefetch] Caching dish detail for ${dish.dish_id}`);
+      console.log(`[Prefetch] dishDetail object reference:`, dishDetail);
+      console.log(`[Prefetch] dishDetail.components reference:`, dishDetail.components);
+
         await queryClient.prefetchQuery({
           queryKey: ['dish', { dish_id: dish.dish_id }],
           queryFn: () => Promise.resolve(dishDetail)

@@ -5,7 +5,8 @@ import {
   Text,
   FlatList,
   ActivityIndicator,
-  TouchableOpacity
+  TouchableOpacity,
+  Alert
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -19,6 +20,9 @@ import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
 import { useDishes } from '../hooks/useSupabase';
 import { useTranslation } from 'react-i18next';
+import { queryClient } from '../data/queryClient';
+import { supabase } from '../data/supabaseClient';
+import { useTypedSelector } from '../hooks/useTypedSelector';
 
 type CategoryRecipesRouteProp = RouteProp<RootStackParamList, 'CategoryRecipes'>;
 type CategoryRecipesNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -28,6 +32,7 @@ const CategoryRecipesScreen = () => {
   const route = useRoute<CategoryRecipesRouteProp>();
   const { categoryId, categoryName } = route.params;
   const { t } = useTranslation();
+  const activeKitchenId = useTypedSelector(state => state.kitchens.activeKitchenId);
 
   // Fetch dishes filtered by menu section id (assuming useDishes supports this)
   const { dishes, loading: loadingDishes, error: dishesError } = useDishes(categoryId);
@@ -63,6 +68,31 @@ const CategoryRecipesScreen = () => {
     );
   }
 
+  const handleDeleteDish = async (dishId: string) => {
+    if (!activeKitchenId) {
+      Alert.alert(t('common.error'), t('screens.categoryRecipes.error.missingKitchenId'));
+      return;
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('dishes')
+        .delete()
+        .eq('dish_id', dishId)
+        .eq('kitchen_id', activeKitchenId);
+
+      if (deleteError) throw deleteError;
+
+      queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: activeKitchenId, menu_section_id: categoryId }] });
+
+      queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: activeKitchenId }] });
+
+    } catch (error: any) {
+      console.error('Error deleting dish:', error);
+      Alert.alert(t('common.error'), t('screens.categoryRecipes.error.deleteDish', { dishName: dishes?.find(d => d.dish_id === dishId)?.dish_name || t('common.dish'), error: error.message }));
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -79,6 +109,7 @@ const CategoryRecipesScreen = () => {
                 dish={item}
                 onPress={handleDishPress}
                 onPreparationPress={handlePreparationPress}
+                onDelete={handleDeleteDish}
               />
               {/* Removed the renderPreparations call to avoid duplicate sections */}
             </View>

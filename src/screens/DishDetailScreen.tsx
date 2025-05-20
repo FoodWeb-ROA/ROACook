@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -26,6 +27,9 @@ import ScaleSliderInput from '../components/ScaleSliderInput';
 import { useTranslation } from 'react-i18next';
 import { transformDishComponent } from '../utils/transforms';
 import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
+import { supabase } from '../data/supabaseClient';
+import { useTypedSelector } from '../hooks/useTypedSelector';
+import { queryClient } from '../data/queryClient';
 import { appLogger } from '../services/AppLogService';
 
 type DishDetailRouteProp = RouteProp<RootStackParamList, 'DishDetails'>;
@@ -36,8 +40,8 @@ const DishDetailScreen = () => {
   const route = useRoute<DishDetailRouteProp>();
   const { dishId } = route.params;
   const { t } = useTranslation();
-  
-  const kitchenId = useCurrentKitchenId();
+
+  const kitchenId = useTypedSelector(state => state.kitchens.activeKitchenId);
   const [isKitchenIdLoading, setIsKitchenIdLoading] = useState(true);
 
   useEffect(() => {
@@ -46,8 +50,8 @@ const DishDetailScreen = () => {
     }
   }, [kitchenId]);
 
-  const { 
-    dish, 
+  const {
+    dish,
     loading: dishLoading,
     error,
     lastUpdateTime
@@ -60,12 +64,12 @@ const DishDetailScreen = () => {
   ), [targetServings, originalServings]);
 
   // Separate components into preparations ingredients
-  const preparationComponents = useMemo(() => 
-    dish?.components?.filter(c => c.isPreparation) || [], 
+  const preparationComponents = useMemo(() =>
+    dish?.components?.filter(c => c.isPreparation) || [],
     [dish?.components]
   );
-  const RawIngredients = useMemo(() => 
-    dish?.components?.filter(c => !c.isPreparation) || [], 
+  const RawIngredients = useMemo(() =>
+    dish?.components?.filter(c => !c.isPreparation) || [],
     [dish?.components]
   );
 
@@ -100,9 +104,9 @@ const DishDetailScreen = () => {
       return;
     }
     // Pass the actual amount of the prep used in the dish
-    navigation.navigate('PreparationDetails', { 
-      preparationId, 
-      recipeServingScale: servingScale, 
+    navigation.navigate('PreparationDetails', {
+      preparationId,
+      recipeServingScale: servingScale,
       prepAmountInDish: component.amount // Pass the component's amount
     });
   };
@@ -118,7 +122,7 @@ const DishDetailScreen = () => {
   const calculateScaledAmount = (baseAmount: number | null, c: DishComponent) => {
     // ... function body ...
   };
-  
+
   // Add type for parameter
   const formatQuantity = (c: DishComponent) => {
     // ... function body ...
@@ -129,41 +133,41 @@ const DishDetailScreen = () => {
 
   // Re-add inline formatTime function
   const formatTime = (interval: string | null): string => {
-      if (!interval) return 'N/A';
-      // Handle HH:MM:SS format
-      if (interval.includes(':')) {
-          const parts = interval.split(':');
-          const hours = parseInt(parts[0], 10);
-          const minutes = parseInt(parts[1], 10);
-          // Ignore seconds if present parts[2]
-          if (isNaN(hours) || isNaN(minutes)) return 'Invalid Time';
-          if (hours > 0) return `${hours}h ${minutes}m`;
-          if (minutes > 0) return `${minutes} min`;
-          return '0 min'; // Or handle cases with only seconds if needed
-      } 
-      // Handle ISO 8601 Duration format (e.g., PT1H30M)
-      else if (interval.startsWith('PT')) {
-          const match = interval.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-           if (match) {
-              const hours = parseInt(match[1] || '0', 10);
-              const minutes = parseInt(match[2] || '0', 10);
-              // const seconds = parseInt(match[3] || '0', 10);
-              if (hours > 0) return `${hours}h ${minutes}m`;
-              if (minutes > 0) return `${minutes} min`;
-              // Handle seconds if needed: if (seconds > 0) return `${seconds} sec`;
-              return '0 min';
-          }
+    if (!interval) return 'N/A';
+    // Handle HH:MM:SS format
+    if (interval.includes(':')) {
+      const parts = interval.split(':');
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      // Ignore seconds if present parts[2]
+      if (isNaN(hours) || isNaN(minutes)) return 'Invalid Time';
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      if (minutes > 0) return `${minutes} min`;
+      return '0 min'; // Or handle cases with only seconds if needed
+    }
+    // Handle ISO 8601 Duration format (e.g., PT1H30M)
+    else if (interval.startsWith('PT')) {
+      const match = interval.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      if (match) {
+        const hours = parseInt(match[1] || '0', 10);
+        const minutes = parseInt(match[2] || '0', 10);
+        // const seconds = parseInt(match[3] || '0', 10);
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        if (minutes > 0) return `${minutes} min`;
+        // Handle seconds if needed: if (seconds > 0) return `${seconds} sec`;
+        return '0 min';
       }
-      // Assume it might be just minutes as a number string
-      const minutesAsNum = parseInt(interval, 10);
-      if (!isNaN(minutesAsNum)) {
-          const hours = Math.floor(minutesAsNum / 60);
-          const minutes = minutesAsNum % 60;
-          if (hours > 0) return `${hours}h ${minutes}m`;
-          return `${minutes} min`;
-      }
-      // Fallback if format is unrecognized
-      return interval; 
+    }
+    // Assume it might be just minutes as a number string
+    const minutesAsNum = parseInt(interval, 10);
+    if (!isNaN(minutesAsNum)) {
+      const hours = Math.floor(minutesAsNum / 60);
+      const minutes = minutesAsNum % 60;
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      return `${minutes} min`;
+    }
+    // Fallback if format is unrecognized
+    return interval;
   };
 
   // Only show loading screen during initial load, not error
@@ -210,21 +214,21 @@ const DishDetailScreen = () => {
 
     // If it's a raw ingredient, render using simple Text
     if (!component.isPreparation) {
-        return (
-          <View key={component.ingredient_id} style={styles.ingredientItem}>
-             <Text style={styles.ingredientName}>
-                {component.name || t('common.unknownIngredient')}
-             </Text>
-             <View style={styles.ingredientQuantity}>
-                <Text style={styles.ingredientQuantityText}>
-                   {formattedComponent.amount} {formattedComponent.unit}
-                </Text>
-             </View>
+      return (
+        <View key={component.ingredient_id} style={styles.ingredientItem}>
+          <Text style={styles.ingredientName}>
+            {component.name || t('common.unknownIngredient')}
+          </Text>
+          <View style={styles.ingredientQuantity}>
+            <Text style={styles.ingredientQuantityText}>
+              {formattedComponent.amount} {formattedComponent.unit}
+            </Text>
           </View>
-        );
+        </View>
+      );
     } else {
-        // Preparation rendering remains handled by PreparationCard below
-        return null;
+      // Preparation rendering remains handled by PreparationCard below
+      return null;
     }
   };
 
@@ -243,6 +247,65 @@ const DishDetailScreen = () => {
   // ADD LOG: Log dish components just before rendering
   appLogger.log('[DishDetailScreen Render] Dish components state:', JSON.stringify(dish?.components, null, 2));
 
+  const handleDeleteDish = async () => {
+    if (!dishId) {
+      console.warn('Attempted to delete dish with invalid ID');
+      return;
+    }
+
+    if (!kitchenId) {
+      Alert.alert(
+        t('common.error'),
+        t('screens.home.error.missingKitchenId'),
+        [{ text: t('common.ok', 'OK') }]
+      );
+      console.error('Error deleting dish: No active kitchen selected.');
+      return;
+    }
+
+    Alert.alert(
+      t('alerts.confirmDeleteDishTitle', 'Confirm Deletion'),
+      t('alerts.confirmDeleteDishMessage', 'Are you sure you want to delete this dish? This action cannot be undone.'),
+      [
+        {
+          text: t('common.cancel', 'Cancel'),
+          style: 'cancel',
+          onPress: () => console.log('Delete cancelled'),
+        },
+        {
+          text: t('common.delete', 'Delete'),
+          style: 'destructive',
+          onPress: async () => {
+            console.log(`Attempting to delete dish with ID: ${dishId}`);
+            try {
+              const { error: deleteDishError } = await supabase
+                .from('dishes')
+                .delete()
+                .eq('dish_id', dishId)
+                .eq('kitchen_id', kitchenId);
+
+              if (deleteDishError) {
+                console.error(`Error deleting dish ${dishId}:`, deleteDishError);
+                Alert.alert(t('common.error', 'Error'), t('alerts.errorDeletingDish', 'Failed to delete dish.'));
+              } else {
+                console.log(`Dish ${dishId} deleted successfully.`);
+                Alert.alert(t('common.success', 'Success'), t('alerts.dishDeletedSuccessfully', 'Dish deleted successfully.'));
+
+                queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: kitchenId }] });
+
+                navigation.goBack();
+              }
+            } catch (error: any) {
+              console.error("Unexpected error during dish deletion:", error);
+              Alert.alert(t('common.error', 'Error'), error.message || t('alerts.errorDeletingDish', 'Failed to delete dish.'));
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -255,17 +318,17 @@ const DishDetailScreen = () => {
           </TouchableOpacity>
         }
       />
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}
       >
-        <Image 
-          source={{ uri: dish.imageUrl || 'https://via.placeholder.com/600x400' }} 
-          style={styles.recipeImage} 
+        <Image
+          source={{ uri: dish.imageUrl || 'https://via.placeholder.com/600x400' }}
+          style={styles.recipeImage}
         />
-        
+
         <View style={styles.contentContainer}>
-          <View style={styles.headerContainer}>            
+          <View style={styles.headerContainer}>
             <View style={styles.infoContainer}>
               {/* Display Total Servings */}
               {typeof dish.num_servings === 'number' && (
@@ -284,7 +347,7 @@ const DishDetailScreen = () => {
                   {formatTime(dish.total_time)}
                 </Text>
               </View>
-              
+
               <View style={styles.infoItem}>
                 <MaterialCommunityIcons name="silverware-fork-knife" size={18} color={COLORS.textLight} />
                 <Text style={styles.infoText}>
@@ -293,11 +356,11 @@ const DishDetailScreen = () => {
               </View>
             </View>
           </View>
-          
+
           {/* Scale Adjust Section - Now controls Target Servings */}
           {typeof dish.num_servings === 'number' && dish.num_servings > 0 && (
             <View style={styles.servingsAdjustContainer}>
-              <Text style={styles.sectionSubTitle}> 
+              <Text style={styles.sectionSubTitle}>
                 {t('screens.dishDetail.adjustServingsLabel', 'Adjust Target Servings')}
               </Text>
               <ScaleSliderInput
@@ -329,10 +392,10 @@ const DishDetailScreen = () => {
               />
             </View>
           )}
-          
+
           {/* --- Ingredients Section --- */}
           {RawIngredients.length > 0 && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.dishDetail.rawIngredientsTitle')}</Text>
               {RawIngredients.map((component) => renderComponent(component, 0))}
             </View>
@@ -340,7 +403,7 @@ const DishDetailScreen = () => {
 
           {/* --- Preparations Section --- */}
           {preparationComponents.length > 0 && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.dishDetail.preparationsTitle')}</Text>
               {preparationComponents.map((preparation) => (
                 <PreparationCard
@@ -355,35 +418,46 @@ const DishDetailScreen = () => {
 
           {/* Show message if NO components exist at all */}
           {preparationComponents.length === 0 && RawIngredients.length === 0 && (
-             <View style={styles.sectionContainer}> 
-                <Text style={styles.noIngredientsText}>{t('screens.dishDetail.noComponents')}</Text>
-             </View>
+            <View style={styles.sectionContainer}>
+              <Text style={styles.noIngredientsText}>{t('screens.dishDetail.noComponents')}</Text>
+            </View>
           )}
-          
+
           {/* --- Directions Section --- */}
           {directions.length > 0 && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.dishDetail.directionsTitle')}</Text>
               {directions.map((step: string, index: number) => (
                 <View key={`direction-${index}`} style={styles.instructionItem}>
                   <View style={styles.instructionNumber}>
-                     <Text style={styles.instructionNumberText}>{index + 1}</Text>
+                    <Text style={styles.instructionNumberText}>{index + 1}</Text>
                   </View>
                   <Text style={styles.instructionText}>{step}</Text>
                 </View>
               ))}
             </View>
           )}
-          
+
           {/* --- Notes Section --- */}
           {dish.cooking_notes && (
-            <View style={styles.sectionContainer}> 
+            <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('screens.dishDetail.notesTitle')}</Text>
               <Text style={styles.notesText}>
                 {dish.cooking_notes}
               </Text>
             </View>
           )}
+        </View>
+
+        <View style={styles.deleteButtonContainer}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteDish}
+          >
+            <Text style={styles.deleteButtonText}>
+              {t('common.delete', 'Delete')}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
       <UpdateNotificationBanner visible={showBanner} />
@@ -551,6 +625,22 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: SIZES.base,
+  },
+  deleteButtonContainer: {
+    paddingHorizontal: SIZES.padding,
+    marginTop: SIZES.padding * 2,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.error,
+    borderRadius: SIZES.radius,
+    paddingVertical: SIZES.padding,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    ...FONTS.h3,
+    color: COLORS.white,
+    fontWeight: 'bold',
   },
 });
 

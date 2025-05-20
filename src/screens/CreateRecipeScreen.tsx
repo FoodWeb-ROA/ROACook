@@ -22,7 +22,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { RootStackParamList, OnUpdatePrepAmountCallback, OnNewPreparationCreatedCallback } from '../navigation/types';
 import { supabase } from '../data/supabaseClient';
-import { Unit, MenuSection, Ingredient, RecipeKind, ParsedIngredient, ParsedRecipe, Preparation, ComponentInput, EditablePrepIngredient } from '../types';
+import { Unit, MenuSection, Ingredient, RecipeKind, ParsedIngredient, ParsedRecipe, Preparation, ComponentInput, EditablePrepIngredient, PreparationIngredient } from '../types';
 import { useMenuSections, useUnits, useIngredients, useDishDetail, usePreparationDetail } from '../hooks/useSupabase';
 import { useLookup } from '../hooks/useLookup';
 import AppHeader from '../components/AppHeader';
@@ -93,6 +93,7 @@ const CreateRecipeScreen = () => {
   // Need to adapt usePreparationDetail or create a simpler fetch for basic prep info + its components
   // For now, let's use usePreparationDetail and assume it fetches components needed
   // MODIFIED: Removed kitchenId argument, as usePreparationDetail gets it internally
+  console.log("[Edit Mode] preparationIdToEdit on CreateRecipeScreen:", preparationIdToEdit);
   const { preparation: prepToEdit, ingredients: prepComponentsToEdit, loading: loadingPrep, error: prepError } = usePreparationDetail(preparationIdToEdit);
 
   // --- Hooks for fetching data --- 
@@ -310,13 +311,85 @@ const CreateRecipeScreen = () => {
     setIsScreenLoading(isLoading);
   }, [loadingSections, loadingUnits, loadingComponents, isEditing, loadingDish, loadingPrep]);
 
+  // const prevDependenciesRef = useRef<any>(null);
+
+  // useEffect(() => {
+  //   console.log('--- useEffect [Editing Form Populate] fired ---');
+
+  //   const currentDependencies = {
+  //       isEditingValue: isEditing,
+  //       isScreenLoadingValue: isScreenLoading,
+  //       dishIdToEditValue: dishIdToEdit,
+  //       dishToEditValue: dishToEdit,
+  //       preparationIdToEditValue: preparationIdToEdit,
+  //       prepToEditValue: prepToEdit,
+  //       prepComponentsToEditValue: prepComponentsToEdit,
+  //       tValue: t
+  //   };
+
+  //   const prevDependencies = prevDependenciesRef.current;
+
+  //   if (prevDependencies) {
+  //     console.log('--- useEffect Dependencies Change Check ---');
+  //     let changesDetected = false;
+  //     const changedDependencies: { [key: string]: { previous: any; current: any } } = {};
+
+  //     for (const key in currentDependencies) {
+  //       if (!Object.is(currentDependencies[key as keyof typeof currentDependencies], prevDependencies[key as keyof typeof prevDependencies])) {
+  //         changesDetected = true;
+  //         changedDependencies[key] = {
+  //           previous: prevDependencies[key as keyof typeof currentDependencies],
+  //           current: currentDependencies[key as keyof typeof currentDependencies],
+  //         };
+  //       }
+  //     }
+
+  //     if (changesDetected) {
+  //       console.log('--- Following dependencies have changed: ---', changedDependencies);
+  //     } else {
+  //       console.log('--- No dependency changes detected (This is unexpected in a loop) ---');
+  //     }
+  //      console.log('--- End Dependencies Change Check ---');
+  //   } else {
+  //       console.log('--- Initial useEffect Dependencies: ---', currentDependencies);
+  //   }
+
+  //   prevDependenciesRef.current = currentDependencies;
+
+  //    console.log('--- State after Render ---', {
+  //       isEditingValue: isEditing,
+  //       isScreenLoadingValue: isScreenLoading,
+  //       dishIdToEditValue: dishIdToEdit,
+  //       dishToEditValue: dishToEdit,
+  //       preparationIdToEditValue: preparationIdToEdit,
+  //       prepToEditValue: prepToEdit,
+  //       prepComponentsToEditValue: prepComponentsToEdit,
+  //       tValue: t
+  //    });
+  //    console.log('--- End useEffect [Editing Form Populate] ---');
+
+
+  // }, [
+  //   dishIdToEdit,
+  //   dishToEdit,
+  //   isEditing,
+  //   isScreenLoading,
+  //   prepComponentsToEdit,
+  //   prepToEdit,
+  //   preparationIdToEdit,
+  //   t,
+  // ]);
+
   // Effect to populate form when editing data is loaded
   useEffect(() => {
     // Only run if editing and done loading
-    if (!isEditing || isScreenLoading) return;
+    if (!isEditing || isScreenLoading) {
+      console.log("--- useEffect [Editing Form Populate] skipped (guard) ---");
+
+      return;
+    }
 
     if (dishIdToEdit && dishToEdit) {
-      appLogger.log("[Edit Mode] Populating form for editing dish:", JSON.stringify(dishToEdit, null, 2)); // Log fetched dish data
       setDishName(dishToEdit.dish_name || '');
       setMenuSectionId(dishToEdit.menu_section?.menu_section_id || null);
 
@@ -337,7 +410,6 @@ const CreateRecipeScreen = () => {
       setServingItem((dishToEdit as any).serving_item || ''); // Populate serving item
 
       // Populate components including the 'item' field
-      appLogger.log("[Edit Mode] Raw dishToEdit.components:", JSON.stringify(dishToEdit.components, null, 2)); // Log components before mapping
       const loadedComponents: ComponentInput[] = dishToEdit.components.map((comp, index) => ({
         key: `loaded-${comp.ingredient_id}-${index}`, // Generate a unique key
         ingredient_id: comp.ingredient_id,
@@ -348,11 +420,9 @@ const CreateRecipeScreen = () => {
         item: comp.item || null, // Ensure item is mapped correctly
         // TODO: Need to potentially load prep state here if editing a dish containing preps
       }));
-      appLogger.log("[Edit Mode] Mapped loadedComponents:", JSON.stringify(loadedComponents, null, 2)); // Log components after mapping
-      setComponents(loadedComponents);
-
     } else if (preparationIdToEdit && prepToEdit) {
-      appLogger.log("[Edit Mode] Populating form for editing preparation:", JSON.stringify(prepToEdit, null, 2)); // Log fetched prep data
+      // console.log("[Edit Mode] Populating form for editing preparation:", JSON.stringify(prepToEdit, null, 2)); 
+      // Log fetched prep data
       setDishName(prepToEdit.name || ''); // Use dishName state for prep name
       setMenuSectionId(null); // Preparations don't have menu sections
 
@@ -369,8 +439,6 @@ const CreateRecipeScreen = () => {
 
       setCookingNotes(prepToEdit.cooking_notes || '');
 
-      // Populate components (ingredients of the preparation) including 'item'
-      appLogger.log("[Edit Mode] Raw prepComponentsToEdit:", JSON.stringify(prepComponentsToEdit, null, 2)); // Log components before mapping
       const loadedComponents: ComponentInput[] = prepComponentsToEdit.map((comp: any, index) => ({
         key: `loaded-prep-${comp.ingredient_id}-${index}`, // Generate a unique key
         ingredient_id: (comp as any).ingredient_id,
@@ -380,20 +448,31 @@ const CreateRecipeScreen = () => {
         isPreparation: false, // Ingredients within a prep are not themselves preps in this context
         item: (comp as any).item || null, // Ensure item is mapped (adjust type if needed)
       }));
-      appLogger.log("[Edit Mode] Mapped loadedComponents (from prep):", JSON.stringify(loadedComponents, null, 2)); // Log components after mapping
       setComponents(loadedComponents);
     }
 
-  }, [isEditing, isScreenLoading, dishIdToEdit, dishToEdit, preparationIdToEdit, prepToEdit, prepComponentsToEdit, t]);
+    console.log("--- useEffect [Editing Form Populate] body completed ---");
 
-  // Add a separate effect to log the final state after update
+  }, [
+    isEditing,
+    isScreenLoading,
+    dishIdToEdit,
+    dishToEdit,
+    preparationIdToEdit,
+    prepToEdit,
+    prepComponentsToEdit,
+    t
+  ]);
+
   useEffect(() => {
     if (isEditing) {
       appLogger.log("[Edit Mode] Final 'components' state:", JSON.stringify(components, null, 2));
     }
-  }, [components, isEditing]);
+  }, [
+    // components, 
+    isEditing
+  ]);
 
-  // --- ADDED BACK: Effect to populate top-level form fields from parsed recipe data --- 
   useEffect(() => {
     // Only run if confirming (coming from parser) and units are loaded
     if (!isConfirming || loadingUnits || !parsedRecipe) return;
@@ -438,15 +517,8 @@ const CreateRecipeScreen = () => {
       appLogger.log(`  No serving unit parsed. Set default serving unit ID: ${defaultUnit?.unit_id}`);
     }
 
-    // NOTE: Component mapping logic is INTENTIONALLY OMITTED here
-    // as it's now handled in HomeScreen before navigation.
+  }, [isConfirming, loadingUnits, parsedRecipe, units, t]); 
 
-  }, [isConfirming, loadingUnits, parsedRecipe, units, t]); // Added units and t to dependencies
-  // --- END ADDED BACK Effect ---
-
-  // --- Handlers (Placeholder/Basic Structure) --- 
-
-  // MODIFIED: handleAddComponent to handle different modes and navigation
   const handleAddComponent = async (selectedItem: any) => {
     const item_id = selectedItem?.ingredient_id || '';
     const name = selectedItem?.name || '';
@@ -489,8 +561,11 @@ const CreateRecipeScreen = () => {
       if (item_id) {
         // Add existing preparation directly
         // addComponentWithDetails(item_id, trimmedName, true, true);
+        console.log("[handleAddComponent] Fetching preparation details for ID:", item_id);
         try {
           const { preparation, ingredients } = await fetchPreparationDetailsFromDB(item_id);
+
+          console.log(`--- fetchPreparationDetailsFromDB:`, preparation, ingredients);
 
           if (preparation && ingredients) {
             const newComponentData: ComponentInput = {
@@ -578,50 +653,27 @@ const CreateRecipeScreen = () => {
     // For now, just adds it with empty amount/unit
   }, [addComponentWithDetails]); // Include dependencies if needed
 
-  // MODIFIED: Update field type to match IngredientListComponent prop
-  // const handleComponentUpdate = (key: string, field: 'amount' | 'amountStr' | 'unitId' | 'item' | 'scaledAmountStr' | 'unit_id', value: string | null) => {
-  //   setComponents(prev =>
-  //     // Map field names if necessary (e.g., unitId to unit_id)
-  //     prev.map(c => {
-  //       appLogger.log(`--- createRecipeScreen/handleComponentUpdate:`, key, field, value, 'Current Component:', c);
+  const handleComponentUpdate = (key: string, field: 'amount' | 'amountStr' | 'unitId' | 'item' | 'scaledAmountStr' | 'unit_id', value: string | null) => {
+    setComponents(prevComponents =>
+      prevComponents.map(component => {
+        appLogger.log(`--- createRecipeScreen/handleComponentUpdate:`, key, field, value, 'Current Component:', component);
 
-  //       if (c.key === key) {
-  //         let fieldToUpdate: keyof ComponentInput = field as any; // Cast initially
-  //         if (field === 'unitId') fieldToUpdate = 'unit_id';
-  //         // We ignore amountStr/scaledAmountStr/unitId here as we only deal with 'amount'/'unit_id'/'item'
-  //         if (field === 'amount' || field === 'unit_id' || field === 'item') {
-  //           // return { ...c, [fieldToUpdate]: value };
-  //           const updatedComponent = { ...c, [fieldToUpdate]: value };
-  //           appLogger.log('--- createRecipeScreen/handleComponentUpdate: Updated Component:', updatedComponent);
-  //           return updatedComponent;
-  //         }
-  //       }
-  //       return c;
-  //     })
-  //   );
-  // };
-
- const handleComponentUpdate = (key: string, field: 'amount' | 'amountStr' | 'unitId' | 'item' | 'scaledAmountStr' | 'unit_id', value: string | null) => {
-  setComponents(prevComponents =>
-    prevComponents.map(component => {
-      appLogger.log(`--- createRecipeScreen/handleComponentUpdate:`, key, field, value, 'Current Component:', component);
-
-      if (component.key === key) {
-        const updatedComponent = { ...component };
-        if (field === 'unitId') {
-          updatedComponent.unit_id = value;
-        } else if (field === 'amount') {
-          updatedComponent.amount = value === null ? "" : value;
-        } else if (field === 'item') {
-          updatedComponent.item = value;
+        if (component.key === key) {
+          const updatedComponent = { ...component };
+          if (field === 'unitId') {
+            updatedComponent.unit_id = value;
+          } else if (field === 'amount') {
+            updatedComponent.amount = value === null ? "" : value;
+          } else if (field === 'item') {
+            updatedComponent.item = value;
+          }
+          appLogger.log('--- handleComponentUpdate: updated component:', updatedComponent);
+          return updatedComponent;
         }
-        appLogger.log('--- handleComponentUpdate: updated component:', updatedComponent);
-        return updatedComponent;
-      }
-      return component;
-    })
-  );
-};
+        return component;
+      })
+    );
+  };
 
   // TODO: Implement handler to remove a component from the list
   const handleRemoveComponent = (key: string) => {
@@ -1073,12 +1125,19 @@ const CreateRecipeScreen = () => {
         return;
       }
 
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      const formattedHours = String(hours).padStart(2, '0');
+      const formattedMinutes = String(minutes).padStart(2, '0');
+      const totalTimeIntervalString = `${formattedHours}:${formattedMinutes}:00`;
+
       const dishUpsertData: Database['public']['Tables']['dishes']['Insert'] = {
         dish_name: trimmedDishName,
         kitchen_id: activeKitchenId!,
         cooking_notes: cookingNotes || null,  // Changed from 'description'
         menu_section_id: menuSectionId ?? undefined,
-        total_time: totalMinutes || null,     // Changed from 'total_time_minutes'
+        // total_time: totalMinutes || null,
+        total_time: totalTimeIntervalString,
         serving_size: isNaN(servingSizeNum) ? undefined : servingSizeNum,
         serving_unit_id: servingUnitId,
         num_servings: numServings || null,    // Changed from 'servings'
@@ -1623,6 +1682,8 @@ const CreateRecipeScreen = () => {
               numServings={numServings}
               onSelectPrep={handlePrepSelect} // Pass existing handler
               onRemove={handleRemoveComponent} // Pass existing handler
+              onUpdate={handleComponentUpdate} // Pass existing handler
+              onSelectUnit={openIngredientUnitModal}
             />
             <TouchableOpacity style={styles.addButton} onPress={() => openComponentSearchModal('preparation')}>
               <Text style={styles.addButtonText}>{t('screens.createRecipe.addPreparationButton')}</Text>
@@ -1705,16 +1766,55 @@ const CreateRecipeScreen = () => {
         onClose={() => setComponentSearchModalVisible(false)}
         searchMode={searchMode}
         // Pass the actual search function from useLookup
-        performSearch={async (query) => {
-          // Adapt the return type to SearchResultItem[]
-          const results = await lookupIngredient(query);
-          // Ensure isPreparation flag exists for potential filtering/display
-          return results.map((r: any) => ({
+        // performSearch={async (query) => {
+        //   // Adapt the return type to SearchResultItem[]
+        //   const results = await lookupIngredient(query);
+        //   // Ensure isPreparation flag exists for potential filtering/display
+        //   console.log(`--- CreateRecipeScreen/performSearch:`, results);
+
+        //   return results.map((r: any) => ({
+        //     ingredient_id: r.ingredient_id,
+        //     name: r.name,
+        //     isPreparation: r.isPreparation || false, // Assume false if not present
+        //   }));
+        // }}
+
+        performSearch={async (query: string) => {
+          const rawResults = await lookupIngredient(query);
+
+          console.log(`--- CreateRecipeScreen/performSearch/components:`, components);
+
+          if (components && components.length > 0) {
+            const existingComponentIds = new Set(
+              components.map(comp => comp.ingredient_id)
+            );
+
+            const filteredResults = rawResults.filter((r: any) => {
+              const item_id = r.ingredient_id;
+
+              const isAlreadyAdded = existingComponentIds.has(item_id);
+
+              if (isAlreadyAdded) {
+                console.log(`[performSearch] : ${r.name} (ID: ${item_id}) already exists.`);
+              }
+
+              return !isAlreadyAdded;
+            });
+
+                return filteredResults.map((r: any) => ({
+                ingredient_id: r.ingredient_id,
+                name: r.name,
+                isPreparation: r.isPreparation || false
+              }));
+          }
+
+          return rawResults.map((r: any) => ({
             ingredient_id: r.ingredient_id,
             name: r.name,
             isPreparation: r.isPreparation || false, // Assume false if not present
           }));
         }}
+
         onSelectItem={handleAddComponent} // Pass the existing handler
         onCreateNew={(name, isPreparation) => {
           // Call handleAddComponent, passing null for item_id and the correct isPreparation flag

@@ -47,6 +47,17 @@ export type Preparation = {
     updated_at?: string | null;
 };
 
+// export type Preparation = {
+//     preparation_id: string;
+//     directions: string | null;
+//     amount_unit_id?: string | null;
+//     total_time: number | null; // Re-added
+//     fingerprint?: string | null; // ADDED: Fingerprint for duplicate detection
+//     created_at?: string | null;
+//     updated_at?: string | null;
+//     deleted: boolean;
+// };
+
 // Define PreparationIngredient based on transformed structure
 export type PreparationIngredient = {
     preparation_id: string; 
