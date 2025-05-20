@@ -62,6 +62,8 @@ export const useLookup = () => {
         appLogger.error('Error looking up ingredient:', error)
         return []
       }
+
+      console.log(`--- lookupIngredient:`, data);
       
       return data?.ingredients || []
     } catch (err) {

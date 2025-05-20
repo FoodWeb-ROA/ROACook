@@ -114,6 +114,7 @@ const SCROLL_EXTRA_PADDING = FAB_CONTAINER_HEIGHT + SIZES.padding/4;
 // ... existing code ...
 
 const HomeScreen = () => {
+  console.log("--- App code loaded successfully ---");
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAuth();
   const { showActionSheetWithOptions } = useActionSheet();
@@ -217,6 +218,40 @@ const HomeScreen = () => {
     }
   }, []);
   const categoryViewabilityConfig = { itemVisiblePercentThreshold: 50 };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!activeKitchenId) {
+      Alert.alert(
+        t('common.error'),
+        t('screens.home.error.missingKitchenId'),
+        [{ text: t('common.ok', 'OK') }]
+      );
+      console.error('Error deleting section: No active kitchen selected.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('menu_section')
+        .delete()
+        .eq('menu_section_id', categoryId)
+        .eq('kitchen_id', activeKitchenId);
+
+      if (error) throw error;
+
+      console.log(`[HomeScreen] Invalidating menu section query for kitchen: ${activeKitchenId}`);
+      queryClient.invalidateQueries({ queryKey: ['menu_section', { kitchen_id: activeKitchenId }] });
+
+    } catch (error: any) {
+      console.error('Error deleting section:', error);
+      Alert.alert(
+        t('common.error'),
+        t('screens.home.deleteSectionError', { categoryName: menuSections?.find(ms => ms.menu_section_id === categoryId)?.name || t('common.category'), error: error.message || String(error) }),
+        [{ text: t('common.ok', 'OK') }]
+      );
+    }
+  };
+
   const renderCategoryPage = ({ item: pageItems, index: pageIndex }: { item: any[], index: number }) => {
     return (
       <View style={[styles.pageContainer, { width: CAT_PAGE_WIDTH }]}>
@@ -241,6 +276,7 @@ const HomeScreen = () => {
                     <CategoryCard
                       category={item}
                       onPress={() => handleCategoryPress(item)}
+                      onDelete={handleDeleteCategory} 
                     />
                   )}
                 </View>
@@ -305,6 +341,7 @@ const HomeScreen = () => {
                   <DishGridItem
                     dish={dish}
                     onPress={() => handleDishPress(dish)}
+                    onDelete={handleDeleteDish}
                   />
                 </View>
               );
@@ -482,6 +519,39 @@ const HomeScreen = () => {
     );
   };
   // --- End FAB Action Sheet Logic ---
+
+  const handleDeleteDish = async (dishId: string) => {
+    if (!activeKitchenId) {
+      Alert.alert(
+        t('common.error'),
+        t('screens.home.error.missingKitchenId'),
+        [{ text: t('common.ok', 'OK') }]
+      );
+      console.error('Error deleting dish: No active kitchen selected.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('dishes')
+        .delete()
+        .eq('dish_id', dishId)
+        .eq('kitchen_id', activeKitchenId);
+
+      if (error) throw error;
+
+      console.log(`[HomeScreen] Invalidating dish queries for kitchen: ${activeKitchenId}, dish: ${dishId}`);
+      queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: activeKitchenId }] });
+
+    } catch (error: any) {
+      console.error('Error deleting dish:', error);
+      Alert.alert(
+        t('common.error'),
+        t('screens.home.deleteDishError', { dishName: dishes?.find(d => d.dish_id === dishId)?.dish_name || t('common.dish'), error: error.message || String(error) }),
+        [{ text: t('common.ok', 'OK') }]
+      );
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>

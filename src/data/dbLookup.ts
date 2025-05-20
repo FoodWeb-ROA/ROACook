@@ -1,8 +1,8 @@
 'use strict';
 
 import { supabase } from './supabaseClient';
-import { Ingredient, Preparation, Dish } from '../types'; // Assuming types are defined here
-import { DbUnit, FetchedIngredientDetail, FetchedPreparationDataCombined, FetchedPreparationDetail, FetchedPreparationIngredient, transformPreparation, transformUnit } from '../utils/transforms';
+import { Ingredient, Preparation, Dish, PreparationIngredient } from '../types'; // Assuming types are defined here
+import { DbUnit, FetchedIngredientDetail, FetchedPreparationDataCombined, FetchedPreparationDetail, FetchedPreparationIngredient, transformPreparation, transformPreparationIngredient, transformUnit } from '../utils/transforms';
 import { appLogger } from '../services/AppLogService';
 
 // --- Ingredient Lookups ---
@@ -329,3 +329,105 @@ export const fetchPreparationDetailsFromDB = async (preparationId: string | unde
     return { preparation: null, ingredients: [] };
   }
 };
+
+// export const fetchPreparationDetailsFromDB = async (preparationId: string | undefined) => {
+//   if (!preparationId) {
+//     return { preparation: null, ingredients: [] };
+//   }
+
+//   try {
+//     // Шаг 1: Получение основной информации о заготовке
+//     const { data: preparationData, error: preparationError } = await supabase
+//       .from('preparations')
+//       .select(`
+//         *,
+//         amount_unit:units!preparations_amount_unit_id_fkey (*)
+//       `)
+//       .eq('preparation_id', preparationId)
+//       .single();
+
+//     if (preparationError) {
+//       console.error("Error fetching preparation data:", preparationError);
+//       return { preparation: null, ingredients: [] };
+//     }
+
+//     if (!preparationData) {
+//       console.warn(`Preparation with ID ${preparationId} not found.`);
+//       return { preparation: null, ingredients: [] };
+//     }
+
+//     // Трансформируем базовые данные заготовки
+//     const transformedPrepBase = transformBasePreparation(preparationData);
+
+//     // Шаг 2: Получение информации об основном ингредиенте заготовки
+//     const { data: ingredientData, error: ingredientError } = await supabase
+//       .from('ingredients')
+//       .select(`
+//         name,
+//         cooking_notes
+//       `)
+//       .eq('ingredient_id', preparationData.preparation_id) // Используем preparation_id как ingredient_id
+//       .single();
+
+//     if (ingredientError) {
+//       console.warn("Error fetching main ingredient data for preparation:", ingredientError);
+//       // Решите, как обрабатывать отсутствие основного ингредиента
+//     }
+
+//     if (ingredientData && transformedPrepBase) {
+//       transformedPrepBase.name = ingredientData.name;
+//       transformedPrepBase.cooking_notes = ingredientData.cooking_notes ?? null;
+//     }
+
+//     // Шаг 3: Получение ингредиентов, входящих в состав заготовки
+//     const { data: ingredientsData, error: ingredientsError } = await supabase
+//       .from('preparation_ingredients')
+//       .select(`
+//         *,
+//         unit:units!fk_prep_ingredients_unit (*),
+//         ingredient:ingredients!fk_prep_ingredients_ing (*)
+//       `)
+//       .eq('preparation_id', preparationId);
+
+//     if (ingredientsError) {
+//       console.error("Error fetching sub-ingredients for preparation:", ingredientsError);
+//       return { preparation: null, ingredients: [] };
+//     }
+
+//     const transformedIngredients: PreparationIngredient[] = (ingredientsData || []).map(transformPreparationIngredient);
+
+//     if (transformedPrepBase) {
+//       transformedPrepBase.ingredients = transformedIngredients;
+//     }
+
+//     return { preparation: transformedPrepBase || null, ingredients: transformedIngredients };
+
+//   } catch (error) {
+//     console.error(`Error fetching preparation ${preparationId}:`, error);
+//     return { preparation: null, ingredients: [] };
+//   }
+// };
+
+// // Функция для трансформации базовой информации о заготовке
+// function transformBasePreparation(data: {
+//   preparation_id: string;
+//   directions: string;
+//   total_time: number | null;
+//   amount_unit: DbUnit | null;
+//   amount_unit_id: string | null;
+//   fingerprint: string | null;
+//   created_at: string | null;
+//   updated_at: string | null;
+//   deleted: boolean | null;
+// }): Preparation {
+//   return {
+//     preparation_id: data.preparation_id,
+//     name: 'Loading...', // Временное значение
+//     directions: data.directions || null,
+//     total_time: data.total_time || null,
+//     yield_unit: transformUnit(data.amount_unit),
+//     yield_amount: null, // Пока нет данных об основном ингредиенте
+//     ingredients: [],
+//     cooking_notes: null, // Временное значение
+//   };
+// }
