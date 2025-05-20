@@ -11,7 +11,7 @@
  * This change reflects the database migration that now links auth.users directly
  * to public.kitchen_users, removing the intermediate public.users table.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../data/supabaseClient';
 import { Dish, DishComponent, Ingredient, Unit, MenuSection, Preparation, PreparationIngredient } from '../types';
 import { 
@@ -442,6 +442,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
           console.log(`[useDishDetail] Realtime change for dish_components of ${dishId} received!`, payload);
           queryClient.invalidateQueries({ queryKey: ['dish', { dish_id: dishId }] });
           queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: kitchenId }] });
+          
           setLastUpdateTime(Date.now());
         }
       )
@@ -623,18 +624,20 @@ export function useMenuSections() {
  * ADDED: Realtime subscription to invalidate cache on changes.
  * ADDED: Returns lastUpdateTime to signal Realtime updates.
  */
+
 export function usePreparationDetail(preparationId: string | undefined) {
-   // Get query client instance
+  console.log("[usePreparationDetail] Hook called", { preparationId });
+
   const queryClient = useQueryClient();
-  // Use React Query to fetch preparation details
   const queryKey = ['preparation', { preparation_id: preparationId }];
-  const [lastUpdateTime, setLastUpdateTime] = useState<number | null>(null); // ADDED state for update time
+  const [lastUpdateTime, setLastUpdateTime] = useState<number | null>(null);
 
   // Define the fetch function to be used if the cache doesn't have the data
   const fetchPreparationDetail = async () => {
     // Handle undefined preparationId
     if (!preparationId) {
-      return { preparation: null, ingredients: [], loading: false, error: null };
+        console.log("[usePreparationDetail] fetchPreparationDetail: preparationId is undefined, returning null data");
+        return Promise.resolve({ preparation: null, ingredients: [] });
     }
 
     console.log(`[usePreparationDetail] Fetching details for prep: ${preparationId}`); // Log fetch start
@@ -642,196 +645,50 @@ export function usePreparationDetail(preparationId: string | undefined) {
     try {
       // Attempt to load from offline cache first
       try {
-        const cachedPayload = await getOfflineRecipe(preparationId, 'prep'); // Correct: Use 'prep'
+        const cachedPayload = await getOfflineRecipe(preparationId, 'prep');
         if (cachedPayload && 'preparation_id' in cachedPayload) {
           console.log(`[usePreparationDetail] Hydrating preparation ${preparationId} from offline cache.`);
           // Force a background refetch after hydrating from cache
           queryClient.invalidateQueries({ queryKey }); 
-          // Return cached data immediately
+          
           return {
-            preparation: cachedPayload as OfflinePreparationPayload, // Cast to correct type
-            ingredients: (cachedPayload as OfflinePreparationPayload).ingredients || [],
-            loading: false,
-            error: null
+            preparation: cachedPayload,
+            ingredients: cachedPayload.ingredients || [],
           };
         }
       } catch (cacheError) {
         console.warn(`[usePreparationDetail] Cache read failed for ${preparationId}:`, cacheError);
       }
 
-      // Fetch preparation data (requires joining with ingredients for combined info)
-      // const { data: prepJoinData, error: preparationError } = await supabase
-      //   .from('preparations')
-      //   .select(`
-      //     *,
-      //     yield_unit:units!preparations_amount_unit_id_fkey (*),
-      //     ingredient:ingredients!preparations_preparation_id_fkey (
-      //       *,
-      //       base_unit:ingredients_unit_id_fkey(*)
-      //     )
-      //   `)
-      //   .eq('preparation_id', preparationId)
-      //   .single(); // Fetch all columns from preparations
+      const { preparation, ingredients } = await fetchPreparationDetailsFromDB(preparationId);
 
-      // // --- ADD LOGGING: Raw fetched prep data ---
-      // console.log(`[usePreparationDetail] Raw prepJoinData for ${preparationId}:`, JSON.stringify(prepJoinData, null, 2));
-      // // --- END LOGGING ---
-
-      // if (preparationError) throw preparationError;
-      // // Safely access potentially null ingredient data
-      // const ingredientDetails = prepJoinData?.ingredient as (FetchedIngredientDetail & { amount: number, kitchen_id: string | null }) | null;
-      // // Type assertion for prepJoinData base properties
-      // const prepBaseDetails = prepJoinData as FetchedPreparationDetail | null;
-
-      // if (!prepBaseDetails || !ingredientDetails) {
-      //   throw new Error(`Preparation ${preparationId} or its linked ingredient not found.`);
-      // }
-
-      // // Construct the combined data for transformation
-      // // Ensure all required fields are included
-      // const combinedDataForTransform: FetchedPreparationDataCombined = {
-      //   // Fields from FetchedIngredientDetail
-      //   ingredient_id: ingredientDetails.ingredient_id,
-      //   name: ingredientDetails.name,
-      //   cooking_notes: ingredientDetails.cooking_notes,
-      //   storage_location: ingredientDetails.storage_location,
-      //   unit_id: ingredientDetails.unit_id,
-      //   base_unit: ingredientDetails.base_unit,
-      //   deleted: ingredientDetails.deleted,
-      //   kitchen_id: ingredientDetails.kitchen_id || '',
-      //   synonyms: ingredientDetails.synonyms,
-      //   // Fields from FetchedPreparationDetail (using prepBaseDetails)
-      //   preparation_id: prepBaseDetails.preparation_id,
-      //   directions: prepBaseDetails.directions,
-      //   total_time: prepBaseDetails.total_time,
-      //   yield_unit: prepBaseDetails.yield_unit,
-      //   amount_unit_id: prepBaseDetails.amount_unit_id, // Include amount_unit_id
-      //   fingerprint: prepBaseDetails.fingerprint, // Include fingerprint
-      //   // Fields explicitly required by FetchedPreparationDataCombined
-      //   amount: ingredientDetails.amount ?? 0,
-      //   created_at: ingredientDetails.created_at ?? null,
-      //   updated_at: ingredientDetails.updated_at ?? null,
-      // };
-
-      // // Transform the base preparation details
-      // const transformedPrep = transformPreparation(combinedDataForTransform);
-
-      // // Fetch sub-ingredients for the preparation
-      // const { data: ingredientsData, error: ingredientsError } = await supabase
-      //   .from('preparation_ingredients')
-      //   .select(`
-      //     *,
-      //     unit:units!fk_prep_ingredients_unit (*),
-      //     ingredient:ingredients!fk_prep_ingredients_ing (
-      //       name, 
-      //       ingredient_id
-      //     )
-      //   `)
-      //   .eq('preparation_id', preparationId) as { 
-      //       data: (FetchedPreparationIngredient & {
-      //           unit: DbUnit | null, 
-      //           ingredient: { 
-      //             name: string, 
-      //             ingredient_id: string, 
-      //           } | null 
-      //       })[] | null, 
-      //       error: any 
-      //   };
-
-      // if (ingredientsError) throw ingredientsError;
-      
-      // // Get list of ingredient IDs from the fetched data
-      // const ingredientIds = (ingredientsData || [])
-      //   .map(ing => ing.ingredient?.ingredient_id)
-      //   .filter(id => id !== null) as string[];
-        
-      // // Perform a separate query to check which of these IDs are also preparations
-      // let preparationIdSet = new Set<string>();
-      // if (ingredientIds.length > 0) {
-      //     const { data: prepCheckData, error: prepCheckError } = await supabase
-      //         .from('preparations')
-      //         .select('preparation_id')
-      //         .in('preparation_id', ingredientIds);
-              
-      //     if (prepCheckError) {
-      //         console.warn(`[usePreparationDetail] Failed to check for nested preparations:`, prepCheckError);
-      //         // Continue without prep checks if this fails
-      //     } else {
-      //         preparationIdSet = new Set(prepCheckData?.map(p => p.preparation_id) || []);
-      //     }
-      // }
-
-      // // Add transformed ingredients to the preparation object
-      // transformedPrep.ingredients = (ingredientsData || []).map(ing => {
-      //     // Check if ingredient data exists before accessing properties
-      //     const ingredientName = ing.ingredient?.name || 'Unknown Ingredient';
-      //     const ingredientId = ing.ingredient?.ingredient_id || '';
-      //     // Use the result from the separate query
-      //     const isPreparation = preparationIdSet.has(ingredientId); 
-          
-      //     // --- ADD LOGGING: Check isPreparation flag ---
-      //     console.log(`[usePreparationDetail] Ingredient: ${ingredientName} (${ingredientId}), isPreparation: ${isPreparation}`);
-          
-      //     return {
-      //         preparation_id: ing.preparation_id || '',
-      //         ingredient_id: ingredientId,
-      //         name: ingredientName,
-      //         amount: ing.amount ?? 0,
-      //         unit: transformUnit(ing.unit),
-      //         isPreparation: isPreparation
-      //     };
-      // });
-
-      // // Construct the payload for offline caching
-      // const payloadToCache: OfflinePreparationPayload = {
-      //   schemaVersion: 1,
-      //   fetchedAt: Date.now(),
-      //   preparation_id: transformedPrep.preparation_id,
-      //   name: transformedPrep.name,
-      //   directions: transformedPrep.directions,
-      //   total_time: transformedPrep.total_time,
-      //   yield_amount: transformedPrep.yield_amount,
-      //   yield_unit_id: transformedPrep.yield_unit?.unit_id ?? null,
-      //   yield_unit: transformedPrep.yield_unit ?? null,
-      //   cooking_notes: transformedPrep.cooking_notes,
-      //   ingredients: transformedPrep.ingredients || [],
-      //   fingerprint: combinedDataForTransform.fingerprint ?? null // Add fingerprint to cache payload
-      // };
-
-      // // Save to offline cache
-      // try {
-      //   await saveOfflineRecipe(preparationId, 'prep', payloadToCache); // Correct: Use 'prep'
-      // } catch (cacheError) {
-      //   console.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId}:`, cacheError);
-      //   // Non-fatal, continue without caching
-      // }
-
-      // // --- ADD LOGGING: Final transformed prep object before return ---
-      // console.log(`[usePreparationDetail] Final transformedPrep object for ${preparationId}:`, JSON.stringify(transformedPrep, null, 2));
-      // // --- END LOGGING ---
-
-      // return {
-      //   preparation: transformedPrep,
-      //   ingredients: transformedPrep.ingredients || [],
-      //   loading: false,
-      //   error: null
-      // };
-       const { preparation, ingredients } = await fetchPreparationDetailsFromDB(preparationId);
+       try {
+        const payloadToCache: OfflinePreparationPayload = {
+             schemaVersion: 1,
+             fetchedAt: Date.now(),
+             preparation_id: preparation?.preparation_id || '',
+             name: preparation?.name || '',
+             directions: preparation?.directions ?? null,
+             total_time: preparation?.total_time ?? null,
+             yield_amount: preparation?.yield_amount ?? null,
+             yield_unit_id: preparation?.yield_unit?.unit_id ?? null,
+             yield_unit: preparation?.yield_unit ?? null,
+             cooking_notes: preparation?.cooking_notes ?? null,
+             ingredients: ingredients || [],
+             fingerprint: (preparation as any)?.fingerprint ?? null,
+        };
+        await saveOfflineRecipe(preparationId, 'prep', payloadToCache);
+       } catch (cacheError) {
+           console.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId} after fetch:`, cacheError);
+       }
 
       return {
         preparation: preparation,
         ingredients: ingredients,
-        loading: false,
-        error: null,
       };
     } catch (error) {
       console.error(`[usePreparationDetail] Error fetching preparation ${preparationId}:`, error);
-      return {
-        preparation: null,
-        ingredients: [],
-        loading: false,
-        error: error instanceof Error ? error : new Error(String(error))
-      };
+      throw error;
     }
   };
 
@@ -844,18 +701,27 @@ export function usePreparationDetail(preparationId: string | undefined) {
     queryKey,
     queryFn: fetchPreparationDetail,
     enabled: !!preparationId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000
   });
 
-  // --- UPDATED REALTIME SUBSCRIPTION ---
-   useEffect(() => {
-    if (!preparationId) return;
+  // --- MODIFIED: Memoize the ingredients array for stable reference ---
+  const memoizedIngredients = useMemo(() => {
+    return data?.ingredients || []; 
+  }, [data?.ingredients]);
 
-    // Subscribe to changes in the main preparation table
+  // --- UPDATED REALTIME SUBSCRIPTION ---
+  useEffect(() => {
+    if (!preparationId) {
+         console.log(`[usePreparationDetail] Skipping subscriptions - preparationId is undefined.`);
+         return;
+    }
+    console.log(`[usePreparationDetail] Setting up subscriptions for preparation ${preparationId}.`);
+
+    // --- Base listeners for preparation and preparation_ingredients ---
     const prepChannel = supabase
         .channel(`public:preparations:preparation_id=eq.${preparationId}`)
         .on('postgres_changes', {
-            event: 'UPDATE', // Only need updates for the detail view
+            event: 'UPDATE', 
             schema: 'public',
             table: 'preparations',
             filter: `preparation_id=eq.${preparationId}`
@@ -863,7 +729,8 @@ export function usePreparationDetail(preparationId: string | undefined) {
             console.log(`[usePreparationDetail] Prep update for ${preparationId} received:`, payload);
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] });
             queryClient.invalidateQueries({ queryKey: ['preparations'] });
-            setLastUpdateTime(Date.now()); // ADDED: Signal update
+             // queryClient.invalidateQueries({ queryKey: ['dishes'] });
+             setLastUpdateTime(Date.now());
         })
         .subscribe((status, err) => {
              if (status === 'SUBSCRIBED') {
@@ -873,11 +740,10 @@ export function usePreparationDetail(preparationId: string | undefined) {
              }
         });
 
-    // Subscribe to changes in the preparation ingredients
     const prepIngChannel = supabase
         .channel(`public:preparation_ingredients:preparation_id=eq.${preparationId}`)
         .on('postgres_changes', {
-            event: '*', // Need INSERT, UPDATE, DELETE for ingredients
+            event: '*', 
             schema: 'public',
             table: 'preparation_ingredients',
             filter: `preparation_id=eq.${preparationId}`
@@ -885,7 +751,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
             console.log(`[usePreparationDetail] Prep ingredients update for ${preparationId} received:`, payload);
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] });
              queryClient.invalidateQueries({ queryKey: ['preparations'] });
-             setLastUpdateTime(Date.now()); // ADDED: Signal update
+             setLastUpdateTime(Date.now());
         })
        .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
@@ -898,7 +764,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
     // Preparation data is also linked to the 'ingredients' table for name, notes etc.
     // Subscribe to changes on the linked ingredient row as well.
      const linkedIngChannel = supabase
-        .channel(`public:ingredients:ingredient_id=eq.${preparationId}`) // preparationId is the ingredient_id here
+        .channel(`public:ingredients:ingredient_id=eq.${preparationId}`)
         .on('postgres_changes', {
             event: 'UPDATE',
             schema: 'public',
@@ -907,8 +773,8 @@ export function usePreparationDetail(preparationId: string | undefined) {
         }, payload => {
             console.log(`[usePreparationDetail] Linked ingredient update for ${preparationId} received:`, payload);
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] });
-            queryClient.invalidateQueries({ queryKey: ['preparations'] }); // Invalidate list too
-            setLastUpdateTime(Date.now()); // ADDED: Signal update
+            queryClient.invalidateQueries({ queryKey: ['preparations'] });
+            setLastUpdateTime(Date.now());
         })
         .subscribe((status, err) => {
              if (status === 'SUBSCRIBED') {
@@ -917,30 +783,50 @@ export function usePreparationDetail(preparationId: string | undefined) {
                 console.error(`[usePreparationDetail] Error subscribing to linked ingredient ${preparationId}:`, err);
              }
         });
+    /*
+    const nestedPrepListeners: any[] = [];
+    uniquePrepIds.forEach(nestedPrepId => {
+        const nestedChannel = supabase
+            .channel(`public:preparations:preparation_id=eq.${nestedPrepId}`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'preparations', filter: `preparation_id=eq.${nestedPrepId}`}, (payload) => {
+                 console.log(`[usePreparationDetail] Nested prep ${nestedPrepId} update received!`);
+                 queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] }); // Инвалидируем родительский преп
+                 queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: nestedPrepId }] }); // Инвалидируем сам вложенный преп
+                 setLastUpdateTime(Date.now());
+            })
+            .subscribe();
+        nestedPrepListeners.push(nestedChannel);
+    });
+    */
 
 
     return () => {
+        console.log(`[usePreparationDetail] Cleaning up listeners for preparation ${preparationId}`);
         supabase.removeChannel(prepChannel);
         supabase.removeChannel(prepIngChannel);
         supabase.removeChannel(linkedIngChannel);
-        console.log(`[usePreparationDetail] Unsubscribed from preparation ${preparationId}`);
+        // nestedPrepListeners.forEach(channel => supabase.removeChannel(channel));
+        console.log(`[usePreparationDetail] Unsubscribed from preparation ${preparationId}.`);
     };
-   }, [preparationId, queryClient]);
-  // --- END REALTIME SUBSCRIPTION ---
 
+   }, [preparationId, queryClient]); 
 
-  // Return in the format expected by the components
-  // ADD LOG: Log the data being returned by the hook
-  console.log('[usePreparationDetail] Returning data:', JSON.stringify(data, null, 2));
+  console.log('[usePreparationDetail] Returning data:', {
+      preparation: data?.preparation || null,
+      ingredients: memoizedIngredients,
+      loading,
+      error: error ? (error as Error) : null,
+      lastUpdateTime
+  });
+
   return {
     preparation: data?.preparation || null,
-    ingredients: data?.ingredients || [],
+    ingredients: memoizedIngredients,
     loading,
     error: error ? (error as Error) : null,
-    lastUpdateTime // ADDED
+    lastUpdateTime
   };
 }
-
 
 /**
  * Hook to fetch all preparations for the current kitchen.

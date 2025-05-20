@@ -1,14 +1,16 @@
 import React from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Dish, DishComponent } from '../types';
 import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
 import { useTranslation } from 'react-i18next';
+import { relative } from 'path';
 
 interface DishCardProps {
   dish: Dish;
   onPress: (dish: Dish) => void;
   onPreparationPress?: (preparationId: string) => void;
+  onDelete?: (dishId: string) => void;
 }
 
 const formatTime = (interval: string | null): string => {
@@ -32,11 +34,31 @@ const formatTime = (interval: string | null): string => {
   return interval;
 };
 
-const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress }) => {
+const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress, onDelete }) => {
   const { t } = useTranslation();
   
   // Filter to only include preparations
   const preparations = dish.components ? dish.components.filter(comp => comp.isPreparation) : [];
+
+  const handleDelete = () => {
+    if (onDelete) {
+      Alert.alert(
+        t('common.confirmDelete', 'Confirm Delete'),
+        dish.dish_name,
+        [
+          {
+            text: t('common.cancel', 'Cancel'),
+            style: 'cancel',
+          },
+          {
+            text: t('common.delete', 'Delete'),
+            style: 'destructive',
+            onPress: () => onDelete(dish.dish_id),
+          },
+        ]
+      );
+    }
+  };
   
   return (
     <TouchableOpacity 
@@ -96,6 +118,12 @@ const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress }
             <Text style={styles.noPreparationsText}>{t('components.dishCard.noPreparationsText', 'No preparations')}</Text>
           )}
         </View>
+
+        {onDelete && (
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+            <MaterialCommunityIcons name="delete" size={20} color={COLORS.error} />
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -109,6 +137,7 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.padding,
     ...SHADOWS.medium,
     overflow: 'hidden',
+    position: 'relative'
   },
   image: {
     width: '100%',
@@ -174,6 +203,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textLight,
   },
+  deleteButton: {
+    position: 'absolute',
+    bottom: SIZES.padding,
+    right: SIZES.padding,
+    width: SIZES.base * 4,
+    height: SIZES.base * 4,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 export default DishCard; 
