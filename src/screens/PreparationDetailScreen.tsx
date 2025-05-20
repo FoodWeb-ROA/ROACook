@@ -29,6 +29,7 @@ import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import { supabase } from '../data/supabaseClient';
 import { queryClient } from '../data/queryClient';
+import { appLogger } from '../services/AppLogService';
 
 type PreparationDetailRouteProp = RouteProp<RootStackParamList, 'PreparationDetails'>;
 type PreparationDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -53,9 +54,8 @@ const PreparationDetailScreen = () => {
     lastUpdateTime: number | null
   };
 
-  // ADD LOG: Log ingredients received from hook
-  console.log('[PreparationDetailScreen] Received ingredients:', JSON.stringify(ingredients, null, 2));
-
+  appLogger.log('[PreparationDetailScreen] Received ingredients:', JSON.stringify(ingredients, null, 2));
+ 
   const [selectedUnit, setSelectedUnit] = useState<Record<string, MeasurementUnit>>({});
   const { t } = useTranslation();
   const [showBanner, setShowBanner] = useState(false);
@@ -138,15 +138,15 @@ const PreparationDetailScreen = () => {
     ingredients?.filter(c => c.isPreparation === true) || [],
     [ingredients]
   );
-  // ADD LOG: Log nested preparations array
-  console.log('[PreparationDetailScreen] Filtered nestedPreparations:', JSON.stringify(nestedPreparations, null, 2));
 
-  const rawIngredients = useMemo(() =>
+  appLogger.log('[PreparationDetailScreen] Filtered nestedPreparations:', JSON.stringify(nestedPreparations, null, 2));
+  
+  const rawIngredients = useMemo(() => 
     ingredients?.filter(c => c.isPreparation !== true) || [], // Treat undefined or false as raw
     [ingredients]
   );
   // ADD LOG: Log raw ingredients array
-  console.log('[PreparationDetailScreen] Filtered rawIngredients:', JSON.stringify(rawIngredients, null, 2));
+  appLogger.log('[PreparationDetailScreen] Filtered rawIngredients:', JSON.stringify(rawIngredients, null, 2));
 
   // Effect to show banner on update
   useEffect(() => {
@@ -387,12 +387,11 @@ const PreparationDetailScreen = () => {
                     : 1; // Fallback scale
                   amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
                 } else {
+
                   // Scale only by recipeServingScale (if viewing prep directly)
                   amountToDisplay = baseIngAmount * (recipeServingScale ?? 1);
-                  // --- ADD LOGGING for direct view ---
-                  console.log(`[PrepDetailDirectView] Ingredient: ${ingredient.name}, Base: ${baseIngAmount}, Scale: ${recipeServingScale ?? 1}, Display: ${amountToDisplay}`);
-                  // --- END LOGGING ---
-                }
+
+                  appLogger.log(`[PrepDetailDirectView] Ingredient: ${ingredient.name}, Base: ${baseIngAmount}, Scale: ${recipeServingScale ?? 1}, Display: ${amountToDisplay}`);
                 // --- END CONDITIONAL SCALING ---
 
                 // Display value might still use unit conversion
@@ -411,7 +410,7 @@ const PreparationDetailScreen = () => {
                 // --- END MODIFIED FORMATTING ---
 
                 // --- ADD LOGGING: Final render values ---
-                console.log(`[PrepDetailRender] Ing: ${ingredient.name}, AmountToDisplay: ${amountToDisplay}, DisplayValue: ${displayValue}, FormattedValue: ${formattedValue}, DisplayUnit (used for render): ${formattedUnit}`);
+                appLogger.log(`[PrepDetailRender] Ing: ${ingredient.name}, AmountToDisplay: ${amountToDisplay}, DisplayValue: ${displayValue}, FormattedValue: ${formattedValue}, DisplayUnit (used for render): ${formattedUnit}`);
                 // --- END LOGGING ---
 
                 return (

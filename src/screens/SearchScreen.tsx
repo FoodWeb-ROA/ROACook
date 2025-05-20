@@ -21,6 +21,7 @@ import DishCard from '../components/DishCard';
 import AppHeader from '../components/AppHeader';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,12 +16,16 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
+import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 import { RootStackParamList } from '../navigation/types';
 import AppHeader from '../components/AppHeader';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { submitFeedback } from '../services/notionApi';
 import { useErrorHandler } from '../utils/errorReporting';
+import { RootState } from '../store';
+import { Kitchen } from '../types';
 
 type HelpScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HelpScreen'>;
 
@@ -31,10 +35,29 @@ const HelpScreen = () => {
   const { user } = useAuth();
   const { handleError } = useErrorHandler();
   
+  const [subject, setSubject] = useState('');
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Character limits
+  const SUBJECT_LIMIT = 50;
+  const FEEDBACK_LIMIT = 500;
+  
+  // Calculate remaining characters
+  const subjectRemaining = useMemo(() => SUBJECT_LIMIT - subject.length, [subject]);
+  const feedbackRemaining = useMemo(() => FEEDBACK_LIMIT - feedback.length, [feedback]);
+
+  // Get active kitchen name from Redux store
+  const activeKitchenName = useSelector((state: RootState) => {
+    const kitchensState = state.kitchens;
+    const activeKitchenId = kitchensState.activeKitchenId;
+    const activeKitchen = kitchensState.kitchens.find((k: Kitchen) => k.kitchen_id === activeKitchenId);
+    return activeKitchen?.name ?? activeKitchenId ?? 'N/A'; // Fallback to ID or N/A
+  });
 
   // Function to submit feedback
+  const userEmail = useSelector((state: RootState) => state.auth.user?.user_email ?? null);
+
   const handleSubmitFeedback = async () => {
     if (!feedback.trim()) {
       Alert.alert(t('screens.help.errorTitle'), 'Please enter your feedback');
@@ -45,17 +68,22 @@ const HelpScreen = () => {
 
     try {
       const result = await submitFeedback({
+        title: subject || 'General Feedback',
         feedbackText: feedback,
-        userId: user?.id,
-        kitchenName: 'ROACook Kitchen', // This could come from app settings in a real app
+        userEmail: userEmail,
+        kitchenName: activeKitchenName,
       });
 
       if (result) {
+        setSubject('');
         Alert.alert(
           t('screens.help.successTitle'),
           t('screens.help.successMessage')
         );
         setFeedback('');
+        
+        // Clear logs after successful submission to avoid duplicate logs in future feedback
+        appLogger.clearLogs();
         
         // Navigate back after successful submission
         setTimeout(() => {
@@ -92,17 +120,41 @@ const HelpScreen = () => {
           <View style={styles.contentContainer}>
             <Text style={styles.sectionTitle}>{t('screens.help.feedbackTitle')}</Text>
             
+            <Text style={styles.label}>{t('screens.help.subjectLabel') || 'Subject'}</Text>
+            <View>
+              <TextInput
+                style={styles.input}
+                placeholder={t('screens.help.subjectPlaceholder') || 'Subject'}
+                value={subject}
+                onChangeText={(text) => {
+                  if (text.length <= SUBJECT_LIMIT) {
+                    setSubject(text);
+                  }
+                }}
+                maxLength={SUBJECT_LIMIT}
+              />
+              <Text style={styles.charCounter}>{subjectRemaining} {t('screens.help.charsRemaining') || 'characters remaining'}</Text>
+            </View>
+            
             <Text style={styles.label}>{t('screens.help.feedbackLabel')}</Text>
-            <TextInput
-              style={styles.textInput}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              placeholder={t('screens.help.feedbackPlaceholder')}
-              placeholderTextColor={COLORS.textLight}
-              value={feedback}
-              onChangeText={setFeedback}
-            />
+            <View>
+              <TextInput
+                style={styles.textInput}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+                placeholder={t('screens.help.feedbackPlaceholder')}
+                placeholderTextColor={COLORS.textLight}
+                value={feedback}
+                onChangeText={(text) => {
+                  if (text.length <= FEEDBACK_LIMIT) {
+                    setFeedback(text);
+                  }
+                }}
+                maxLength={FEEDBACK_LIMIT}
+              />
+              <Text style={styles.charCounter}>{feedbackRemaining} {t('screens.help.charsRemaining') || 'characters remaining'}</Text>
+            </View>
             
             <TouchableOpacity
               style={[styles.submitButton, !feedback.trim() && styles.submitButtonDisabled]}
@@ -134,44 +186,73 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: SIZES.padding * 2,
+    padding: 20,
   },
   sectionTitle: {
-    ...FONTS.h2,
-    color: COLORS.white,
-    marginBottom: SIZES.padding * 1.5,
+    color: COLORS.text,
+    marginBottom: 15,
+    fontSize: 20,
+    fontFamily: 'Poppins',
+    fontWeight: 'bold',
   },
   label: {
-    ...FONTS.body2,
-    color: COLORS.white,
-    marginBottom: SIZES.base,
+    color: COLORS.text,
+    marginBottom: 8,
+    fontSize: 16,
+    fontFamily: 'Poppins',
+    fontWeight: '500', // medium
+    marginTop: 15,
+  },
+  input: {
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    fontFamily: 'Poppins',
+    fontWeight: 'normal', // regular
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 15,
   },
   textInput: {
     backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
     color: COLORS.text,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    fontFamily: 'Poppins',
+    fontWeight: 'normal', // regular
     borderWidth: 1,
     borderColor: COLORS.border,
     minHeight: 120,
-    ...FONTS.body2,
-    marginBottom: SIZES.padding * 2,
   },
   submitButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: SIZES.radius,
-    paddingVertical: SIZES.padding,
+    paddingVertical: 15,
+    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    ...SHADOWS.medium,
+    marginTop: 20,
   },
   submitButtonDisabled: {
     backgroundColor: COLORS.disabled,
   },
   submitButtonText: {
-    ...FONTS.h3,
     color: COLORS.white,
+    fontSize: 18,
+    fontFamily: 'Poppins',
+    fontWeight: '600', // semi-bold
+  },
+  charCounter: {
+    color: COLORS.textLight,
+    fontSize: 12,
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    marginRight: 5,
+    fontFamily: 'Poppins',
   },
 });
 
-export default HelpScreen; 
+export default HelpScreen;

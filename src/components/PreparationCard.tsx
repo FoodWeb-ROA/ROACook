@@ -5,6 +5,7 @@ import { DishComponent, PreparationIngredient } from '../types';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
 import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 
 interface PreparationCardProps {
   component: DishComponent;

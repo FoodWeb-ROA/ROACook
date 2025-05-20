@@ -3,11 +3,12 @@ import { supabase } from '../../data/supabaseClient';
 import { Linking } from 'react-native';
 import { oauthWatch, oauthFailure } from '../../slices/authSlice';
 import { AuthError, OAuthResponse } from './types';
+import { appLogger } from '../../services/AppLogService';
 
 export function* handleOAuthUrl(
 	action: ReturnType<typeof oauthWatch>
 ): Generator<any, void, OAuthResponse> {
-	console.log(`* handleOAuthUrl/action:`, action);
+	appLogger.log(`* handleOAuthUrl/action:`, action);
 
 	try {
 		const response: OAuthResponse = yield call(() =>
@@ -19,21 +20,21 @@ export function* handleOAuthUrl(
 			})
 		);
 
-		console.log(`* handleOAuthUrl/response:`, response);
+		appLogger.log(`* handleOAuthUrl/response:`, response);
 
 		const authUrl = response.data.url;
 
 		if (authUrl) {
-			console.log(`* handleOAuthUrl: Opening URL: ${authUrl}`);
+			appLogger.log(`* handleOAuthUrl: Opening URL: ${authUrl}`);
 
 			yield call(() => Linking.openURL(authUrl));
 		} else {
-			console.error('* handleOAuthUrl: No Url In Sign In With OAuth response');
+			appLogger.error('* handleOAuthUrl: No Url In Sign In With OAuth response');
 
 			yield put(oauthFailure('No Url In Sign In With OAuth response'));
 		}
 	} catch (error: any) {
-		console.error(`* handleOAuthUrl/catch error:`, error);
+		appLogger.error(`* handleOAuthUrl/catch error:`, error);
 
 		if (error instanceof AuthError) {
 			yield put(oauthFailure(error.message));
@@ -46,5 +47,5 @@ export function* handleOAuthUrl(
 export function* watchOAuthUrl(): Generator {
 	yield takeLatest(oauthWatch.type, handleOAuthUrl);
 
-	console.log('* watchOAuthUrl: watching', oauthWatch.type);
+	appLogger.log('* watchOAuthUrl: watching', oauthWatch.type);
 }

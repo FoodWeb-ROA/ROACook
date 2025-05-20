@@ -17,6 +17,7 @@ import { DeepLinkHandler, useDeepLinking } from './src/hooks/useDeepLinking';
 import { ReactQueryClientProvider } from './src/components/ReactQueryClientProvider';
 import { PersistGate } from 'redux-persist/integration/react';
 import { SupabaseRealtimeProvider } from './src/realtime/SupabaseRealtimeProvider';
+import { appLogger } from './src/services/AppLogService';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -42,8 +43,8 @@ function DeepLinkInterceptor() {
 	const [appIsReady, setAppIsReady] = useState(false);
 
 	const handleDeepLink: DeepLinkHandler = (url, parsed) => {
-		console.log('--- Received deep link in App:', url);
-		console.log('--- Parsed deep link:', parsed);
+		appLogger.log('--- Received deep link in App:', url);
+		appLogger.log('--- Parsed deep link:', parsed);
 	};
 
 	useDeepLinking(handleDeepLink);
@@ -59,7 +60,7 @@ function DeepLinkInterceptor() {
 					'Poppins-Bold': require('./assets/fonts/Poppins-Bold.ttf'),
 				});
 			} catch (e) {
-				console.warn(e);
+				appLogger.warn(e);
 			} finally {
 				// Tell the application to render
 				setAppIsReady(true);

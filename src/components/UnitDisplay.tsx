@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TextStyle } from 'react-native';
 import { useUnitSystem, convertWeight, convertVolume, convertTemperature, getUnitLabel } from '../context/UnitSystemContext';
+import { appLogger } from '../services/AppLogService';
 
 interface UnitDisplayProps {
   value: number;

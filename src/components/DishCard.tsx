@@ -5,6 +5,7 @@ import { Dish, DishComponent } from '../types';
 import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
 import { useTranslation } from 'react-i18next';
 import { relative } from 'path';
+import { appLogger } from '../services/AppLogService';
 
 interface DishCardProps {
   dish: Dish;

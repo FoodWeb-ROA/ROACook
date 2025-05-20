@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // Assuming you use Expo icons
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import the hook
+import { appLogger } from '../services/AppLogService';
 
 interface UpdateNotificationBannerProps {
   visible: boolean;

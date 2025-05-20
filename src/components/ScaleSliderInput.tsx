@@ -11,6 +11,7 @@ import {
 import Slider from '@react-native-community/slider';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { formatQuantityAuto } from '../utils/textFormatters';
+import { appLogger } from '../services/AppLogService';
 
 interface ScaleSliderInputProps {
   label: string;

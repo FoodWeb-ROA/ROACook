@@ -3,17 +3,18 @@ import { supabase } from '../../data/supabaseClient';
 import { User, CheckUser, CreateUser } from './types';
 import { ILanguage, IUser } from '../../types';
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
+import { appLogger } from '../../services/AppLogService';
 
 export function* checkExistingUser(
 	userId: string
 ): Generator<any, CheckUser, any> {
-	console.log(`* checkExistingUser: Checking user with ID: ${userId}`);
+	appLogger.log(`* checkExistingUser: Checking user with ID: ${userId}`);
 
 	const checkResponse: CheckUser = yield call(() =>
 		supabase.from('users').select('*').eq('user_id', userId).single()
 	);
 
-	console.log(`* checkExistingUser/checkResponse:`, checkResponse);
+	appLogger.log(`* checkExistingUser/checkResponse:`, checkResponse);
 
 	return checkResponse;
 }
@@ -23,7 +24,7 @@ export function* insertPublicUser(
 	fullname: string,
 	language: ILanguage['ISO_Code']
 ): Generator<any, CreateUser, any> {
-	console.log(`* insertPublicUser: Inserting user for ${user.email}`);
+	appLogger.log(`* insertPublicUser: Inserting user for ${user.email}`);
 
 	const insertResponse: CreateUser = yield call(() =>
 		supabase
@@ -38,7 +39,7 @@ export function* insertPublicUser(
 			.single()
 	);
 
-	console.log(`* insertPublicUser/insertResponse:`, insertResponse);
+	appLogger.log(`* insertPublicUser/insertResponse:`, insertResponse);
 
 	return insertResponse;
 }
@@ -52,11 +53,11 @@ export function* linkUserToKitchen(
 
     if (!defaultKitchenId) {
         const errMsg = 'EXPO_PUBLIC_DEFAULT_KITCHEN_ID is not set. Cannot link user to a kitchen.';
-        console.error(`* linkUserToKitchen: ${errMsg}`);
+        appLogger.error(`* linkUserToKitchen: ${errMsg}`);
         return { data: null, error: new Error(errMsg) } as LinkUserToDefaultKitchen;
     }
 
-    console.log(`* linkUserToKitchen: Linking user ${userId} to kitchen ${defaultKitchenId}`);
+    appLogger.log(`* linkUserToKitchen: Linking user ${userId} to kitchen ${defaultKitchenId}`);
 
     const insertResponse: LinkUserToDefaultKitchen = yield call(() =>
         supabase
@@ -69,7 +70,7 @@ export function* linkUserToKitchen(
             .maybeSingle()
     );
 
-    console.log(`* linkUserToKitchen/insertResponse:`, insertResponse);
+    appLogger.log(`* linkUserToKitchen/insertResponse:`, insertResponse);
 
     return insertResponse;
 }
@@ -79,7 +80,7 @@ export type CheckKitchenLink = SagaReturnType<() => PostgrestSingleResponse<{ ki
 export function* checkKitchenUserLink(
     userId: string
 ): Generator<any, CheckKitchenLink, any> {
-    console.log(`* checkKitchenUserLink: Checking kitchen link for user ID: ${userId}`);
+    appLogger.log(`* checkKitchenUserLink: Checking kitchen link for user ID: ${userId}`);
 
     const checkResponse: CheckKitchenLink = yield call(() =>
         supabase
@@ -88,7 +89,7 @@ export function* checkKitchenUserLink(
             .eq('user_id', userId)
     );
 
-    console.log(`* checkKitchenUserLink/checkResponse:`, checkResponse);
+    appLogger.log(`* checkKitchenUserLink/checkResponse:`, checkResponse);
 
     return checkResponse;
 }

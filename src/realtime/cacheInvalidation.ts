@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Database } from '../data/database.types';
+import { appLogger } from '../services/AppLogService';
 
 // Define row types needed for specific cache updates
 type KitchenRow = Database['public']['Tables']['kitchen']['Row'];
@@ -38,15 +39,15 @@ export function applyRealtimeEvent(
 
     // Only process events for the public schema
     if (schema !== 'public') {
-        console.log(`[CacheInvalidation] Ignoring event for non-public schema: ${schema}`);
+        appLogger.log(`[CacheInvalidation] Ignoring event for non-public schema: ${schema}`);
         return;
     }
 
-    console.log(`[CacheInvalidation] Applying ${eventType} on public.${table}:`, payload);
+    appLogger.log(`[CacheInvalidation] Applying ${eventType} on public.${table}:`, payload);
 
     // Helper to invalidate queries with a specific prefix
     const invalidate = (queryKeyPrefix: unknown[]) => {
-        console.log(`[CacheInvalidation] Invalidating query key prefix:`, queryKeyPrefix);
+        appLogger.log(`[CacheInvalidation] Invalidating query key prefix:`, queryKeyPrefix);
         queryClient.invalidateQueries({ queryKey: queryKeyPrefix });
     };
 
@@ -62,18 +63,18 @@ export function applyRealtimeEvent(
 
             switch (eventType) {
                 case 'INSERT':
-                    console.log(`[CacheInvalidation][${String(idField)}] Surgically inserting into list cache:`, queryKey);
+                    appLogger.log(`[CacheInvalidation][${String(idField)}] Surgically inserting into list cache:`, queryKey);
                     // Add only if it doesn't exist (prevent duplicates from potential race conditions)
                     if (!newItem || oldData.some(item => item[idField] === newItem[idField])) {
                         return oldData;
                     }
                     return [...oldData, newItem];
                 case 'UPDATE':
-                     console.log(`[CacheInvalidation][${String(idField)}] Surgically updating list cache:`, queryKey);
+                     appLogger.log(`[CacheInvalidation][${String(idField)}] Surgically updating list cache:`, queryKey);
                     if (!newItem) return oldData;
                     return oldData.map(item => item[idField] === newItem[idField] ? newItem : item);
                 case 'DELETE':
-                     console.log(`[CacheInvalidation][${String(idField)}] Surgically deleting from list cache:`, queryKey);
+                     appLogger.log(`[CacheInvalidation][${String(idField)}] Surgically deleting from list cache:`, queryKey);
                     if (!oldItemId) return oldData;
                     return oldData.filter(item => item[idField] !== oldItemId);
                 default:
@@ -125,7 +126,7 @@ export function applyRealtimeEvent(
             const kitchenIdForDish = getRelevantKitchenId(dishNew, dishOld);
 
             if (!dishId || !kitchenIdForDish) {
-                 console.warn('[CacheInvalidation][dishes] Missing dish_id or kitchen_id, falling back to broad invalidation.');
+                 appLogger.warn('[CacheInvalidation][dishes] Missing dish_id or kitchen_id, falling back to broad invalidation.');
                  if(currentKitchenId) invalidate(['dishes', { kitchen_id: currentKitchenId }]);
                  invalidate(['menu_section']); // Invalidate all menu sections if kitchen unknown
                  return;
@@ -146,11 +147,11 @@ export function applyRealtimeEvent(
             switch (eventType) {
                 case 'INSERT':
                 case 'UPDATE':
-                     console.log('[CacheInvalidation][dishes] Surgically updating detail cache:', detailQueryKey);
+                     appLogger.log('[CacheInvalidation][dishes] Surgically updating detail cache:', detailQueryKey);
                      queryClient.setQueryData(detailQueryKey, dishNew);
                      break;
                 case 'DELETE':
-                     console.log('[CacheInvalidation][dishes] Removing detail cache:', detailQueryKey);
+                     appLogger.log('[CacheInvalidation][dishes] Removing detail cache:', detailQueryKey);
                      queryClient.removeQueries({ queryKey: detailQueryKey });
                      break;
             }
@@ -169,7 +170,7 @@ export function applyRealtimeEvent(
             const kitchenIdForIngredient = getRelevantKitchenId(ingNew, ingOld);
 
             if (!ingredientId || !kitchenIdForIngredient) {
-                 console.warn('[CacheInvalidation][ingredients] Missing ingredient_id or kitchen_id, falling back to broad invalidation.');
+                 appLogger.warn('[CacheInvalidation][ingredients] Missing ingredient_id or kitchen_id, falling back to broad invalidation.');
                   if(currentKitchenId) {
                     invalidate(['ingredients', { kitchen_id: currentKitchenId }]);
                     invalidate(['preparations', { kitchen_id: currentKitchenId }]); // Invalidate both lists
@@ -201,17 +202,17 @@ export function applyRealtimeEvent(
 
              // --- Surgical/Invalidation update for detail views ---
              if (eventType === 'DELETE') {
-                 console.log('[CacheInvalidation][ingredients] Removing detail cache:', detailQueryKey);
+                 appLogger.log('[CacheInvalidation][ingredients] Removing detail cache:', detailQueryKey);
                  queryClient.removeQueries({ queryKey: detailQueryKey });
                  // Also remove the corresponding prep detail cache if it existed
-                  console.log('[CacheInvalidation][ingredients] Removing potentially linked prep detail cache:', prepDetailQueryKey);
+                  appLogger.log('[CacheInvalidation][ingredients] Removing potentially linked prep detail cache:', prepDetailQueryKey);
                  queryClient.removeQueries({ queryKey: prepDetailQueryKey });
              } else {
-                 console.log('[CacheInvalidation][ingredients] Surgically updating detail cache:', detailQueryKey);
+                 appLogger.log('[CacheInvalidation][ingredients] Surgically updating detail cache:', detailQueryKey);
                  queryClient.setQueryData(detailQueryKey, ingNew);
                  // We don't have enough info here to update the *preparation* detail view surgically from an *ingredient* event.
                  // Invalidate the preparation detail instead.
-                 console.log('[CacheInvalidation][ingredients] Invalidating potentially linked prep detail cache:', prepDetailQueryKey);
+                 appLogger.log('[CacheInvalidation][ingredients] Invalidating potentially linked prep detail cache:', prepDetailQueryKey);
                  invalidate(prepDetailQueryKey);
              }
 
@@ -229,7 +230,7 @@ export function applyRealtimeEvent(
             const kitchenIdForPrep = currentKitchenId; // Use active kitchen context
 
             if (!preparationId || !kitchenIdForPrep) {
-                 console.warn('[CacheInvalidation][preparations] Missing preparation_id or kitchen context, falling back to broad invalidation.');
+                 appLogger.warn('[CacheInvalidation][preparations] Missing preparation_id or kitchen context, falling back to broad invalidation.');
                  if(currentKitchenId) {
                      invalidate(['preparations', { kitchen_id: currentKitchenId }]);
                      invalidate(['ingredients', { kitchen_id: currentKitchenId }]); // Invalidate both lists
@@ -255,28 +256,28 @@ export function applyRealtimeEvent(
             // --- Invalidate (or surgically update if structure matches) the ingredients list ---
             // Since a preparation *is* an ingredient, removing/updating it affects the ingredient list.
             // Surgical update is complex as the PreparationRow might differ from IngredientRow. Invalidate is safer.
-             console.log('[CacheInvalidation][preparations] Invalidating ingredients list due to prep change:', ingredientListQueryKey);
+             appLogger.log('[CacheInvalidation][preparations] Invalidating ingredients list due to prep change:', ingredientListQueryKey);
             invalidate(ingredientListQueryKey);
 
             // --- Surgical/Invalidation update for detail views ---
              if (eventType === 'DELETE') {
-                 console.log('[CacheInvalidation][preparations] Removing detail cache:', detailQueryKey);
+                 appLogger.log('[CacheInvalidation][preparations] Removing detail cache:', detailQueryKey);
                  queryClient.removeQueries({ queryKey: detailQueryKey });
                  // Also remove the corresponding ingredient detail cache
-                  console.log('[CacheInvalidation][preparations] Removing linked ingredient detail cache:', ingredientDetailQueryKey);
+                  appLogger.log('[CacheInvalidation][preparations] Removing linked ingredient detail cache:', ingredientDetailQueryKey);
                  queryClient.removeQueries({ queryKey: ingredientDetailQueryKey });
              } else {
-                 console.log('[CacheInvalidation][preparations] Surgically updating detail cache:', detailQueryKey);
+                 appLogger.log('[CacheInvalidation][preparations] Surgically updating detail cache:', detailQueryKey);
                  queryClient.setQueryData(detailQueryKey, prepNew); // Assuming structure matches cache
                   // Invalidate the corresponding ingredient detail cache as structure likely differs
-                 console.log('[CacheInvalidation][preparations] Invalidating linked ingredient detail cache:', ingredientDetailQueryKey);
+                 appLogger.log('[CacheInvalidation][preparations] Invalidating linked ingredient detail cache:', ingredientDetailQueryKey);
                  invalidate(ingredientDetailQueryKey);
              }
 
             // Invalidate dishes in the kitchen (as they might use this prep)
             invalidate(['dishes', { kitchen_id: kitchenIdForPrep }]);
             // ALSO invalidate active dish detail queries, as their embedded prep might have changed
-            console.log('[CacheInvalidation][preparations] Invalidating dish list and detail queries.');
+            appLogger.log('[CacheInvalidation][preparations] Invalidating dish list and detail queries.');
             invalidate(['dishes']); // More specific: Invalidate all queries starting with 'dishes' (list and details)
             break;
         }
@@ -289,10 +290,10 @@ export function applyRealtimeEvent(
             const kitchenIdForPrepIng = currentKitchenId; // Simplified assumption
 
             if (parentPrepId) {
-                console.log(`[CacheInvalidation][preparation_ingredients] Invalidating parent prep detail:`, ['preparations', { preparation_id: parentPrepId }]);
+                appLogger.log(`[CacheInvalidation][preparation_ingredients] Invalidating parent prep detail:`, ['preparations', { preparation_id: parentPrepId }]);
                 invalidate(['preparations', { preparation_id: parentPrepId }]);
             } else {
-                 console.warn('[CacheInvalidation][preparation_ingredients] Missing parent preparation_id, cannot invalidate specific detail.');
+                 appLogger.warn('[CacheInvalidation][preparation_ingredients] Missing parent preparation_id, cannot invalidate specific detail.');
             }
             // Invalidate potentially affected lists and details
             if (kitchenIdForPrepIng) {
@@ -301,7 +302,7 @@ export function applyRealtimeEvent(
                  invalidate(['preparations', { kitchen_id: kitchenIdForPrepIng }]);
             }
             // ALSO invalidate active dish detail queries, as their embedded prep might have changed
-            console.log('[CacheInvalidation][preparation_ingredients] Invalidating dish list and detail queries.');
+            appLogger.log('[CacheInvalidation][preparation_ingredients] Invalidating dish list and detail queries.');
             invalidate(['dishes']); // More specific: Invalidate all queries starting with 'dishes' (list and details)
             break;
         }
@@ -313,7 +314,7 @@ export function applyRealtimeEvent(
             const kitchenIdForMenu = getRelevantKitchenId(menuNew, menuOld);
 
              if (!menuSectionId || !kitchenIdForMenu) {
-                 console.warn('[CacheInvalidation][menu_section] Missing menu_section_id or kitchen_id, falling back to broad invalidation.');
+                 appLogger.warn('[CacheInvalidation][menu_section] Missing menu_section_id or kitchen_id, falling back to broad invalidation.');
                  if(currentKitchenId) invalidate(['menu_section', { kitchen_id: currentKitchenId }]);
                  return;
              }
@@ -333,11 +334,11 @@ export function applyRealtimeEvent(
             switch (eventType) {
                 case 'INSERT':
                 case 'UPDATE':
-                     console.log('[CacheInvalidation][menu_section] Surgically updating detail cache:', detailQueryKey);
+                     appLogger.log('[CacheInvalidation][menu_section] Surgically updating detail cache:', detailQueryKey);
                      queryClient.setQueryData(detailQueryKey, menuNew);
                      break;
                 case 'DELETE':
-                     console.log('[CacheInvalidation][menu_section] Removing detail cache:', detailQueryKey);
+                     appLogger.log('[CacheInvalidation][menu_section] Removing detail cache:', detailQueryKey);
                      queryClient.removeQueries({ queryKey: detailQueryKey });
                      break;
             }
@@ -355,10 +356,10 @@ export function applyRealtimeEvent(
             const kitchenIdForDishComp = currentKitchenId; // Simplified assumption
 
             if (parentDishId) {
-                console.log(`[CacheInvalidation][dish_components] Invalidating parent dish detail:`, ['dishes', { dish_id: parentDishId }]);
+                appLogger.log(`[CacheInvalidation][dish_components] Invalidating parent dish detail:`, ['dishes', { dish_id: parentDishId }]);
                 invalidate(['dishes', { dish_id: parentDishId }]);
             } else {
-                 console.warn('[CacheInvalidation][dish_components] Missing parent dish_id, cannot invalidate specific detail.');
+                 appLogger.warn('[CacheInvalidation][dish_components] Missing parent dish_id, cannot invalidate specific detail.');
             }
             // Invalidate potentially affected lists
              if (kitchenIdForDishComp) {
@@ -374,7 +375,7 @@ export function applyRealtimeEvent(
              const unitId = unitNew?.unit_id ?? unitOld?.unit_id;
 
              if (!unitId) {
-                 console.warn('[CacheInvalidation][units] Missing unit_id, falling back to broad invalidation.');
+                 appLogger.warn('[CacheInvalidation][units] Missing unit_id, falling back to broad invalidation.');
                  invalidate(['units']); // Invalidate all units
                  return;
              }
@@ -394,17 +395,17 @@ export function applyRealtimeEvent(
              switch (eventType) {
                  case 'INSERT':
                  case 'UPDATE':
-                     console.log('[CacheInvalidation][units] Surgically updating detail cache:', detailQueryKey);
+                     appLogger.log('[CacheInvalidation][units] Surgically updating detail cache:', detailQueryKey);
                      queryClient.setQueryData(detailQueryKey, unitNew);
                      break;
                  case 'DELETE':
-                     console.log('[CacheInvalidation][units] Removing detail cache:', detailQueryKey);
+                     appLogger.log('[CacheInvalidation][units] Removing detail cache:', detailQueryKey);
                      queryClient.removeQueries({ queryKey: detailQueryKey });
                      break;
              }
              // Units changing might affect display everywhere, broad invalidation might be needed
              // Invalidate dishes, ingredients, preps etc. if unit display depends on this data
-             console.warn('[CacheInvalidation][units] Unit changed, consider invalidating dependent tables (dishes, ingredients, preps).');
+             appLogger.warn('[CacheInvalidation][units] Unit changed, consider invalidating dependent tables (dishes, ingredients, preps).');
               if (currentKitchenId) {
                   invalidate(['dishes', { kitchen_id: currentKitchenId }]);
                   invalidate(['ingredients', { kitchen_id: currentKitchenId }]);
@@ -415,7 +416,7 @@ export function applyRealtimeEvent(
 
 
         default:
-            console.warn(`[CacheInvalidation] No specific invalidation/update logic for table: ${table}`);
+            appLogger.warn(`[CacheInvalidation] No specific invalidation/update logic for table: ${table}`);
             // Optional: Generic invalidation based on table name as a fallback?
             // invalidate([table]);
             break;

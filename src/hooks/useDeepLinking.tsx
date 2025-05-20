@@ -3,6 +3,7 @@ import { Linking } from 'react-native';
 import * as LinkingExpo from 'expo-linking';
 import { useTypedDispatch } from './useTypedDispatch';
 import { oauthCallback } from '../slices/authSlice';
+import { appLogger } from '../services/AppLogService';
 
 export type DeepLinkHandler = (
 	url: string,
@@ -13,16 +14,16 @@ export function useDeepLinking(onDeepLink: DeepLinkHandler) {
 	const typedDispatch = useTypedDispatch();
 
 	useEffect(() => {
-		console.log(`--- deep linking connected`);
+		appLogger.log(`--- deep linking connected`);
 
 		const handleDeepLink = (event: { url: string }) => {
 			const { url } = event;
 
-			console.log('--- useDeepLinking/Deep link received:', url);
+			appLogger.log('--- useDeepLinking/Deep link received:', url);
 
 			const parsed = LinkingExpo.parse(url);
 
-			console.log('--- useDeepLinking/parsed URL:', parsed);
+			appLogger.log('--- useDeepLinking/parsed URL:', parsed);
 
 			if (onDeepLink) {
 				onDeepLink(url, parsed);
@@ -37,7 +38,7 @@ export function useDeepLinking(onDeepLink: DeepLinkHandler) {
 
 		Linking.getInitialURL().then(url => {
 			if (url) {
-				console.log(
+				appLogger.log(
 					'--- useDeepLinking/getInitialURL/app opened from deep link:',
 					url
 				);

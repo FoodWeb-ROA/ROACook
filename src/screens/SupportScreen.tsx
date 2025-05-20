@@ -17,6 +17,7 @@ import { RootStackParamList } from '../navigation/types';
 import AppHeader from '../components/AppHeader';
 import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 
 // Define navigation prop types
 type SupportScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Support'>;

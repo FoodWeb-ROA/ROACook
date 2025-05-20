@@ -10,7 +10,7 @@ if (!fs.existsSync(outputDir)) {
 
 async function exportData() {
   try {
-    console.log('Fetching all relevant database data...');
+    appLogger.log('Fetching all relevant database data...');
     
     // Fetch all data
     const allData = await fetchAllData();
@@ -19,24 +19,24 @@ async function exportData() {
     Object.entries(allData).forEach(([tableName, data]) => {
       const filePath = path.join(outputDir, `${tableName}.json`);
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-      console.log(`Exported ${tableName} to ${filePath}`);
+      appLogger.log(`Exported ${tableName} to ${filePath}`);
     });
     
     // Export all data to a single file
     const allDataPath = path.join(outputDir, 'all-data.json');
     fs.writeFileSync(allDataPath, JSON.stringify(allData, null, 2));
-    console.log(`Exported complete relevant database tables to ${allDataPath}`);
+    appLogger.log(`Exported complete relevant database tables to ${allDataPath}`);
     
     // Fetch and export dishes with related data
-    console.log('Fetching dishes with related data...');
+    appLogger.log('Fetching dishes with related data...');
     const dishesWithData = await fetchDishesWithRelatedData();
     const dishesPath = path.join(outputDir, 'dishes-with-related-data.json');
     fs.writeFileSync(dishesPath, JSON.stringify(dishesWithData, null, 2));
-    console.log(`Exported dishes with related data to ${dishesPath}`);
+    appLogger.log(`Exported dishes with related data to ${dishesPath}`);
     
-    console.log('Data export completed successfully!');
+    appLogger.log('Data export completed successfully!');
   } catch (error) {
-    console.error('Error exporting data:', error);
+    appLogger.error('Error exporting data:', error);
     process.exit(1);
   }
 }

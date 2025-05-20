@@ -9,6 +9,7 @@ import {
 } from '../types';
 
 import { Database } from '../data/database.types';
+import { appLogger } from '../services/AppLogService';
 
 // Base Database types (Keep private unless needed elsewhere)
 type DbDish = Database['public']['Tables']['dishes']['Row'];
@@ -81,7 +82,7 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
 
   // Check if essential ingredient info is present
   if (!ingredient) {
-    console.warn('Missing ingredient details for component', baseComponent);
+    appLogger.warn('Missing ingredient details for component', baseComponent);
     return { 
         dish_id: dish_id,
         ingredient_id: baseComponent.ingredient_id || '',
@@ -118,7 +119,7 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
       };
       // --- END MODIFICATION ---
       // --- ADD LOGGING: Final Prep Details ---
-      console.log(`[transformDishComponent] Final prepDetails for ${preparation.preparation_id}:`, JSON.stringify(finalPrepDetails, null, 2));
+      appLogger.log(`[transformDishComponent] Final prepDetails for ${preparation.preparation_id}:`, JSON.stringify(finalPrepDetails, null, 2));
       // --- END LOGGING ---
   } else {
       // Transform raw ingredient details
@@ -146,7 +147,7 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
  */
 export function transformPreparation(combinedData: FetchedPreparationDataCombined | null): Preparation { 
   // --- ADD LOGGING: Input data ---
-  console.log('[transformPreparation] Input combinedData:', JSON.stringify(combinedData, null, 2));
+  appLogger.log('[transformPreparation] Input combinedData:', JSON.stringify(combinedData, null, 2));
   // --- END LOGGING ---
 
   if (!combinedData) {
@@ -193,7 +194,7 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
   };
 
   // --- ADD LOGGING: Output data ---
-  console.log('[transformPreparation] Output Preparation object:', JSON.stringify(result, null, 2));
+  appLogger.log('[transformPreparation] Output Preparation object:', JSON.stringify(result, null, 2));
   // --- END LOGGING ---
 
   return result;
@@ -304,7 +305,7 @@ export function transformMenuSection(dbMenuSection: DbMenuSection | null): MenuS
  */
 export function transformDish(dbDish: FetchedDishData | null): Dish {
  if (!dbDish) {
-    console.error("transformDish received null input");
+    appLogger.error("transformDish received null input");
     return {
       dish_id: '',
       dish_name: 'Unknown Dish',

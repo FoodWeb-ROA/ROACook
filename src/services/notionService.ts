@@ -5,18 +5,26 @@ import {
 	CreatePageParameters,
 	CreatePageResponse
 } from '@notionhq/client/build/src/api-endpoints';
+import { appLogger } from './AppLogService';
 
 // Ensure environment variables are set
 const notionApiKey = process.env.EXPO_PUBLIC_NOTION_API_KEY;
 const notionDatabaseId = process.env.EXPO_PUBLIC_NOTION_DATABASE_ID;
+const notionAppLogsDatabaseId = process.env.EXPO_PUBLIC_NOTION_APP_LOGS_DATABASE_ID;
 
 // Validate configuration
 const isNotionConfigured = !!notionApiKey && !!notionDatabaseId;
+const isNotionAppLogsConfigured = !!notionAppLogsDatabaseId;
 
 if (!isNotionConfigured) {
-	console.warn(
-		'Notion integration is not fully configured. Missing API Key or Database ID.'
+	appLogger.warn(
+		'Notion integration is not fully configured. Missing API Key or Main Database ID.'
 	);
+}
+if (!isNotionAppLogsConfigured) {
+    appLogger.warn(
+        'Notion App Logs integration is not fully configured. Missing App Logs Database ID.'
+    );
 }
 
 const notion = new Client({ auth: notionApiKey });
@@ -24,56 +32,68 @@ const notion = new Client({ auth: notionApiKey });
 // --- Interfaces --- //
 
 export interface NotionTicketData {
+	title?: string;
 	kitchenName: string | null;
-	userName: string | null;
+	userEmail?: string | null;
 	userMessage?: string | null;
 	error?: Error | null;
-	logContent?: string | null; // Can be error stack or other logs
+	logContent?: string | null; 
 	clientVersion?: string | null;
+	logLevel?: 'INFO' | 'WARNING' | 'ERROR' | string | null;
 }
 
 // --- Internal Helper Functions --- //
 
 /**
- * Creates a Notion page (typically used for logs).
- * Assumes the parent is the main database unless overridden.
+ * Creates a new log entry page in the 'App Log Entries' database.
  */
-const createNotionLogPage = async (
-	title: string,
-	content: string,
-	parentDbId: string = notionDatabaseId! // Default to main DB ID
-): Promise<CreatePageResponse | null> => {
-	if (!isNotionConfigured) return null;
+const createAppLogEntryPage = async (
+	ticketId: string, 
+	logDetails: string,
+	logLevel: string | null
+): Promise<string | null> => {
+	if (!isNotionConfigured || !isNotionAppLogsConfigured) return null;
+
+	const timestamp = new Date().toISOString();
+	const logEntryTitle = `Log - ${ticketId}`;
 
 	try {
-		console.log(`Creating Notion log page: ${title}`);
-		const response = await notion.pages.create({
-			parent: { database_id: parentDbId },
-			// Assumes the log page just needs a Title property in the database
-			properties: {
-				Title: {
-					title: [{ text: { content: title } }]
-				}
+		appLogger.log(`Creating Notion App Log entry page: ${logEntryTitle}`);
+		const properties: CreatePageParameters['properties'] = {
+			'Log Entry': { 
+				title: [{ text: { content: logEntryTitle } }]
 			},
-			// Add content as blocks
+			'Timestamp': { 
+				date: { start: timestamp }
+			}
+		};
+
+		if (logLevel) {
+			properties['Log Level'] = { 
+				select: { name: logLevel } 
+			};
+		}
+
+		const response = await notion.pages.create({
+			parent: { database_id: notionAppLogsDatabaseId! },
+			properties: properties,
 			children: [
 				{
-					object: 'block',
-					type: 'heading_2',
+					object: 'block' as const,
+					type: 'heading_2' as const,
 					heading_2: {
-						rich_text: [{ type: 'text', text: { content: 'Details' } }]
+						rich_text: [{ type: 'text' as const, text: { content: 'Log Details' } }]
 					}
 				},
 				{
-					object: 'block',
-					type: 'paragraph',
+					object: 'block' as const,
+					type: 'paragraph' as const,
 					paragraph: {
 						rich_text: [
 							{
-								type: 'text',
+								type: 'text' as const,
 								text: {
-									// Limit content length
-									content: content.substring(0, 2000)
+									content: logDetails.substring(0, 2000)
 								}
 							}
 						]
@@ -81,11 +101,11 @@ const createNotionLogPage = async (
 				}
 			]
 		});
-		console.log(`Successfully created log page with ID: ${response.id}`);
-		return response;
+		appLogger.log(`Successfully created App Log entry page with ID: ${response.id}`);
+		return response.id;
 	} catch (error: any) {
-		console.error(
-			'Failed to create Notion log page:',
+		appLogger.error(
+			'Failed to create Notion App Log entry page:',
 			error.body || error.message || error
 		);
 		return null;
@@ -93,34 +113,34 @@ const createNotionLogPage = async (
 };
 
 /**
- * Creates the main ticket entry in the Notion database.
+ * Creates the main ticket entry in the 'Support Tickets and Errors' database.
+ * Links to an App Log Entry page if appLogPageId is provided.
  */
 const createNotionTicketEntry = async (
 	ticketId: string,
 	data: NotionTicketData,
-	logPageId: string | null
+	appLogPageId: string | null 
 ): Promise<CreatePageResponse | null> => {
 	if (!isNotionConfigured) return null;
 
 	const timestamp = new Date().toISOString();
 	const clientVersion = data.clientVersion ?? Constants.expoConfig?.version ?? 'unknown';
 	try {
-		console.log(`Creating Notion support ticket entry: ${ticketId}`);
+		appLogger.log(`Creating Notion support ticket entry: ${ticketId}`);
 		const properties: CreatePageParameters['properties'] = {
-			// Adjust property names EXACTLY as they appear in Notion
 			Title: {
-				title: [{ text: { content: ticketId } }]
+				title: [{ text: { content: data.title || 'Auto Report' } }]
 			},
 			Timestamp: {
 				date: { start: timestamp }
 			},
-			'kitchen name': {
+			'Kitchen Name': {
 				rich_text: [{ text: { content: data.kitchenName ?? 'N/A' } }]
 			},
-			'user name': {
-				rich_text: [{ text: { content: data.userName ?? 'N/A' } }]
+			'User Email': {
+				email: data.userEmail || null
 			},
-			'user message': {
+			'User Message': {
 				rich_text: [
 					{
 						text: {
@@ -130,27 +150,25 @@ const createNotionTicketEntry = async (
 					}
 				]
 			},
-			'client build version': {
+			'Client Version': {
 				rich_text: [{ text: { content: clientVersion } }]
 			}
 		};
 
-		// Add relation only if logPageId is valid
-		if (logPageId) {
-			properties['log entry'] = {
-				// Assumes relation property named 'log entry'
-				relation: [{ id: logPageId }]
+		if (appLogPageId && isNotionAppLogsConfigured) {
+			properties['Log Entry'] = { 
+				relation: [{ id: appLogPageId }]
 			};
 		}
 
-		const response = await notion.pages.create({
+		const ticketResponse = await notion.pages.create({
 			parent: { database_id: notionDatabaseId! },
 			properties: properties
 		});
-		console.log(`Successfully created ticket entry with ID: ${response.id}`);
-		return response;
+		appLogger.log(`Successfully created ticket entry with ID: ${ticketResponse.id}`);
+		return ticketResponse;
 	} catch (error: any) {
-		console.error(
+		appLogger.error(
 			'Failed to create Notion ticket entry:',
 			error.body || error.message || error
 		);
@@ -161,30 +179,46 @@ const createNotionTicketEntry = async (
 // --- Exported Function (Combined Logic) --- //
 
 /**
- * Creates a support ticket in Notion, including a related page for logs.
+ * Creates a support ticket in Notion and a related log entry in a separate 'App Log Entries' database.
  * This is the main function to call from outside.
  */
 export const reportToNotion = async (data: NotionTicketData): Promise<boolean> => {
 	if (!isNotionConfigured) {
-		console.warn('Notion not configured, skipping report.');
+		appLogger.warn('[reportToNotion] Notion (main) not configured, skipping report.');
 		return false;
 	}
 
 	const ticketId = uuidv4();
-	const logTitle = `Log - ${ticketId}`;
-	// Prioritize specific logContent, fallback to error stack
-	const logDetails = data.logContent ?? data.error?.stack ?? 'No detailed logs provided.';
-	let logPageId: string | null = null;
+	const logDetails = data.logContent ?? data.error?.stack ?? null;
+	const logLevel = data.logLevel ?? (data.error ? 'ERROR' : 'INFO');
+	let appLogPageId: string | null = null;
 
-	// 1. Create the log page
-	const logPageResponse = await createNotionLogPage(logTitle, logDetails);
-	if (logPageResponse) {
-		logPageId = logPageResponse.id;
+	// Diagnostic logging
+	appLogger.log(`[reportToNotion] Ticket ID generated: ${ticketId}`);
+	appLogger.log(`[reportToNotion] Log details exist: ${logDetails ? 'Yes' : 'No'}`);
+	if(logDetails) {
+		appLogger.log(`[reportToNotion] Log details preview (first 50 chars): ${logDetails.substring(0,50)}`);
 	}
+	appLogger.log(`[reportToNotion] Log level: ${logLevel}`);
+	appLogger.log(`[reportToNotion] Is Notion App Logs Configured (isNotionAppLogsConfigured var): ${isNotionAppLogsConfigured}`);
+	appLogger.log(`[reportToNotion] Raw EXPO_PUBLIC_NOTION_APP_LOGS_DATABASE_ID from env: ${process.env.EXPO_PUBLIC_NOTION_APP_LOGS_DATABASE_ID}`);
 
-	// 2. Create the main ticket entry, linking to the log page if created
-	const ticketResponse = await createNotionTicketEntry(ticketId, data, logPageId);
+	// 1. Create the log page in 'App Log Entries' database if logDetails exist
+	if (logDetails && isNotionAppLogsConfigured) {
+		appLogger.log('[reportToNotion] Attempting to create app log entry page...');
+		appLogPageId = await createAppLogEntryPage(ticketId, logDetails, logLevel);
+		appLogger.log(`[reportToNotion] App log page ID creation attempt finished. Resulting ID: ${appLogPageId}`);
+	} else if (logDetails && !isNotionAppLogsConfigured) {
+        appLogger.warn('[reportToNotion] Log details exist but Notion App Logs DB is not configured. Skipping log entry creation.');
+    } else if (!logDetails) {
+        appLogger.log('[reportToNotion] No log details provided. Skipping log entry creation.');
+    }
+
+	// 2. Create the main ticket entry, linking to the app log page if created
+	appLogger.log(`[reportToNotion] Proceeding to create main ticket entry. AppLogPageId to link: ${appLogPageId}`);
+	const ticketResponse = await createNotionTicketEntry(ticketId, data, appLogPageId);
 
 	// Return true if the main ticket entry was successfully created
+	appLogger.log(`[reportToNotion] Main ticket creation attempt finished. Success: ${!!ticketResponse}`);
 	return !!ticketResponse;
 }; 

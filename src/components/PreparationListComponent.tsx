@@ -6,6 +6,7 @@ import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { Unit, Preparation, ComponentInput, DishComponent } from '../types';
 import PreparationCard from './PreparationCard'; // Assuming PreparationCard exists
 import { capitalizeWords } from '../utils/textFormatters';
+import { appLogger } from '../services/AppLogService';
 
 interface PreparationListComponentProps {
   preparations: ComponentInput[];

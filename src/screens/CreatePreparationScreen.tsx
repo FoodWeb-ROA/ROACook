@@ -33,6 +33,7 @@ import { ComponentInput } from '../types';
 import DirectionsInputList from '../components/DirectionsInputList';
 import ComponentSearchModal, { SearchResultItem } from '../components/ComponentSearchModal';
 import IngredientListComponent from '../components/IngredientListComponent';
+import { appLogger } from '../services/AppLogService';
 
 type CreatePrepRouteProp = RouteProp<RootStackParamList, 'CreatePreparation'>;
 
@@ -132,7 +133,7 @@ const CreatePreparationScreen = () => {
             matched = true;
           }
         }
-      } catch (error) { console.error(`Error trying to match ingredient "${ing.name}":`, error);}
+      } catch (error) { appLogger.error(`Error trying to match ingredient "${ing.name}":`, error);}
       
       const parsedUnit = ing.unit?.toLowerCase().trim();
       if (parsedUnit && units.length > 0) {
@@ -181,7 +182,7 @@ const CreatePreparationScreen = () => {
     const unitAbbrForDisplay = units.find(u => u.unit_id === prepUnitId)?.abbreviation ?? undefined;
 
     if (dishComponentScaledAmount !== null && dishComponentScaledAmount !== undefined) {
-      console.log("Using dishComponentScaledAmount for initial display:", dishComponentScaledAmount);
+      appLogger.log("Using dishComponentScaledAmount for initial display:", dishComponentScaledAmount);
       const formatted = formatQuantityAuto(dishComponentScaledAmount, unitAbbrForDisplay);
       setDisplayAmountStr(formatted.amount);
       
@@ -191,14 +192,14 @@ const CreatePreparationScreen = () => {
       if (baseAmount !== null && !isNaN(baseAmount) && baseAmount > 0) {
         const initialInternalScale = dishComponentScaledAmount / baseAmount;
         setScaleMultiplier(initialInternalScale);
-        console.log(`Calculated initial internal scale: ${initialInternalScale} based on dish amount ${dishComponentScaledAmount} and base ${baseAmount}`);
+        appLogger.log(`Calculated initial internal scale: ${initialInternalScale} based on dish amount ${dishComponentScaledAmount} and base ${baseAmount}`);
       } else {
         setScaleMultiplier(parentScaleMultiplier);
-         console.log(`Could not calculate initial internal scale, using parent scale: ${parentScaleMultiplier}`);
+         appLogger.log(`Could not calculate initial internal scale, using parent scale: ${parentScaleMultiplier}`);
       }
 
     } else {
-      console.log("dishComponentScaledAmount not provided, calculating display based on internal state and parent scale.");
+      appLogger.log("dishComponentScaledAmount not provided, calculating display based on internal state and parent scale.");
       let baseAmountForScaling: number | null = null;
       baseAmountForScaling = baseAmountFromPrep;
     
@@ -232,31 +233,31 @@ const CreatePreparationScreen = () => {
 
     let needsParsing = false;
     if (initialEditableIngredients) {
-        console.log("Using initial ingredients state provided via params.");
+        appLogger.log("Using initial ingredients state provided via params.");
     } else {
-        console.log("No initial ingredients state provided, will parse...");
+        appLogger.log("No initial ingredients state provided, will parse...");
         needsParsing = true;
     }
 
     if (initialInstructions) {
-        console.log("Using initial instructions state provided via params.");
+        appLogger.log("Using initial instructions state provided via params.");
     } else {
-        console.log("Initial instructions state was not provided via params, relying on useState initializer fallback.");
+        appLogger.log("Initial instructions state was not provided via params, relying on useState initializer fallback.");
     }
     
     if (initialPrepUnitId) {
-        console.log("Using initial prep unit ID provided via params.");
+        appLogger.log("Using initial prep unit ID provided via params.");
     } else {
-        console.log("No initial prep unit ID provided, parsing unit...");
+        appLogger.log("No initial prep unit ID provided, parsing unit...");
         needsParsing = true;
     }
 
     if (needsParsing) {
       if (isScreenLoading) {
-        console.log("Need to parse but units are still loading...");
+        appLogger.log("Need to parse but units are still loading...");
         return;
       }
-      console.log("Parsing preparation components and/or unit...");
+      appLogger.log("Parsing preparation components and/or unit...");
       if (!initialEditableIngredients) {
         mapParsedIngredients(); 
       }
@@ -293,9 +294,9 @@ const CreatePreparationScreen = () => {
         setIsCreatingNew(false);
     }
     if (isFullPreparation(preparation)) {
-        console.log("Editing existing full preparation, ID:", preparation.preparation_id);
+        appLogger.log("Editing existing full preparation, ID:", preparation.preparation_id);
     } else {
-        console.log("Editing/Creating based on ParsedIngredient or minimal data, Name:", preparation.name);
+        appLogger.log("Editing/Creating based on ParsedIngredient or minimal data, Name:", preparation.name);
     }
   }, [route.params, preparation, initialEditableIngredients, initialInstructions, initialPrepUnitId, units]);
 
@@ -309,7 +310,7 @@ const CreatePreparationScreen = () => {
       const results = await lookupIngredient(query);
       setSearchResults(results);
     } catch (error) {
-      console.error('Error searching components:', error);
+      appLogger.error('Error searching components:', error);
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -356,10 +357,10 @@ const CreatePreparationScreen = () => {
             addComponentWithDetails(newIngId, trimmedName, false, false);
          }
       } catch (error) {
-        console.error(`Error creating new raw ingredient "${trimmedName}" from prep screen:`, error);
+        appLogger.error(`Error creating new raw ingredient "${trimmedName}" from prep screen:`, error);
       }
     } else if (resolution.mode === 'cancel') {
-        console.log(`User cancelled ingredient creation for "${trimmedName}".`);
+        appLogger.log(`User cancelled ingredient creation for "${trimmedName}".`);
     }
 
     function addComponentWithDetails(id: string, name: string, isPrep: boolean, matched: boolean) {
@@ -462,7 +463,7 @@ const CreatePreparationScreen = () => {
 
   const handleSubPreparationPress = (ingredient: EditablePrepIngredient) => {
     if (ingredient.isPreparation) {
-      console.warn("Navigation to sub-preparation edit from within preparation edit not fully implemented yet.");
+      appLogger.warn("Navigation to sub-preparation edit from within preparation edit not fully implemented yet.");
     }
   };
 
@@ -478,7 +479,7 @@ const CreatePreparationScreen = () => {
       if (baseAmount !== null && !isNaN(baseAmount) && baseAmount > 0) {
         const newScaleMultiplier = newScaledAmount / baseAmount;
         setScaleMultiplier(newScaleMultiplier);
-        console.log(`Scale updated to: ${newScaleMultiplier}`);
+        appLogger.log(`Scale updated to: ${newScaleMultiplier}`);
       }
     }
   };
@@ -511,7 +512,7 @@ const CreatePreparationScreen = () => {
       );
 
       try {
-          console.log(`Creating new preparation DB entry: ${prepName}`);
+          appLogger.log(`Creating new preparation DB entry: ${prepName}`);
           if (!yieldUnitId) {
             throw new Error(`Cannot create preparation '${prepName}': Missing yield unit ID.`);
           }
@@ -550,11 +551,11 @@ const CreatePreparationScreen = () => {
              );
              
              if (validComponents.length !== components.length) {
-               console.warn(`Skipped ${components.length - validComponents.length} invalid components when creating preparation ${prepName}`);
+               appLogger.warn(`Skipped ${components.length - validComponents.length} invalid components when creating preparation ${prepName}`);
              }
              
              if (validComponents.length === 0) {
-               console.warn(`No valid components to insert for preparation ${prepName}`);
+               appLogger.warn(`No valid components to insert for preparation ${prepName}`);
              } else {
                const prepIngredientsInsert = validComponents.map(c => ({
                 preparation_id: newPreparationId,
@@ -566,10 +567,10 @@ const CreatePreparationScreen = () => {
              if (prepIngErr) { throw prepIngErr; }
              }
           }
-          console.log(`Successfully created preparation '${prepName}' with ID: ${newPreparationId}`);
+          appLogger.log(`Successfully created preparation '${prepName}' with ID: ${newPreparationId}`);
           return newPreparationId;
       } catch (error) {
-         console.error(`Error in createNewPreparation for ${prepName}:`, error);
+         appLogger.error(`Error in createNewPreparation for ${prepName}:`, error);
          Alert.alert(t('common.error'), t('alerts.errorCreatingPreparation', { name: prepName }));
          throw error;
       }
@@ -613,21 +614,21 @@ const CreatePreparationScreen = () => {
         let finalYieldUnitId = prepUnitId;
 
         if (prepResolution.mode === 'cancel') {
-          console.log("User cancelled preparation creation.");
+          appLogger.log("User cancelled preparation creation.");
           setSubmitting(false);
           return;
         }
 
         if (prepResolution.mode === 'existing' && prepResolution.id) {
-          console.log(`Preparation content identical to existing ID: ${prepResolution.id}. Using existing.`);
+          appLogger.log(`Preparation content identical to existing ID: ${prepResolution.id}. Using existing.`);
           finalPrepId = prepResolution.id;
         } else if (prepResolution.mode === 'overwrite' && prepResolution.id) {
-          console.log(`Overwriting existing preparation: ${prepResolution.id}`);
+          appLogger.log(`Overwriting existing preparation: ${prepResolution.id}`);
           Alert.alert("Info", "Overwrite functionality is under development. Please rename or cancel.");
           setSubmitting(false);
           return;
         } else if (prepResolution.mode === 'rename' && prepResolution.newName) {
-          console.log(`Creating new preparation with renamed: ${prepResolution.newName}`);
+          appLogger.log(`Creating new preparation with renamed: ${prepResolution.newName}`);
           finalPrepName = prepResolution.newName;
           finalPrepId = await createNewPreparation(
             finalPrepName,
@@ -640,7 +641,7 @@ const CreatePreparationScreen = () => {
             null
           );
         } else {
-          console.log(`Creating new preparation: ${trimmedName}`);
+          appLogger.log(`Creating new preparation: ${trimmedName}`);
           finalPrepId = await createNewPreparation(
             trimmedName,
             prepFingerprint,
@@ -667,14 +668,14 @@ const CreatePreparationScreen = () => {
         }
 
       } catch (error) {
-        console.error("Error during preparation creation:", error);
+        appLogger.error("Error during preparation creation:", error);
       } finally {
         setSubmitting(false);
       }
 
     } else {
       if (onUpdatePrepAmount && prepKey) {
-        console.log(`Calling update callback for prepKey: ${prepKey}, isDirty: ${isDirty}`);
+        appLogger.log(`Calling update callback for prepKey: ${prepKey}, isDirty: ${isDirty}`);
         onUpdatePrepAmount(prepKey, {
           editableIngredients: editableIngredients,
           prepUnitId: prepUnitId,
@@ -682,7 +683,7 @@ const CreatePreparationScreen = () => {
           isDirty: isDirty,
         });
       } else {
-        console.log("Callback 'onUpdatePrepAmount' not provided.");
+        appLogger.log("Callback 'onUpdatePrepAmount' not provided.");
       }
       if (navigation.canGoBack()) {
         navigation.goBack();
@@ -718,11 +719,11 @@ const CreatePreparationScreen = () => {
   const createNewIngredient = async (name: string): Promise<string | null> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      console.error("Cannot create ingredient: Name is empty.");
+      appLogger.error("Cannot create ingredient: Name is empty.");
       return null;
     }
     if (!activeKitchenId) {
-      console.error(`Cannot create ingredient '${trimmedName}': No active kitchen selected.`);
+      appLogger.error(`Cannot create ingredient '${trimmedName}': No active kitchen selected.`);
       Alert.alert(t('common.error'), t('alerts.errorCreatingIngredientNoKitchen'));
       return null;
     }
@@ -732,12 +733,12 @@ const CreatePreparationScreen = () => {
     const defaultUnitId = defaultUnit?.unit_id;
     
     if (!defaultUnitId) {
-       console.error(`Cannot create ingredient '${trimmedName}': No default unit found.`);
+       appLogger.error(`Cannot create ingredient '${trimmedName}': No default unit found.`);
        Alert.alert(t('common.error'), t('alerts.errorCreatingIngredientNoDefaultUnit'));
        return null;
     }
 
-    console.log(`Creating new ingredient DB entry: ${trimmedName}`);
+    appLogger.log(`Creating new ingredient DB entry: ${trimmedName}`);
     try {
       const ingredientInsert: Database['public']['Tables']['ingredients']['Insert'] = {
         name: trimmedName,
@@ -753,13 +754,13 @@ const CreatePreparationScreen = () => {
 
       if (error) {
         if (error.code === '23505') { // Unique violation
-          console.warn(`Ingredient named \"${trimmedName}\" likely already exists (unique constraint). Attempting lookup.`);
+          appLogger.warn(`Ingredient named \"${trimmedName}\" likely already exists (unique constraint). Attempting lookup.`);
           // TODO: Need checkIngredientNameExists from useLookup or dbLookup here
           // const existingIdString: string | null = await checkIngredientNameExists(trimmedName);
           // if (existingIdString) return existingIdString;
-           console.warn("Lookup for existing ingredient ID on unique violation is not implemented yet in CreatePreparationScreen.");
+           appLogger.warn("Lookup for existing ingredient ID on unique violation is not implemented yet in CreatePreparationScreen.");
         }
-        console.error(`Error inserting new ingredient '${trimmedName}':`, error);
+        appLogger.error(`Error inserting new ingredient '${trimmedName}':`, error);
         throw error; 
       }
 
@@ -767,11 +768,11 @@ const CreatePreparationScreen = () => {
         throw new Error("Failed to retrieve new ingredient ID after insert.");
       }
       
-      console.log(`Successfully created ingredient '${trimmedName}' with ID: ${data.ingredient_id}`);
+      appLogger.log(`Successfully created ingredient '${trimmedName}' with ID: ${data.ingredient_id}`);
       return data.ingredient_id;
 
     } catch (error) {
-      console.error(`Error in createNewIngredient for ${trimmedName}:`, error);
+      appLogger.error(`Error in createNewIngredient for ${trimmedName}:`, error);
       Alert.alert(t('common.error'), t('alerts.errorCreatingIngredient', { name: trimmedName }));
       return null; 
     }

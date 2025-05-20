@@ -16,6 +16,7 @@ import {
   FetchedPreparationIngredient, 
 } from '../utils/transforms';
 import { Preparation } from '../types';
+import { appLogger } from './AppLogService';
 
 /**
  * Service to prefetch recipe data on app startup
@@ -31,22 +32,22 @@ class DataPrefetchService {
    */
   async prefetchAllRecipeData(kitchenId: string | null): Promise<void> {
     if (!kitchenId) {
-      console.warn('[DataPrefetchService] Cannot prefetch: No kitchen ID available');
+      appLogger.warn('[DataPrefetchService] Cannot prefetch: No kitchen ID available');
       return;
     }
     
     if (this.prefetchingInProgress) {
-      console.log('[DataPrefetchService] Prefetch already in progress, skipping');
+      appLogger.log('[DataPrefetchService] Prefetch already in progress, skipping');
       return;
     }
     
     if (this.prefetchCompleted) {
-      console.log('[DataPrefetchService] Prefetch already completed, skipping');
+      appLogger.log('[DataPrefetchService] Prefetch already completed, skipping');
       return;
     }
     
     this.prefetchingInProgress = true;
-    console.log('[DataPrefetchService] Starting data prefetch...');
+    appLogger.log('[DataPrefetchService] Starting data prefetch...');
     
     try {
       // 1. Prefetch all dishes
@@ -62,9 +63,9 @@ class DataPrefetchService {
       await this.prefetchIngredients(kitchenId);
       
       this.prefetchCompleted = true;
-      console.log('[DataPrefetchService] Data prefetch completed successfully');
+      appLogger.log('[DataPrefetchService] Data prefetch completed successfully');
     } catch (error) {
-      console.error('[DataPrefetchService] Error during prefetch:', error);
+      appLogger.error('[DataPrefetchService] Error during prefetch:', error);
     } finally {
       this.prefetchingInProgress = false;
     }
@@ -74,7 +75,7 @@ class DataPrefetchService {
    * Prefetch all dishes for a kitchen
    */
   private async prefetchDishes(kitchenId: string): Promise<void> {
-    console.log('[DataPrefetchService] Prefetching dishes...');
+    appLogger.log('[DataPrefetchService] Prefetching dishes...');
     
     // Define the function to fetch dishes (similar to useDishes)
     const fetchDishes = async () => {
@@ -136,7 +137,7 @@ class DataPrefetchService {
           };
 
         if (componentsError) {
-          console.error(`Error fetching components for dish ${dish.dish_id}:`, componentsError);
+          appLogger.error(`Error fetching components for dish ${dish.dish_id}:`, componentsError);
           return { ...transformDish(dish as FetchedDishData), components: [] };
         }
 
@@ -196,14 +197,14 @@ class DataPrefetchService {
       queryFn: fetchDishes
     });
     
-    console.log('[DataPrefetchService] Dishes prefetch completed');
+    appLogger.log('[DataPrefetchService] Dishes prefetch completed');
   }
   
   /**
    * Prefetch all preparations for a kitchen
    */
   private async prefetchPreparations(kitchenId: string): Promise<void> {
-    console.log('[DataPrefetchService] Prefetching preparations...');
+    appLogger.log('[DataPrefetchService] Prefetching preparations...');
     
     // Fetch all preparations
     const fetchPreparations = async () => {
@@ -242,7 +243,7 @@ class DataPrefetchService {
       const preparationsWithDetails = await Promise.all(prepJoinData.map(async (prepJoinItem) => {
         // Check if ingredient data is present (it should be based on query type)
         if (!prepJoinItem.ingredient) {
-          console.warn(`Skipping prefetch for preparation ${prepJoinItem.preparation_id} due to missing ingredient link.`);
+          appLogger.warn(`Skipping prefetch for preparation ${prepJoinItem.preparation_id} due to missing ingredient link.`);
           return null; // Skip this preparation
         }
 
@@ -287,7 +288,7 @@ class DataPrefetchService {
           .eq('preparation_id', preparationId) as { data: (FetchedPreparationIngredient & { unit: DbUnit | null, ingredient: { name: string, ingredient_id: string } | null })[] | null, error: any }; // Use FetchedPreparationIngredient
 
         if (ingredientsError) {
-          console.error(`Error fetching ingredients for preparation ${preparationId}:`, ingredientsError);
+          appLogger.error(`Error fetching ingredients for preparation ${preparationId}:`, ingredientsError);
           // Assign empty array if sub-ingredients fetch fails
           transformedPrepBase.ingredients = [];
         } else {
@@ -325,14 +326,14 @@ class DataPrefetchService {
       queryFn: fetchPreparations
     });
     
-    console.log('[DataPrefetchService] Preparations prefetch completed');
+    appLogger.log('[DataPrefetchService] Preparations prefetch completed');
   }
   
   /**
    * Prefetch menu sections for a kitchen
    */
   private async prefetchMenuSections(kitchenId: string): Promise<void> {
-    console.log('[DataPrefetchService] Prefetching menu sections...');
+    appLogger.log('[DataPrefetchService] Prefetching menu sections...');
     
     const fetchMenuSections = async () => {
       const { data, error } = await supabase
@@ -350,14 +351,14 @@ class DataPrefetchService {
       queryFn: fetchMenuSections
     });
     
-    console.log('[DataPrefetchService] Menu sections prefetch completed');
+    appLogger.log('[DataPrefetchService] Menu sections prefetch completed');
   }
   
   /**
    * Prefetch all ingredients (including preparations)
    */
   private async prefetchIngredients(kitchenId: string): Promise<void> {
-    console.log('[DataPrefetchService] Prefetching ingredients...');
+    appLogger.log('[DataPrefetchService] Prefetching ingredients...');
     
     const fetchIngredients = async () => {
       const { data, error } = await supabase
@@ -380,7 +381,7 @@ class DataPrefetchService {
       queryFn: fetchIngredients
     });
     
-    console.log('[DataPrefetchService] Ingredients prefetch completed');
+    appLogger.log('[DataPrefetchService] Ingredients prefetch completed');
   }
   
   /**

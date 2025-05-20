@@ -17,8 +17,8 @@ export const SupabaseRealtimeProvider: React.FC<{ children: React.ReactNode }> =
 
     // Optionally, display connection status/errors globally here or via context consumers
     // Example:
-    // if (error) { console.error("Realtime connection error:", error); }
-    // if (!isConnected) { console.log("Realtime disconnected."); }
+    // if (error) { appLogger.error("Realtime connection error:", error); }
+    // if (!isConnected) { appLogger.log("Realtime disconnected."); }
 
     const contextValue = { isConnected, error };
 

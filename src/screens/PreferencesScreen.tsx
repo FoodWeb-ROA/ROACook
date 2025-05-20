@@ -21,6 +21,7 @@ import { useUnitSystem } from '../context/UnitSystemContext';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/types';
 import { DrawerActions } from '@react-navigation/native';
+import { appLogger } from '../services/AppLogService';
 
 // Define navigation prop type for the Drawer
 type PreferencesScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Preferences'>;

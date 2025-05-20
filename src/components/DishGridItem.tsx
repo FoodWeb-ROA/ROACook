@@ -4,6 +4,7 @@ import { Dish } from '../types';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { appLogger } from '../services/AppLogService';
 
 interface DishGridItemProps {
   dish: Dish;

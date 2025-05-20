@@ -8,7 +8,7 @@ const path = require('path');
 
 // Check if we have the necessary arguments
 if (process.argv.length < 4) {
-  console.error('Usage: node scripts/run-export.js <supabase-url> <supabase-anon-key>');
+  appLogger.error('Usage: node scripts/run-export.js <supabase-url> <supabase-anon-key>');
   process.exit(1);
 }
 
@@ -16,8 +16,8 @@ if (process.argv.length < 4) {
 const supabaseUrl = process.argv[2];
 const supabaseKey = process.argv[3];
 
-console.log(`Using Supabase URL: ${supabaseUrl}`);
-console.log(`Using Supabase Anon Key: ${supabaseKey}`);
+appLogger.log(`Using Supabase URL: ${supabaseUrl}`);
+appLogger.log(`Using Supabase Anon Key: ${supabaseKey}`);
 
 // Set environment variables and run the export script
 const env = {
@@ -34,7 +34,7 @@ const tsNode = spawn('npx', ['ts-node', path.join(__dirname, 'exportData.ts')], 
 
 tsNode.on('close', (code) => {
   if (code !== 0) {
-    console.error(`Export script exited with code ${code}`);
+    appLogger.error(`Export script exited with code ${code}`);
     process.exit(code);
   }
 }); 

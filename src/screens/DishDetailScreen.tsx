@@ -30,6 +30,7 @@ import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
 import { supabase } from '../data/supabaseClient';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import { queryClient } from '../data/queryClient';
+import { appLogger } from '../services/AppLogService';
 
 type DishDetailRouteProp = RouteProp<RootStackParamList, 'DishDetails'>;
 type DishDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -99,7 +100,7 @@ const DishDetailScreen = () => {
   // Navigation handler for preparation press
   const handlePreparationPress = (preparationId: string, component: DishComponent) => {
     if (!preparationId) {
-      console.warn('Attempted to navigate to preparation with invalid ID');
+      appLogger.warn('Attempted to navigate to preparation with invalid ID');
       return;
     }
     // Pass the actual amount of the prep used in the dish
@@ -244,7 +245,7 @@ const DishDetailScreen = () => {
   const totalYieldUnit = dish?.serving_unit?.abbreviation || dish?.serving_unit?.unit_name || 'g'; // Default unit
 
   // ADD LOG: Log dish components just before rendering
-  console.log('[DishDetailScreen Render] Dish components state:', JSON.stringify(dish?.components, null, 2));
+  appLogger.log('[DishDetailScreen Render] Dish components state:', JSON.stringify(dish?.components, null, 2));
 
   const handleDeleteDish = async () => {
     if (!dishId) {

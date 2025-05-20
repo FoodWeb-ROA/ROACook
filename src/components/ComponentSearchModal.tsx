@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
+import { appLogger } from '../services/AppLogService';
 
 // Define a more specific type for search results
 export interface SearchResultItem {
@@ -53,7 +54,7 @@ const ComponentSearchModal: React.FC<ComponentSearchModalProps> = ({
         performSearch(searchQuery.trim())
           .then(results => setSearchResults(results))
           .catch(error => {
-            console.error(`Error performing search (${searchMode}):`, error);
+            appLogger.error(`Error performing search (${searchMode}):`, error);
             setSearchResults([]);
           })
           .finally(() => setSearchLoading(false));

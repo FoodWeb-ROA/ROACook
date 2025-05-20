@@ -12,13 +12,14 @@ import {
 import { checkExistingUser, checkKitchenUserLink, insertPublicUser, linkUserToKitchen } from './userProfileSaga';
 import { CheckKitchenLink, CheckUser, CreateUser, LinkUserToDefaultKitchen } from './types';
 import { setActiveKitchen } from '../../slices/kitchensSlice';
+import { appLogger } from '../../services/AppLogService';
 
 export function* handleAuthStateChange(
     action: ReturnType<typeof authStateChanged>
 ): Generator<any, void, any> {
     const { session } = action.payload;
 
-    console.log(
+    appLogger.log(
         `* handleAuthStateChange/session:`,
         session ? 'Session received' : 'Session is null'
     );
@@ -27,7 +28,7 @@ export function* handleAuthStateChange(
         try {
             const { user } = session;
 
-            console.log(`* handleAuthStateChange/user:`, JSON.stringify(user, null, 2));
+            appLogger.log(`* handleAuthStateChange/user:`, JSON.stringify(user, null, 2));
 
             const checkExistingUserResponse: CheckUser = yield call(
                 checkExistingUser,
@@ -35,12 +36,12 @@ export function* handleAuthStateChange(
             );
 
             if (checkExistingUserResponse.data) {
-                console.log(`* handleAuthStateChange: User exists in public table.`);
+                appLogger.log(`* handleAuthStateChange: User exists in public table.`);
 
                 const checkExistingKitchen: CheckKitchenLink = yield call(checkKitchenUserLink, user.id);
 
                 if (checkExistingKitchen.error) {
-                    console.error(
+                    appLogger.error(
                         '* handleAuthStateChange: Error checking kitchen link:',
                         checkExistingKitchen.error
                     );
@@ -51,14 +52,14 @@ export function* handleAuthStateChange(
                             checkExistingUserResponse.data.user_fullname;
 
                         if (hasFullName) {
-                            console.log(
+                            appLogger.log(
                                 `* handleAuthStateChange: Email/password login or existing user with kitchen.`
                             );
                             yield put(
                                 loginFailure(checkExistingKitchen.error?.message)
                             );
                         } else {
-                            console.log(
+                            appLogger.log(
                                 `* handleAuthStateChange: Email/password signup flow for existing user with kitchen.`
                             );
                             yield put(
@@ -66,7 +67,7 @@ export function* handleAuthStateChange(
                             );
                         }
                     } else {
-                        console.log(
+                        appLogger.log(
                             `* handleAuthStateChange: OAuth login or existing user with kitchen.`
                         );
                         yield put(
@@ -84,7 +85,7 @@ export function* handleAuthStateChange(
                             checkExistingUserResponse.data.user_fullname;
 
                         if (hasFullName) {
-                            console.log(
+                            appLogger.log(
                                 `* handleAuthStateChange: Email/password login or existing user with kitchen.`
                             );
                             yield put(
@@ -94,7 +95,7 @@ export function* handleAuthStateChange(
                                 })
                             );
                         } else {
-                            console.log(
+                            appLogger.log(
                                 `* handleAuthStateChange: Email/password signup flow for existing user with kitchen.`
                             );
                             yield put(
@@ -105,7 +106,7 @@ export function* handleAuthStateChange(
                             );
                         }
                     } else {
-                        console.log(
+                        appLogger.log(
                             `* handleAuthStateChange: OAuth login or existing user with kitchen.`
                         );
                         yield put(
@@ -119,7 +120,7 @@ export function* handleAuthStateChange(
                     const linkResponse: LinkUserToDefaultKitchen = yield call(linkUserToKitchen, user.id);
 
                     if (linkResponse.error || !linkResponse.data) {
-                        console.error(
+                        appLogger.error(
                             '* handleAuthStateChange: Failed to link existing user to kitchen:',
                             linkResponse.error?.message
                         );
@@ -134,7 +135,7 @@ export function* handleAuthStateChange(
                                 checkExistingUserResponse.data.user_fullname;
 
                             if (hasFullName) {
-                                console.log(
+                                appLogger.log(
                                     `* handleAuthStateChange: Email/password login for existing user (linked to default).`
                                 );
                                 yield put(
@@ -144,7 +145,7 @@ export function* handleAuthStateChange(
                                     })
                                 );
                             } else {
-                                console.log(
+                                appLogger.log(
                                     `* handleAuthStateChange: Email/password signup flow for existing user (linked to default).`
                                 );
                                 yield put(
@@ -155,7 +156,7 @@ export function* handleAuthStateChange(
                                 );
                             }
                         } else {
-                            console.log(
+                            appLogger.log(
                                 `* handleAuthStateChange: OAuth login for existing user (linked to default).`
                             );
                             yield put(
@@ -168,7 +169,7 @@ export function* handleAuthStateChange(
                     }
                 }
             } else if (checkExistingUserResponse.error?.code === 'PGRST116') {
-                console.log(
+                appLogger.log(
                     `* handleAuthStateChange: User not found in public table. Inserting...`
                 );
 
@@ -185,7 +186,7 @@ export function* handleAuthStateChange(
                 );
 
                 if (insertPublicUserResponse.error || !insertPublicUserResponse.data) {
-                    console.error(
+                    appLogger.error(
                         '* handleAuthStateChange: User insertion failed:',
                         insertPublicUserResponse.error?.message
                     );
@@ -209,12 +210,12 @@ export function* handleAuthStateChange(
                     return;
                 }
 
-                console.log(`* handleAuthStateChange: User inserted successfully. Linking to default kitchen...`);
+                appLogger.log(`* handleAuthStateChange: User inserted successfully. Linking to default kitchen...`);
 
                 const linkedUserToKitchen: LinkUserToDefaultKitchen = yield call(linkUserToKitchen, user.id);
 
                 if (linkedUserToKitchen.error || !linkedUserToKitchen.data) {
-                    console.error(
+                    appLogger.error(
                         '* handleAuthStateChange: Failed to link new user to kitchen:',
                         linkedUserToKitchen.error?.message
                     );
@@ -249,7 +250,7 @@ export function* handleAuthStateChange(
                     }
                 }
             } else {
-                console.error(
+                appLogger.error(
                     '* handleAuthStateChange: Error checking existing user:',
                     checkExistingUserResponse.error
                 );
@@ -271,7 +272,7 @@ export function* handleAuthStateChange(
                 }
             }
         } catch (error: any) {
-            console.error(
+            appLogger.error(
                 'Error processing session update in handleAuthStateChange:',
                 error
             );
@@ -289,7 +290,7 @@ export function* handleAuthStateChange(
             }
         }
     } else {
-        console.log('* handleAuthStateChange: Session is null, user logged out.');
+        appLogger.log('* handleAuthStateChange: Session is null, user logged out.');
         yield put(logoutSuccess());
     }
 }
