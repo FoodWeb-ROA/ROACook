@@ -387,11 +387,10 @@ const PreparationDetailScreen = () => {
                     : 1; // Fallback scale
                   amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
                 } else {
-
                   // Scale only by recipeServingScale (if viewing prep directly)
                   amountToDisplay = baseIngAmount * (recipeServingScale ?? 1);
+                }
 
-                  appLogger.log(`[PrepDetailDirectView] Ingredient: ${ingredient.name}, Base: ${baseIngAmount}, Scale: ${recipeServingScale ?? 1}, Display: ${amountToDisplay}`);
                 // --- END CONDITIONAL SCALING ---
 
                 // Display value might still use unit conversion
