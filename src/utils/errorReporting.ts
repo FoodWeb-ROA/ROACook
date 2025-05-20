@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { submitErrorReport } from '../services/notionApi';
+import { appLogger } from '../services/AppLogService';
 import { useAuth } from '../context/AuthContext';
 import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
@@ -14,6 +15,7 @@ interface ErrorOptions {
   showAlert?: boolean;
   severity?: 'low' | 'medium' | 'high' | 'critical';
   additionalInfo?: string;
+  title?: string;
 }
 
 /**
@@ -27,18 +29,17 @@ export const handleError = (
   const errorStack = error instanceof Error ? error.stack : undefined;
   
   // Log to console for development
-  console.error(`Error in ${options.componentName}:`, errorMessage);
-  if (errorStack) console.error(errorStack);
+  appLogger.error(`Error in ${options.componentName}:`, errorMessage);
+  if (errorStack) appLogger.error(errorStack);
   
   // Report to Notion
   submitErrorReport({
-    errorMessage,
-    errorStack,
-    componentName: options.componentName,
-    additionalInfo: options.additionalInfo,
+    error: error, // Pass the original error object
+    title: options.title || `Error in ${options.componentName}: ${errorMessage.substring(0,30)}`,
+    additionalInfo: `Component: ${options.componentName}\nError Message: ${errorMessage}${errorStack ? `\nStack Trace:\n${errorStack}` : ''}${options.additionalInfo ? `\nExtra Info: ${options.additionalInfo}`: ''}`,
     severity: options.severity || 'medium',
   }).catch(reportingError => {
-    console.error('Failed to report error to Notion:', reportingError);
+    appLogger.error('Failed to report error to Notion:', reportingError);
   });
   
   // Show alert if requested
@@ -65,7 +66,6 @@ const selectErrorReportingContext = createSelector(
     const activeKitchenId = kitchensState.activeKitchenId;
     const activeKitchen = kitchensState.kitchens.find((k: Kitchen) => k.kitchen_id === activeKitchenId);
     return {
-      userName: user?.email ?? user?.id ?? null,
       kitchenName: activeKitchen?.name ?? activeKitchenId ?? null,
     };
   }
@@ -79,17 +79,17 @@ export const useErrorHandler = () => {
   const { user } = useAuth();
   
   // Use the memoized selector
-  const { userName, kitchenName } = useSelector(selectErrorReportingContext);
+  const { kitchenName } = useSelector(selectErrorReportingContext);
 
   const handleError = useCallback(
     (error: unknown, context?: ErrorOptions) => {
       const err = error instanceof Error ? error : new Error(String(error));
-      const { componentName, showAlert = false, severity = 'low', additionalInfo } = context || {};
+      const { componentName, showAlert = false, severity = 'low', additionalInfo, title } = context || {};
     
       // Log the error regardless
-      console.error(`[${severity.toUpperCase()}] Error in ${componentName || 'Unknown Component'}:`, err);
+      appLogger.error(`[${severity.toUpperCase()}] Error in ${componentName || 'Unknown Component'}:`, err);
       if (additionalInfo) {
-        console.error('Additional Info:', additionalInfo);
+        appLogger.error('Additional Info:', additionalInfo);
       }
 
       // --- Report to Notion --- //
@@ -105,7 +105,6 @@ export const useErrorHandler = () => {
       reportToNotion({
         error: err,
         logContent: logContent, // Use the combined log content
-        userName: userName,
         kitchenName: kitchenName,
         userMessage: `Automatic Error Report [${severity}]`, // Add severity to message
       });
@@ -120,7 +119,7 @@ export const useErrorHandler = () => {
       );
     }
     },
-    [t, userName, kitchenName] // Add dependencies
+    [t, kitchenName] // Add dependencies
   );
   
   return { handleError };
@@ -159,3 +158,7 @@ export const withErrorHandling = <T extends (...args: any[]) => Promise<any>>(
     }
   };
 }; 
+
+/**
+ * @deprecated Prefer using globalErrorHandler from `src/services/sentry` for more robust error tracking.
+ */

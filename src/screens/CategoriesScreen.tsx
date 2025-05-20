@@ -22,6 +22,7 @@ import AppHeader from '../components/AppHeader';
 import { useMenuSections } from '../hooks/useSupabase';
 import { supabase } from '../data/supabaseClient';
 import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 
 type CategoriesScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -41,7 +42,7 @@ const CategoriesScreen = () => {
     try {
       const placeholderKitchenId = process.env.DEFAULT_KITCHEN_ID || '';
       if (placeholderKitchenId === process.env.DEFAULT_KITCHEN_ID) {
-          console.warn('Using placeholder kitchen ID in handleAddSection (CategoriesScreen)');
+          appLogger.warn('Using placeholder kitchen ID in handleAddSection (CategoriesScreen)');
       }
 
       const { data, error } = await supabase
@@ -59,7 +60,7 @@ const CategoriesScreen = () => {
       // Success alert removed
 
     } catch (error: any) {
-      console.error('Error adding section:', error);
+      appLogger.error('Error adding section:', error);
       
       // Cross-platform error alert
       if (Platform.OS === 'web') {

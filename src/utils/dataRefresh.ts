@@ -9,11 +9,11 @@ import { queryClient } from '../data/queryClient';
  */
 export const refreshData = (kitchenId: string | null, type: 'dishes' | 'ingredients' | 'preparations' | 'menu_section' = 'dishes') => {
   if (!kitchenId) {
-    console.warn('Cannot refresh data: No kitchen ID provided');
+    appLogger.warn('Cannot refresh data: No kitchen ID provided');
     return;
   }
 
-  console.log(`Refreshing ${type} data for kitchen: ${kitchenId}`);
+  appLogger.log(`Refreshing ${type} data for kitchen: ${kitchenId}`);
   
   // Invalidate the main query
   queryClient.invalidateQueries({ queryKey: [type, { kitchen_id: kitchenId }] });

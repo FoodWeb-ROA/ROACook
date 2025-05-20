@@ -41,6 +41,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryClient } from '../data/queryClient'; // Corrected import path
 import { useTypedSelector } from './useTypedSelector'; // Import useTypedSelector
 import { fetchPreparationDetailsFromDB } from '../data/dbLookup';
+import { appLogger } from '../services/AppLogService';
 
 /**
  * Custom hook to get the current active kitchen ID for the authenticated user.
@@ -117,7 +118,7 @@ export function useDishes(menuSectionId?: string) {
             .eq('dish_id', dish.dish_id) as { data: (DbDishComponent & { unit: DbUnit | null, ingredient: (FetchedIngredientDetail & { preparation: FetchedPreparationDetail | null }) | null })[] | null, error: any };
 
           if (componentsError) {
-            console.error(`Error fetching components for dish ${dish.dish_id}:`, componentsError);
+            appLogger.error(`Error fetching components for dish ${dish.dish_id}:`, componentsError);
             return { ...transformDish(dish as FetchedDishData), components: [] };
           }
 
@@ -176,7 +177,7 @@ export function useDishes(menuSectionId?: string) {
           // filter: `kitchen_id=eq.${kitchenId}` // Uncomment if needed, check performance
         },
         (payload) => {
-          console.log('[useDishes] Realtime change received!', payload);
+          appLogger.log('[useDishes] Realtime change received!', payload);
           const affectedKitchen = (payload.new as any)?.kitchen_id || (payload.old as any)?.kitchen_id;
           // Only invalidate if the change affects the current kitchen
           if (affectedKitchen === kitchenId) {
@@ -204,20 +205,20 @@ export function useDishes(menuSectionId?: string) {
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[useDishes] Realtime channel subscribed');
+          appLogger.log('[useDishes] Realtime channel subscribed');
         }
         if (status === 'CHANNEL_ERROR') {
-          console.error('[useDishes] Realtime channel error:', err);
+          appLogger.error('[useDishes] Realtime channel error:', err);
         }
         if (status === 'TIMED_OUT') {
-          console.warn('[useDishes] Realtime subscription timed out');
+          appLogger.warn('[useDishes] Realtime subscription timed out');
         }
       });
 
     // Cleanup function to remove the channel subscription when the hook unmounts
     return () => {
       supabase.removeChannel(channel);
-      console.log('[useDishes] Realtime channel unsubscribed');
+      appLogger.log('[useDishes] Realtime channel unsubscribed');
     };
   }, [kitchenId, queryClient]); // Re-run effect if kitchenId or queryClient changes
   // --- END REALTIME SUBSCRIPTION ---
@@ -313,7 +314,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
       if (componentsError) throw componentsError;
 
       // --- ADD LOGGING: Raw fetched components ---
-      console.log('[useDishDetail] Raw fetched dishComponents:', JSON.stringify(dishComponents, null, 2));
+      appLogger.log('[useDishDetail] Raw fetched dishComponents:', JSON.stringify(dishComponents, null, 2));
       // --- END LOGGING ---
 
       // Transform dish and components
@@ -359,7 +360,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
           prepIngredients: transformedPrepIngredients 
         };
         // --- ADD LOGGING: Data before transformDishComponent ---
-        console.log(`[useDishDetail] Assembled data for comp ${comp.ingredient_id}:`, JSON.stringify(assembledData, null, 2));
+        appLogger.log(`[useDishDetail] Assembled data for comp ${comp.ingredient_id}:`, JSON.stringify(assembledData, null, 2));
         // --- END LOGGING ---
         return transformDishComponent(assembledData);
       }) : [];
@@ -391,13 +392,13 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
       try {
         await saveOfflineRecipe(dishId, 'dish', payloadToCache); // Pass the correct payload
       } catch (cacheError) {
-        console.warn(`[useDishDetail] Failed to cache dish ${dishId}:`, cacheError);
+        appLogger.warn(`[useDishDetail] Failed to cache dish ${dishId}:`, cacheError);
         // Non-fatal, continue without caching
       }
 
       return dishWithDetails;
     } catch (error) {
-      console.error(`[useDishDetail] Error fetching dish ${dishId}:`, error);
+      appLogger.error(`[useDishDetail] Error fetching dish ${dishId}:`, error);
       throw error;
     }
   };
@@ -426,7 +427,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'dishes', filter: `dish_id=eq.${dishId}` },
         (payload) => {
-          console.log(`[useDishDetail] Realtime change for dish ${dishId} received!`, payload);
+          appLogger.log(`[useDishDetail] Realtime change for dish ${dishId} received!`, payload);
           queryClient.invalidateQueries({ queryKey: ['dish', { dish_id: dishId }] });
           setLastUpdateTime(Date.now());
         }
@@ -439,7 +440,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dish_components', filter: `dish_id=eq.${dishId}` },
         (payload) => {
-          console.log(`[useDishDetail] Realtime change for dish_components of ${dishId} received!`, payload);
+          appLogger.log(`[useDishDetail] Realtime change for dish_components of ${dishId} received!`, payload);
           queryClient.invalidateQueries({ queryKey: ['dish', { dish_id: dishId }] });
           queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: kitchenId }] });
           setLastUpdateTime(Date.now());
@@ -455,14 +456,14 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
     const uniquePrepIds = Array.from(new Set(prepIds));
     const prepListeners: any[] = []; // Store channel subscriptions for cleanup
     
-    console.log(`[useDishDetail] Setting up listeners for nested preps: ${uniquePrepIds.join(', ')}`);
+    appLogger.log(`[useDishDetail] Setting up listeners for nested preps: ${uniquePrepIds.join(', ')}`);
     
     uniquePrepIds.forEach(prepId => {
       // 1. Listen to the preparation itself
       const prepDetailChannel = supabase
         .channel(`dish-${dishId}-prep-${prepId}-details`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'preparations', filter: `preparation_id=eq.${prepId}`}, (payload) => {
-          console.log(`[useDishDetail] Nested prep UPDATE for ${prepId} received! Invalidating dish ${dishId}.`, payload);
+          appLogger.log(`[useDishDetail] Nested prep UPDATE for ${prepId} received! Invalidating dish ${dishId}.`, payload);
           queryClient.invalidateQueries({ queryKey: ['dish', { dish_id: dishId }] });
           // Also invalidate the specific prep detail cache
           queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: prepId }] });
@@ -475,7 +476,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
       const prepIngChannel = supabase
         .channel(`dish-${dishId}-prep-${prepId}-ingredients`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'preparation_ingredients', filter: `preparation_id=eq.${prepId}`}, (payload) => {
-          console.log(`[useDishDetail] Nested prep ingredients change for ${prepId} received! Invalidating dish ${dishId}.`, payload);
+          appLogger.log(`[useDishDetail] Nested prep ingredients change for ${prepId} received! Invalidating dish ${dishId}.`, payload);
           queryClient.invalidateQueries({ queryKey: ['dish', { dish_id: dishId }] });
            // Also invalidate the specific prep detail cache
           queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: prepId }] });
@@ -488,7 +489,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
       const linkedIngChannel = supabase
         .channel(`dish-${dishId}-prep-${prepId}-linkedIng`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ingredients', filter: `ingredient_id=eq.${prepId}`}, (payload) => {
-            console.log(`[useDishDetail] Nested prep linked ingredient UPDATE for ${prepId} received! Invalidating dish ${dishId}.`, payload);
+            appLogger.log(`[useDishDetail] Nested prep linked ingredient UPDATE for ${prepId} received! Invalidating dish ${dishId}.`, payload);
             queryClient.invalidateQueries({ queryKey: ['dish', { dish_id: dishId }] });
              // Also invalidate the specific prep detail cache
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: prepId }] });
@@ -502,16 +503,16 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
     function statusCallback(channelName: string) {
         return (status: string, err?: Error) => {
             if (status === 'SUBSCRIBED') {
-                console.log(`[useDishDetail] Subscribed to ${channelName}`);
+                appLogger.log(`[useDishDetail] Subscribed to ${channelName}`);
             } else if (err) {
-                console.error(`[useDishDetail] Error subscribing to ${channelName}:`, err);
+                appLogger.error(`[useDishDetail] Error subscribing to ${channelName}:`, err);
             }
         }
     }
 
     // Cleanup function
     return () => {
-      console.log(`[useDishDetail] Cleaning up listeners for dish ${dishId}`);
+      appLogger.log(`[useDishDetail] Cleaning up listeners for dish ${dishId}`);
       supabase.removeChannel(dishChannel);
       supabase.removeChannel(componentsChannel);
       // Remove dynamic prep listeners
@@ -583,7 +584,7 @@ export function useMenuSections() {
           // filter: `kitchen_id=eq.${kitchenId}` // Optional filter
         },
         (payload) => {
-          console.log('[useMenuSections] Realtime change received!', payload);
+          appLogger.log('[useMenuSections] Realtime change received!', payload);
           const affectedKitchen = (payload.new as any)?.kitchen_id || (payload.old as any)?.kitchen_id;
           // Only invalidate if the change affects the current kitchen
           if (affectedKitchen === kitchenId) {
@@ -595,16 +596,16 @@ export function useMenuSections() {
       .subscribe((status, err) => {
         // Optional: Log status/errors
         if (status === 'SUBSCRIBED') {
-           console.log('[useMenuSections] Realtime channel subscribed');
+           appLogger.log('[useMenuSections] Realtime channel subscribed');
          } else if (err) {
-            console.error('[useMenuSections] Realtime channel error:', err);
+            appLogger.error('[useMenuSections] Realtime channel error:', err);
          }
       });
 
     // Cleanup function
     return () => {
       supabase.removeChannel(channel);
-      console.log('[useMenuSections] Realtime channel unsubscribed');
+      appLogger.log('[useMenuSections] Realtime channel unsubscribed');
     };
   }, [kitchenId, queryClient]);
   // --- END REALTIME SUBSCRIPTION ---
@@ -637,14 +638,14 @@ export function usePreparationDetail(preparationId: string | undefined) {
       return { preparation: null, ingredients: [], loading: false, error: null };
     }
 
-    console.log(`[usePreparationDetail] Fetching details for prep: ${preparationId}`); // Log fetch start
+    appLogger.log(`[usePreparationDetail] Fetching details for prep: ${preparationId}`); // Log fetch start
 
     try {
       // Attempt to load from offline cache first
       try {
         const cachedPayload = await getOfflineRecipe(preparationId, 'prep'); // Correct: Use 'prep'
         if (cachedPayload && 'preparation_id' in cachedPayload) {
-          console.log(`[usePreparationDetail] Hydrating preparation ${preparationId} from offline cache.`);
+          appLogger.log(`[usePreparationDetail] Hydrating preparation ${preparationId} from offline cache.`);
           // Force a background refetch after hydrating from cache
           queryClient.invalidateQueries({ queryKey }); 
           // Return cached data immediately
@@ -656,7 +657,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
           };
         }
       } catch (cacheError) {
-        console.warn(`[usePreparationDetail] Cache read failed for ${preparationId}:`, cacheError);
+        appLogger.warn(`[usePreparationDetail] Cache read failed for ${preparationId}:`, cacheError);
       }
 
       // Fetch preparation data (requires joining with ingredients for combined info)
@@ -674,7 +675,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
       //   .single(); // Fetch all columns from preparations
 
       // // --- ADD LOGGING: Raw fetched prep data ---
-      // console.log(`[usePreparationDetail] Raw prepJoinData for ${preparationId}:`, JSON.stringify(prepJoinData, null, 2));
+      // appLogger.log(`[usePreparationDetail] Raw prepJoinData for ${preparationId}:`, JSON.stringify(prepJoinData, null, 2));
       // // --- END LOGGING ---
 
       // if (preparationError) throw preparationError;
@@ -754,7 +755,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
       //         .in('preparation_id', ingredientIds);
               
       //     if (prepCheckError) {
-      //         console.warn(`[usePreparationDetail] Failed to check for nested preparations:`, prepCheckError);
+      //         appLogger.warn(`[usePreparationDetail] Failed to check for nested preparations:`, prepCheckError);
       //         // Continue without prep checks if this fails
       //     } else {
       //         preparationIdSet = new Set(prepCheckData?.map(p => p.preparation_id) || []);
@@ -770,7 +771,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
       //     const isPreparation = preparationIdSet.has(ingredientId); 
           
       //     // --- ADD LOGGING: Check isPreparation flag ---
-      //     console.log(`[usePreparationDetail] Ingredient: ${ingredientName} (${ingredientId}), isPreparation: ${isPreparation}`);
+      //     appLogger.log(`[usePreparationDetail] Ingredient: ${ingredientName} (${ingredientId}), isPreparation: ${isPreparation}`);
           
       //     return {
       //         preparation_id: ing.preparation_id || '',
@@ -802,12 +803,12 @@ export function usePreparationDetail(preparationId: string | undefined) {
       // try {
       //   await saveOfflineRecipe(preparationId, 'prep', payloadToCache); // Correct: Use 'prep'
       // } catch (cacheError) {
-      //   console.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId}:`, cacheError);
+      //   appLogger.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId}:`, cacheError);
       //   // Non-fatal, continue without caching
       // }
 
       // // --- ADD LOGGING: Final transformed prep object before return ---
-      // console.log(`[usePreparationDetail] Final transformedPrep object for ${preparationId}:`, JSON.stringify(transformedPrep, null, 2));
+      // appLogger.log(`[usePreparationDetail] Final transformedPrep object for ${preparationId}:`, JSON.stringify(transformedPrep, null, 2));
       // // --- END LOGGING ---
 
       // return {
@@ -825,7 +826,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
         error: null,
       };
     } catch (error) {
-      console.error(`[usePreparationDetail] Error fetching preparation ${preparationId}:`, error);
+      appLogger.error(`[usePreparationDetail] Error fetching preparation ${preparationId}:`, error);
       return {
         preparation: null,
         ingredients: [],
@@ -860,16 +861,16 @@ export function usePreparationDetail(preparationId: string | undefined) {
             table: 'preparations',
             filter: `preparation_id=eq.${preparationId}`
         }, payload => {
-            console.log(`[usePreparationDetail] Prep update for ${preparationId} received:`, payload);
+            appLogger.log(`[usePreparationDetail] Prep update for ${preparationId} received:`, payload);
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] });
             queryClient.invalidateQueries({ queryKey: ['preparations'] });
             setLastUpdateTime(Date.now()); // ADDED: Signal update
         })
         .subscribe((status, err) => {
              if (status === 'SUBSCRIBED') {
-               console.log(`[usePreparationDetail] Subscribed to preparation ${preparationId}`);
+               appLogger.log(`[usePreparationDetail] Subscribed to preparation ${preparationId}`);
              } else if (err) {
-                console.error(`[usePreparationDetail] Error subscribing to preparation ${preparationId}:`, err);
+                appLogger.error(`[usePreparationDetail] Error subscribing to preparation ${preparationId}:`, err);
              }
         });
 
@@ -882,16 +883,16 @@ export function usePreparationDetail(preparationId: string | undefined) {
             table: 'preparation_ingredients',
             filter: `preparation_id=eq.${preparationId}`
         }, payload => {
-            console.log(`[usePreparationDetail] Prep ingredients update for ${preparationId} received:`, payload);
+            appLogger.log(`[usePreparationDetail] Prep ingredients update for ${preparationId} received:`, payload);
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] });
              queryClient.invalidateQueries({ queryKey: ['preparations'] });
              setLastUpdateTime(Date.now()); // ADDED: Signal update
         })
        .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
-               console.log(`[usePreparationDetail] Subscribed to ingredients for preparation ${preparationId}`);
+               appLogger.log(`[usePreparationDetail] Subscribed to ingredients for preparation ${preparationId}`);
              } else if (err) {
-                console.error(`[usePreparationDetail] Error subscribing to ingredients for preparation ${preparationId}:`, err);
+                appLogger.error(`[usePreparationDetail] Error subscribing to ingredients for preparation ${preparationId}:`, err);
              }
         });
 
@@ -905,16 +906,16 @@ export function usePreparationDetail(preparationId: string | undefined) {
             table: 'ingredients',
             filter: `ingredient_id=eq.${preparationId}`
         }, payload => {
-            console.log(`[usePreparationDetail] Linked ingredient update for ${preparationId} received:`, payload);
+            appLogger.log(`[usePreparationDetail] Linked ingredient update for ${preparationId} received:`, payload);
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] });
             queryClient.invalidateQueries({ queryKey: ['preparations'] }); // Invalidate list too
             setLastUpdateTime(Date.now()); // ADDED: Signal update
         })
         .subscribe((status, err) => {
              if (status === 'SUBSCRIBED') {
-               console.log(`[usePreparationDetail] Subscribed to linked ingredient ${preparationId}`);
+               appLogger.log(`[usePreparationDetail] Subscribed to linked ingredient ${preparationId}`);
              } else if (err) {
-                console.error(`[usePreparationDetail] Error subscribing to linked ingredient ${preparationId}:`, err);
+                appLogger.error(`[usePreparationDetail] Error subscribing to linked ingredient ${preparationId}:`, err);
              }
         });
 
@@ -923,7 +924,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
         supabase.removeChannel(prepChannel);
         supabase.removeChannel(prepIngChannel);
         supabase.removeChannel(linkedIngChannel);
-        console.log(`[usePreparationDetail] Unsubscribed from preparation ${preparationId}`);
+        appLogger.log(`[usePreparationDetail] Unsubscribed from preparation ${preparationId}`);
     };
    }, [preparationId, queryClient]);
   // --- END REALTIME SUBSCRIPTION ---
@@ -931,7 +932,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
 
   // Return in the format expected by the components
   // ADD LOG: Log the data being returned by the hook
-  console.log('[usePreparationDetail] Returning data:', JSON.stringify(data, null, 2));
+  appLogger.log('[usePreparationDetail] Returning data:', JSON.stringify(data, null, 2));
   return {
     preparation: data?.preparation || null,
     ingredients: data?.ingredients || [],
@@ -962,7 +963,7 @@ export function usePreparations() {
       return []; 
     }
     
-    console.log(`[usePreparations] Fetching preparations for kitchen: ${kitchenId}`); // Log fetch start
+    appLogger.log(`[usePreparations] Fetching preparations for kitchen: ${kitchenId}`); // Log fetch start
     const { data, error: fetchError } = await supabase
         .from('preparations')
         .select(`
@@ -977,12 +978,12 @@ export function usePreparations() {
         .order('ingredient(name)', { ascending: true });
 
     if (fetchError) {
-        console.error('[usePreparations] Error fetching:', fetchError);
+        appLogger.error('[usePreparations] Error fetching:', fetchError);
         throw fetchError;
     }
     
     // --- ADD LOGGING: Raw fetched data ---
-    console.log('[usePreparations] Raw data received from Supabase:', JSON.stringify(data, null, 2));
+    appLogger.log('[usePreparations] Raw data received from Supabase:', JSON.stringify(data, null, 2));
     // --- END LOGGING ---
 
     // Process the fetched data
@@ -993,7 +994,7 @@ export function usePreparations() {
         const prepBaseData = item as FetchedPreparationDetail;
 
         if (!ingredientData || ingredientData.kitchen_id !== kitchenId) {
-             console.warn(`Skipping preparation with unexpected ingredient data: ${prepBaseData.preparation_id}`);
+             appLogger.warn(`Skipping preparation with unexpected ingredient data: ${prepBaseData.preparation_id}`);
              return null;
         }
 
@@ -1042,7 +1043,7 @@ export function usePreparations() {
      if (!kitchenId) return;
 
      const invalidateAndSignal = () => {
-         console.log('[usePreparations] Invalidating preparations query due to Realtime event');
+         appLogger.log('[usePreparations] Invalidating preparations query due to Realtime event');
          queryClient.invalidateQueries({ queryKey: queryKey });
          setLastUpdateTime(Date.now());
      }
@@ -1051,7 +1052,7 @@ export function usePreparations() {
      const prepChannel = supabase
        .channel('public:preparations')
        .on('postgres_changes', { event: '*', schema: 'public', table: 'preparations' }, (payload) => {
-           console.log('[usePreparations] Prep table change', payload);
+           appLogger.log('[usePreparations] Prep table change', payload);
            invalidateAndSignal(); 
            // Also invalidate the specific preparation detail if ID is available
            const newRecord = payload.new as { preparation_id?: string, kitchen_id?: string }; // Assume kitchen_id might be on preparations
@@ -1073,7 +1074,7 @@ export function usePreparations() {
      const ingChannel = supabase
        .channel('public:ingredients')
        .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients', filter: `kitchen_id=eq.${kitchenId}` }, (payload) => { // Listen to all events, filtered by kitchen
-           console.log('[usePreparations] Linked ingredient change in kitchen', payload);
+           appLogger.log('[usePreparations] Linked ingredient change in kitchen', payload);
            invalidateAndSignal(); // Invalidate the main list
 
            // Invalidate the specific preparation detail cache IF the changed ingredient IS a preparation
@@ -1097,7 +1098,7 @@ export function usePreparations() {
            // Any change here *could* affect a preparation's details, potentially requiring a list update
            // if derived list data changes (e.g., complexity, cost - though not implemented yet).
            // Primarily, we need to invalidate the specific preparation detail.
-           console.log('[usePreparations] Prep ingredients change', payload);
+           appLogger.log('[usePreparations] Prep ingredients change', payload);
            const newRecord = payload.new as { preparation_id?: string };
            const oldRecord = payload.old as { preparation_id?: string };
            const prepId = newRecord?.preparation_id ?? oldRecord?.preparation_id;
@@ -1123,9 +1124,9 @@ export function usePreparations() {
      function statusCallback(channelName: string) {
          return (status: string, err?: Error) => {
              if (status === 'SUBSCRIBED') {
-                 console.log(`[usePreparations] Subscribed to ${channelName}`);
+                 appLogger.log(`[usePreparations] Subscribed to ${channelName}`);
              } else if (err) {
-                 console.error(`[usePreparations] Error subscribing to ${channelName}:`, err);
+                 appLogger.error(`[usePreparations] Error subscribing to ${channelName}:`, err);
              }
          }
      }
@@ -1134,7 +1135,7 @@ export function usePreparations() {
        supabase.removeChannel(prepChannel);
        supabase.removeChannel(ingChannel); // Restore cleanup
        supabase.removeChannel(prepIngChannel); // Restore cleanup
-       console.log('[usePreparations] Realtime channels unsubscribed');
+       appLogger.log('[usePreparations] Realtime channels unsubscribed');
      };
    }, [kitchenId, queryClient]); 
    // --- END REALTIME SUBSCRIPTION ---
@@ -1188,7 +1189,7 @@ export function useDishSearch(searchQuery: string) {
         setResults(data || []);
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
-        console.error('Error searching dishes:', err);
+        appLogger.error('Error searching dishes:', err);
         setResults([]);
       } finally {
         setLoading(false);
@@ -1230,7 +1231,7 @@ export function useUnits() {
         setUnits(data ? data.map(u => transformUnit(u as DbUnit)) : []);
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
-        console.error('Error fetching units:', err);
+        appLogger.error('Error fetching units:', err);
         setUnits([]);
       } finally {
         setLoading(false);
@@ -1317,7 +1318,7 @@ export function useIngredients(identifyPreparations: boolean = false) {
 
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
-        console.error('Error fetching ingredients:', err);
+        appLogger.error('Error fetching ingredients:', err);
         setIngredients([]);
       } finally {
         // setLoading(false); // Managed elsewhere
@@ -1336,7 +1337,7 @@ export function useIngredients(identifyPreparations: boolean = false) {
     if (!kitchenId) return;
 
     const handleIngredientChange = (payload: any) => {
-        console.log('[useIngredients] Ingredient change received:', payload);
+        appLogger.log('[useIngredients] Ingredient change received:', payload);
         setLoading(true);
         fetchIngredients().finally(() => setLoading(false));
 
@@ -1366,15 +1367,15 @@ export function useIngredients(identifyPreparations: boolean = false) {
       )
       .subscribe((status, err) => {
            if (status === 'SUBSCRIBED') {
-               console.log('[useIngredients] Realtime channel subscribed');
+               appLogger.log('[useIngredients] Realtime channel subscribed');
            } else if (err) {
-               console.error('[useIngredients] Realtime channel error:', err);
+               appLogger.error('[useIngredients] Realtime channel error:', err);
            }
       });
 
     return () => {
       supabase.removeChannel(channel);
-       console.log('[useIngredients] Realtime channel unsubscribed');
+       appLogger.log('[useIngredients] Realtime channel unsubscribed');
     };
     // Include ingredients in dependencies to check if an updated ingredient is a prep
   }, [kitchenId, fetchIngredients, identifyPreparations, ingredients]);

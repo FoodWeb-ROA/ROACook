@@ -7,17 +7,18 @@ import {
 } from '../../slices/authSlice';
 import { SetSessionResponse } from './types';
 import { parseUrlFragment } from './utils';
+import { appLogger } from '../../services/AppLogService';
 
 export function* handleAuthCallback(
 	action: ReturnType<typeof oauthCallback>
 ): Generator<any, void, SetSessionResponse> {
-	console.log('* handleAuthCallback/action:', action);
+	appLogger.log('* handleAuthCallback/action:', action);
 
 	const { url } = action.payload;
 
 	const fragmentParams = parseUrlFragment(url);
 
-	console.log(
+	appLogger.log(
 		'* handleAuthCallback/fragmentParams:',
 		JSON.stringify(fragmentParams, null, 2)
 	);
@@ -35,7 +36,7 @@ export function* handleAuthCallback(
 			);
 
 			if (error) {
-				console.error('* handleAuthCallback/error setSession:', error);
+				appLogger.error('* handleAuthCallback/error setSession:', error);
 
 				if (fragmentParams.type === 'signup') {
 					yield put(
@@ -47,7 +48,7 @@ export function* handleAuthCallback(
 					);
 				}
 			} else if (session === null || user === null) {
-				console.error(
+				appLogger.error(
 					'* handleAuthCallback: setSession resulted in null session/user'
 				);
 
@@ -61,12 +62,12 @@ export function* handleAuthCallback(
 					);
 				}
 			} else {
-				console.log(
+				appLogger.log(
 					'* handleAuthCallback: setSession successful. Waiting for onAuthStateChange...'
 				);
 			}
 		} catch (error: any) {
-			console.error('* handleAuthCallback/catch error setSession:', error);
+			appLogger.error('* handleAuthCallback/catch error setSession:', error);
 
 			if (fragmentParams.type === 'signup') {
 				yield put(
@@ -83,7 +84,7 @@ export function* handleAuthCallback(
 			}
 		}
 	} else {
-		console.error('* handleAuthCallback: No tokens found in URL fragment');
+		appLogger.error('* handleAuthCallback: No tokens found in URL fragment');
 
 		if (fragmentParams.type === 'signup') {
 			yield put(registerFailure('Auth callback failed: no tokens in the url'));
@@ -96,5 +97,5 @@ export function* handleAuthCallback(
 export function* watchAuthCallback(): Generator {
 	yield takeLatest(oauthCallback.type, handleAuthCallback);
 
-	console.log('* watchAuthCallback: watching', oauthCallback.type);
+	appLogger.log('* watchAuthCallback: watching', oauthCallback.type);
 }

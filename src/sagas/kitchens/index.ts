@@ -1,14 +1,15 @@
 import { all, fork } from 'redux-saga/effects';
 import { watchFetchKitchens } from './fetchKitchensSaga';
 import { watchLeaveKitchen } from './leaveKitchenSaga';
+import { appLogger } from '../../services/AppLogService';
 
 export default function* kitchensSaga(): Generator {
-  console.log('* kitchensSaga: starting...');
+  appLogger.log('* kitchensSaga: starting...');
 
   yield all([
     fork(watchFetchKitchens),
     fork(watchLeaveKitchen),
   ]);
 
-  console.log('* kitchensSaga: all watchers forked.');
+  appLogger.log('* kitchensSaga: all watchers forked.');
 }

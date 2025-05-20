@@ -14,6 +14,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
 import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 
 interface AddCategoryCardProps {
   onAdd: (sectionName: string) => void;
@@ -37,7 +38,7 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
   };
 
   // Add console log for debugging
-  console.log("Rendering AddCategoryCard, platform:", Platform.OS);
+  appLogger.log("Rendering AddCategoryCard, platform:", Platform.OS);
   
   // On web, we need to handle the border style differently
   const containerStyle = [

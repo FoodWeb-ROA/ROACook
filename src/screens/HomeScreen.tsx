@@ -42,6 +42,7 @@ import UpdateNotificationBanner from '../components/UpdateNotificationBanner';
 import { useUnits } from '../hooks/useSupabase';
 import { useLookup } from '../hooks/useLookup';
 import { findCloseIngredient, checkPreparationNameExists } from '../data/dbLookup';
+import { appLogger } from '../services/AppLogService';
 
 // Helper function to chunk array with type annotations
 const chunk = <T,>(array: T[], size: number): T[][] => { // Add generic type T and return type T[][]
@@ -163,7 +164,7 @@ const HomeScreen = () => {
     try {
       // Get kitchen_id from Redux state
       const kitchenId = activeKitchenId;
-      console.log('>>> Using active kitchen ID:', kitchenId);
+      appLogger.log('>>> Using active kitchen ID:', kitchenId);
 
       // Ensure kitchen ID is available before proceeding
       if (!kitchenId) {
@@ -172,7 +173,7 @@ const HomeScreen = () => {
           t('screens.home.error.missingKitchenId'),
           [{ text: t('common.ok', 'OK') }]
         );
-        console.error('Error adding section: No active kitchen selected. Please select a kitchen first.');
+        appLogger.error('Error adding section: No active kitchen selected. Please select a kitchen first.');
         return; // Stop execution if kitchen ID is missing
       }
 
@@ -185,12 +186,12 @@ const HomeScreen = () => {
       if (error) throw error;
       
       // Instead of manual refresh, invalidate the query cache
-      console.log(`[HomeScreen] Invalidating menu section query for kitchen: ${kitchenId}`);
+      appLogger.log(`[HomeScreen] Invalidating menu section query for kitchen: ${kitchenId}`);
       queryClient.invalidateQueries({ queryKey: ['menu_section', { kitchen_id: kitchenId }] });
 
       // Success alert removed
     } catch (error: any) {
-      console.error('Error adding section:', error);
+      appLogger.error('Error adding section:', error);
       Alert.alert(
         t('common.error'),
         t('screens.home.addSectionError', { sectionName, error: error.message || String(error) }),
@@ -356,12 +357,12 @@ const HomeScreen = () => {
                     imageUris = [result.assets[0].uri];
                 }
             } else if (selectedIndex === 2) {
-                console.log('Upload File selected');
+                appLogger.log('Upload File selected');
                  try {
                     const result = await DocumentPicker.getDocumentAsync({
                         copyToCacheDirectory: false, 
                     });
-                    console.log('Document Picker Result:', JSON.stringify(result));
+                    appLogger.log('Document Picker Result:', JSON.stringify(result));
                     if (!result.canceled && result.assets && result.assets.length > 0) {
                         const asset = result.assets[0];
                         if (asset.mimeType?.startsWith('image/')) {
@@ -370,10 +371,10 @@ const HomeScreen = () => {
                            Alert.alert('File Type Note', `Selected: ${asset.name}. Parsing non-image files via this method is not fully supported yet.`);
                         }
                     } else {
-                        console.log('Document picking cancelled or failed');
+                        appLogger.log('Document picking cancelled or failed');
                     }
                 } catch (error) {
-                    console.error('Error picking document:', error);
+                    appLogger.error('Error picking document:', error);
                     Alert.alert('Error', 'Could not pick document.');
                 }
             }
@@ -382,11 +383,11 @@ const HomeScreen = () => {
                 setIsParsing(true);
                 try {
                     const parsedRecipes = await uploadRecipeImages(imageUris);
-                    console.log('Raw Parsed Recipes:', parsedRecipes);
+                    appLogger.log('Raw Parsed Recipes:', parsedRecipes);
                     if (parsedRecipes && parsedRecipes.length > 0) {
                         // --- MODIFIED: Process the recipe before navigation, ensuring units are loaded ---
                         if (!loadingUnits && units) { // Check if units are loaded
-                            console.log("Units loaded. Starting pre-processing of parsed recipe...");
+                            appLogger.log("Units loaded. Starting pre-processing of parsed recipe...");
                             const initialComponents = await processParsedRecipe(
                                 parsedRecipes[0],
                                 units, 
@@ -394,14 +395,14 @@ const HomeScreen = () => {
                                 checkPreparationNameExists,
                                 t // Pass translation function
                             );
-                            console.log("Finished pre-processing. Navigating...");
+                            appLogger.log("Finished pre-processing. Navigating...");
                             // Navigate to CreateRecipeScreen with the first parsed recipe AND pre-processed components
                             navigation.navigate('CreateRecipe', { 
                                 parsedRecipe: parsedRecipes[0],
                                 initialComponents: initialComponents // <-- PASS PROCESSED COMPONENTS
                             });
                         } else {
-                            console.warn("Units not loaded yet. Cannot process parsed recipe immediately.");
+                            appLogger.warn("Units not loaded yet. Cannot process parsed recipe immediately.");
                             // Handle this case - e.g., show alert, different loading state, or retry later
                             Alert.alert("Processing Delay", "Recipe data is being prepared, please wait a moment."); 
                         }
@@ -410,18 +411,18 @@ const HomeScreen = () => {
                         Alert.alert('Parsing Failed', 'Could not extract recipes from the provided image(s).');
                     }
                 } catch (processError: any) { // Catch errors from either parsing or processing
-                    console.error('Error parsing recipe images or processing recipe:', processError);
+                    appLogger.error('Error parsing recipe images or processing recipe:', processError);
                     Alert.alert('Processing Error', processError.message || 'An error occurred during processing.');
                 }
                 finally {
                     setIsParsing(false);
                 }
             } else if (selectedIndex !== 2) {
-               console.log('No images selected or camera cancelled.');
+               appLogger.log('No images selected or camera cancelled.');
             }
 
         } catch (error) {
-            console.error('Error during recipe import process:', error);
+            appLogger.error('Error during recipe import process:', error);
             Alert.alert('Error', 'An unexpected error occurred.');
             setIsParsing(false);
         }
@@ -464,15 +465,15 @@ const HomeScreen = () => {
         if (selectedIndex === undefined || selectedIndex === cancelButtonIndex) return;
 
         if (selectedIndex === 0) { // Dish selected
-          console.log("Navigating to CreateRecipeScreen (Dish)");
+          appLogger.log("Navigating to CreateRecipeScreen (Dish)");
           navigation.navigate('CreateRecipe', {});
         } else if (selectedIndex === 1) { // Preparation selected
-          console.log("Navigating to CreatePreparationScreen (Preparation)");
+          appLogger.log("Navigating to CreatePreparationScreen (Preparation)");
           navigation.navigate('CreatePreparation', {
              // Use translation key for the default preparation name
              preparation: { name: t('screens.home.newPreparationName', 'New Preparation') } as ParsedIngredient,
              onNewPreparationCreated: (newPrepData) => {
-                console.log('New preparation created from HomeScreen FAB:', newPrepData);
+                appLogger.log('New preparation created from HomeScreen FAB:', newPrepData);
                 queryClient.invalidateQueries({ queryKey: ['ingredients', { include_preparations: true }] });
              },
           });

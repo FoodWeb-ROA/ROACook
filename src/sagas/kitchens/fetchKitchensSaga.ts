@@ -2,6 +2,7 @@ import { call, put, takeLatest, select } from 'redux-saga/effects';
 import { fetchKitchensWatch, fetchKitchensSuccess, fetchKitchensFailure } from '../../slices/kitchensSlice';
 import { supabase } from '../../data/supabaseClient';
 import { Kitchen } from '../../types';
+import { appLogger } from '../../services/AppLogService';
 
 // Type definition for Supabase responses
 type KitchensResponse = {
@@ -42,7 +43,7 @@ function* handleFetchKitchens(): Generator<any, void, any> {
     );
 
     if (response.error) {
-      console.error('Error fetching kitchens:', response.error);
+      appLogger.error('Error fetching kitchens:', response.error);
       yield put(fetchKitchensFailure(response.error.message || 'Failed to fetch kitchens'));
       return;
     }
@@ -53,15 +54,15 @@ function* handleFetchKitchens(): Generator<any, void, any> {
       name: item.kitchen.name,
     }));
 
-    console.log('Kitchens fetched:', kitchens);
+    appLogger.log('Kitchens fetched:', kitchens);
     yield put(fetchKitchensSuccess(kitchens));
   } catch (error: any) {
-    console.error('Unexpected error in fetchKitchensSaga:', error);
+    appLogger.error('Unexpected error in fetchKitchensSaga:', error);
     yield put(fetchKitchensFailure(error.message || 'An unexpected error occurred'));
   }
 }
 
 export function* watchFetchKitchens(): Generator {
   yield takeLatest(fetchKitchensWatch.type, handleFetchKitchens);
-  console.log('* watchFetchKitchens: watching', fetchKitchensWatch.type);
+  appLogger.log('* watchFetchKitchens: watching', fetchKitchensWatch.type);
 } 

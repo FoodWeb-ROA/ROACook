@@ -1,6 +1,7 @@
 import { ParsedRecipe, ParsedIngredient, Unit, ComponentInput, EditablePrepIngredient } from '../types';
 import { findCloseIngredient, checkPreparationNameExists } from '../data/dbLookup';
 import { TFunction } from 'i18next'; // Assuming you use i18next
+import { appLogger } from '../services/AppLogService';
 
 /**
  * Processes a raw parsed recipe from the AI parser into the ComponentInput[]
@@ -14,7 +15,7 @@ export const processParsedRecipe = async (
     checkPreparationNameExistsFn: typeof checkPreparationNameExists,
     t: TFunction // Pass translation function
 ): Promise<ComponentInput[]> => {
-    console.log("[processParsedRecipe] Starting processing for recipe...");
+    appLogger.log("[processParsedRecipe] Starting processing for recipe...");
     const mappedComponents: ComponentInput[] = [];
     
     // Build units map
@@ -23,15 +24,15 @@ export const processParsedRecipe = async (
         if (u.unit_name) unitsMap.set(u.unit_name.toLowerCase(), u.unit_id);
         if (u.abbreviation) unitsMap.set(u.abbreviation.toLowerCase(), u.unit_id);
     });
-    console.log("[processParsedRecipe] Units map created with size:", unitsMap.size);
+    appLogger.log("[processParsedRecipe] Units map created with size:", unitsMap.size);
 
     if (!parsedRecipe.components || parsedRecipe.components.length === 0) {
-        console.warn("[processParsedRecipe] Parsed recipe has no components.");
+        appLogger.warn("[processParsedRecipe] Parsed recipe has no components.");
         return [];
     }
 
     for (const ing of parsedRecipe.components) {
-        console.log(`[processParsedRecipe] Processing component: ${ing.name}`);
+        appLogger.log(`[processParsedRecipe] Processing component: ${ing.name}`);
         let matchedIngredient = null;
         let matched = false;
         let matchedUnitId: string | null = null;
@@ -44,30 +45,30 @@ export const processParsedRecipe = async (
                 if (closeMatches.length > 0) {
                     matchedIngredient = closeMatches[0];
                     matched = true;
-                    console.log(`  Matched ingredient: ${ing.name} -> ${matchedIngredient.name} (ID: ${matchedIngredient.ingredient_id})`);
+                    appLogger.log(`  Matched ingredient: ${ing.name} -> ${matchedIngredient.name} (ID: ${matchedIngredient.ingredient_id})`);
                 } else {
-                     console.log(`  No close match found for ingredient: ${ing.name}`);
+                     appLogger.log(`  No close match found for ingredient: ${ing.name}`);
                 }
             } else {
                 // Lookup for existing preparations by name
                 matchedPrepId = await checkPreparationNameExistsFn(ing.name);
                 if (matchedPrepId) { 
-                    console.log(`  Existing preparation found: ${ing.name} (ID: ${matchedPrepId})`);
+                    appLogger.log(`  Existing preparation found: ${ing.name} (ID: ${matchedPrepId})`);
                     matched = true; 
                 } else {
-                    console.log(`  No existing preparation found for: ${ing.name}. Will be treated as new.`);
+                    appLogger.log(`  No existing preparation found for: ${ing.name}. Will be treated as new.`);
                 }
             }
         } catch (error) { 
-            console.error(`[processParsedRecipe] Error matching component ${ing.name}:`, error); 
+            appLogger.error(`[processParsedRecipe] Error matching component ${ing.name}:`, error); 
         }
 
         const parsedUnit = ing.unit?.toLowerCase().trim();
         if (parsedUnit) {
             matchedUnitId = unitsMap.get(parsedUnit) || null;
-            console.log(`  Parsed unit: '${parsedUnit}', Matched unit ID: ${matchedUnitId}`);
+            appLogger.log(`  Parsed unit: '${parsedUnit}', Matched unit ID: ${matchedUnitId}`);
         } else {
-             console.log(`  No unit provided for component: ${ing.name}`);
+             appLogger.log(`  No unit provided for component: ${ing.name}`);
         }
 
         let initialPrepStateIngredients: EditablePrepIngredient[] | null = null;
@@ -79,7 +80,7 @@ export const processParsedRecipe = async (
             initialPrepStateUnitId = matchedUnitId; 
             initialPrepStateIngredients = [];
             if (ing.components && ing.components.length > 0) {
-                 console.log(`  Processing ${ing.components.length} sub-components for preparation: ${ing.name}`);
+                 appLogger.log(`  Processing ${ing.components.length} sub-components for preparation: ${ing.name}`);
                 for (const subIng of ing.components) {
                     let subMatchedIngredient = null;
                     let subMatched = false;
@@ -91,30 +92,30 @@ export const processParsedRecipe = async (
                         if (subCloseMatches.length > 0) {
                             const potentialMatch = subCloseMatches[0];
                             // >>> CRITICAL FIX: Check if the matched ID is the same as the parent prep ID <<<
-                            console.log(`    [recipeProcessor] Checking sub-ing: ${subIng.name}. Potential match: ${potentialMatch.name} (${potentialMatch.ingredient_id}). Parent Prep ID: ${matchedPrepId}`);
+                            appLogger.log(`    [recipeProcessor] Checking sub-ing: ${subIng.name}. Potential match: ${potentialMatch.name} (${potentialMatch.ingredient_id}). Parent Prep ID: ${matchedPrepId}`);
                             if (potentialMatch.ingredient_id === matchedPrepId) {
-                                console.log(`    Sub-ingredient '${subIng.name}' matched parent prep ID '${matchedPrepId}'. Treating as unmatched.`);
+                                appLogger.log(`    Sub-ingredient '${subIng.name}' matched parent prep ID '${matchedPrepId}'. Treating as unmatched.`);
                                 // Do not set subMatchedIngredient or subMatchedId, leave them null/false
                             } else {
                                 // Match is valid (not the parent prep)
                                 subMatchedIngredient = potentialMatch;
                                 subMatchedId = potentialMatch.ingredient_id; // Store the valid ID
                                 subMatched = true;
-                                console.log(`    Matched sub-ingredient: ${subIng.name} -> ${subMatchedIngredient.name} (ID: ${subMatchedId})`);
+                                appLogger.log(`    Matched sub-ingredient: ${subIng.name} -> ${subMatchedIngredient.name} (ID: ${subMatchedId})`);
                             }
                         } else {
-                            console.log(`    No close match found for sub-ingredient: ${subIng.name}`);
+                            appLogger.log(`    No close match found for sub-ingredient: ${subIng.name}`);
                         }
                     } catch (error) { 
-                        console.error(`[processParsedRecipe] Error matching sub-ingredient ${subIng.name}:`, error); 
+                        appLogger.error(`[processParsedRecipe] Error matching sub-ingredient ${subIng.name}:`, error); 
                     }
 
                     const subParsedUnit = subIng.unit?.toLowerCase().trim();
                     if (subParsedUnit) {
                         subMatchedUnitId = unitsMap.get(subParsedUnit) || null;
-                         console.log(`    Parsed sub-unit: '${subParsedUnit}', Matched sub-unit ID: ${subMatchedUnitId}`);
+                         appLogger.log(`    Parsed sub-unit: '${subParsedUnit}', Matched sub-unit ID: ${subMatchedUnitId}`);
                     } else {
-                        console.log(`    No unit provided for sub-ingredient: ${subIng.name}`);
+                        appLogger.log(`    No unit provided for sub-ingredient: ${subIng.name}`);
                     }
 
                     initialPrepStateIngredients.push({
@@ -130,16 +131,16 @@ export const processParsedRecipe = async (
                     } as any);
                 }
             } else {
-                 console.log(`  Preparation ${ing.name} has no sub-components defined in parsed data.`);
+                 appLogger.log(`  Preparation ${ing.name} has no sub-components defined in parsed data.`);
             }
         }
 
         // Determine the final ingredient ID string
         const finalIngredientId = matchedPrepId ? matchedPrepId : (matchedIngredient?.ingredient_id ? matchedIngredient.ingredient_id : null); // Use null if no ID found
-         console.log(`  Final determined ID for ${ing.name}: ${finalIngredientId}`);
+         appLogger.log(`  Final determined ID for ${ing.name}: ${finalIngredientId}`);
 
         if (!finalIngredientId) {
-            console.warn(`[processParsedRecipe] Skipping component '${ing.name}' because it could not be resolved to an existing ingredient or preparation ID.`);
+            appLogger.warn(`[processParsedRecipe] Skipping component '${ing.name}' because it could not be resolved to an existing ingredient or preparation ID.`);
             continue; // Skip to the next component in the loop
         }
 
@@ -162,6 +163,6 @@ export const processParsedRecipe = async (
         });
     } // End component loop
     
-    console.log(`[processParsedRecipe] Finished processing. Mapped ${mappedComponents.length} components.`);
+    appLogger.log(`[processParsedRecipe] Finished processing. Mapped ${mappedComponents.length} components.`);
     return mappedComponents;
 };

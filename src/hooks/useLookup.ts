@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { supabase } from '../data/supabaseClient'
+import { appLogger } from '../services/AppLogService';
 
 /**
  * Hook for looking up existing dishes and ingredients in the database
@@ -20,7 +21,7 @@ export const useLookup = () => {
       })
       
       if (error) {
-        console.error('Error looking up dish:', error)
+        appLogger.error('Error looking up dish:', error)
         return { dishes: [], hasDuplicate: false }
       }
       
@@ -29,7 +30,7 @@ export const useLookup = () => {
         hasDuplicate: data?.hasDuplicate || false
       }
     } catch (err) {
-      console.error('Failed to lookup dish:', err)
+      appLogger.error('Failed to lookup dish:', err)
       return { dishes: [], hasDuplicate: false }
     }
   }, [])
@@ -58,13 +59,13 @@ export const useLookup = () => {
       })
       
       if (error) {
-        console.error('Error looking up ingredient:', error)
+        appLogger.error('Error looking up ingredient:', error)
         return []
       }
       
       return data?.ingredients || []
     } catch (err) {
-      console.error('Failed to lookup ingredient:', err)
+      appLogger.error('Failed to lookup ingredient:', err)
       return []
     }
   }, [])
@@ -83,7 +84,7 @@ export const useLookup = () => {
       if (error) throw error;
       return data && data.length > 0;
     } catch (error) {
-      console.error('Error checking ingredient name existence:', error);
+      appLogger.error('Error checking ingredient name existence:', error);
       throw error;
     }
   };
@@ -100,7 +101,7 @@ export const useLookup = () => {
       
       return false;
     } catch (error) {
-      console.error('Error checking preparation name existence:', error);
+      appLogger.error('Error checking preparation name existence:', error);
       throw error;
     }
   };

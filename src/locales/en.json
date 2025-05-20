@@ -364,12 +364,16 @@
       "help": {
         "title": "Help & Support",
         "feedbackTitle": "Submit Feedback",
+        "titlePlaceholder": "Title",
+        "subjectLabel": "Subject",
+        "subjectPlaceholder": "What is your feedback about?",
         "feedbackLabel": "Your Message:",
         "feedbackPlaceholder": "Enter your feedback, bug report, or suggestion here...",
         "submitButton": "Submit Feedback",
         "errorTitle": "Submission Error",
         "successTitle": "Feedback Submitted",
-        "successMessage": "Thank you for your feedback!"
+        "successMessage": "Thank you for your feedback!",
+        "charsRemaining": "characters remaining"
       },
       "manageKitchens": {
         "title": "Manage Your Kitchens",

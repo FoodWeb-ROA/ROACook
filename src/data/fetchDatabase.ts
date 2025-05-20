@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { appLogger } from '../services/AppLogService';
 
 export async function fetchAllData() {
   try {
@@ -51,13 +52,13 @@ export async function fetchAllData() {
     ].filter(error => error !== null);
     
     if (errors.length > 0) {
-      console.error('Errors occurred while fetching data:', errors);
+      appLogger.error('Errors occurred while fetching data:', errors);
       throw new Error('Multiple errors occurred while fetching data');
     }
     
     return allData;
   } catch (error) {
-    console.error('Error fetching data:', error);
+    appLogger.error('Error fetching data:', error);
     throw error;
   }
 }
@@ -167,7 +168,7 @@ export async function fetchDishesWithRelatedData() { // Renamed function
     
     return fullDishes;
   } catch (error) {
-    console.error('Error fetching dishes with related data:', error);
+    appLogger.error('Error fetching dishes with related data:', error);
     throw error;
   }
 } 

@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../data/supabaseClient';
 import { useDispatch } from 'react-redux';
 import { authStateChanged } from '../slices/authSlice';
+import { appLogger } from '../services/AppLogService';
 
 interface AuthContextType {
   session: Session | null;
@@ -36,10 +37,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(initialSession?.user ?? null);
       setLoading(false);
       // Dispatch Redux action with initial session state
-      console.log('[AuthProvider] Dispatching initial auth state');
+      appLogger.log('[AuthProvider] Dispatching initial auth state');
       dispatch(authStateChanged({ session: initialSession }));
     }).catch(error => {
-        console.error("[AuthProvider] Error getting initial session:", error);
+        appLogger.error("[AuthProvider] Error getting initial session:", error);
          setLoading(false);
          // Dispatch null session if error occurs
          dispatch(authStateChanged({ session: null }));
@@ -47,7 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      console.log(`[AuthProvider] Auth state changed, event: ${_event}`);
+      appLogger.log(`[AuthProvider] Auth state changed, event: ${_event}`);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       // Ensure loading is false after an update
@@ -57,7 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     return () => {
-        console.log('[AuthProvider] Unsubscribing from auth state changes.');
+        appLogger.log('[AuthProvider] Unsubscribing from auth state changes.');
         subscription.unsubscribe();
     };
   }, [dispatch]);
@@ -91,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { error, user: data?.user ?? null };
 
     } catch (error) {
-      console.error('Unexpected error during signUp:', error);
+      appLogger.error('Unexpected error during signUp:', error);
       return { error, user: null };
     }
   };
@@ -101,7 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await supabase.auth.signOut();
     } catch (error) {
-      console.error('Error signing out:', error);
+      appLogger.error('Error signing out:', error);
     }
   };
 

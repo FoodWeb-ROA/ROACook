@@ -73,8 +73,7 @@
       "passwordMinLength": "La password deve contenere almeno 6 caratteri",
       "invalidLanguage": "Lingua non valida",
       "languageRequired": "Lingua è richiesta",
-      "placeholderMissing": "Testo segnaposto mancante per {{key}}",
-      "passwordMinLength": "La password deve contenere almeno 6 caratteri"
+      "placeholderMissing": "Testo segnaposto mancante per {{key}}"
     },
     "navigation": {
       "home": "Home",
@@ -358,12 +357,16 @@
       "help": {
         "title": "Aiuto e Feedback",
         "feedbackTitle": "Invia Feedback",
+        "titlePlaceholder": "Titolo",
+        "subjectLabel": "Oggetto",
+        "subjectPlaceholder": "Di cosa si tratta il tuo feedback?",
         "feedbackLabel": "Il tuo Messaggio:",
         "feedbackPlaceholder": "Inserisci qui il tuo feedback, segnalazione di bug o suggerimento...",
         "submitButton": "Invia Feedback",
         "errorTitle": "Errore Invio",
         "successTitle": "Feedback Inviato",
-        "successMessage": "Grazie per il tuo feedback!"
+        "successMessage": "Grazie per il tuo feedback!",
+        "charsRemaining": "caratteri rimanenti"
       },
       "about": {
         "title": "Informazioni su ROACook",
@@ -477,4 +480,4 @@
       "successLeave": "Lasciato '{{kitchenName}}' con successo."
     }
   }
-} 
+}

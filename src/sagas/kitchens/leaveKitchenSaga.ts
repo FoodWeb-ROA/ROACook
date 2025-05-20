@@ -1,6 +1,7 @@
 import { call, put, takeLatest, select } from 'redux-saga/effects';
 import { leaveKitchenWatch, leaveKitchenFailure, fetchKitchensWatch } from '../../slices/kitchensSlice';
 import { supabase } from '../../data/supabaseClient';
+import { appLogger } from '../../services/AppLogService';
 
 type SessionResponse = {
   data: {
@@ -35,22 +36,22 @@ function* handleLeaveKitchen(action: ReturnType<typeof leaveKitchenWatch>): Gene
     );
 
     if (error) {
-      console.error('Error leaving kitchen:', error);
+      appLogger.error('Error leaving kitchen:', error);
       yield put(leaveKitchenFailure(error.message || 'Failed to leave kitchen'));
       return;
     }
 
-    console.log('Successfully left kitchen:', kitchenId);
+    appLogger.log('Successfully left kitchen:', kitchenId);
     
     // Refresh the kitchens list
     yield put(fetchKitchensWatch());
   } catch (error: any) {
-    console.error('Unexpected error in leaveKitchenSaga:', error);
+    appLogger.error('Unexpected error in leaveKitchenSaga:', error);
     yield put(leaveKitchenFailure(error.message || 'An unexpected error occurred'));
   }
 }
 
 export function* watchLeaveKitchen(): Generator {
   yield takeLatest(leaveKitchenWatch.type, handleLeaveKitchen);
-  console.log('* watchLeaveKitchen: watching', leaveKitchenWatch.type);
+  appLogger.log('* watchLeaveKitchen: watching', leaveKitchenWatch.type);
 } 

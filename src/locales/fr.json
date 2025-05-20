@@ -73,8 +73,7 @@
       "passwordMinLength": "Le mot de passe doit comporter au moins 6 caractères",
       "invalidLanguage": "Langue invalide",
       "languageRequired": "La langue est requise",
-      "placeholderMissing": "Texte de remplacement manquant pour {{key}}",
-      "passwordMinLength": "Le mot de passe doit comporter au moins 6 caractères"
+      "placeholderMissing": "Texte de remplacement manquant pour {{key}}"
     },
     "navigation": {
       "accueil": "Accueil",
@@ -363,6 +362,8 @@
         "helpAndSupport": "Aide et Commentaires",
         "about": "À Propos",
         "sendFeedbackTitle": "Envoyer des Commentaires",
+        "titlePlaceholder": "Titre",
+        "feedbackLabel": "Votre Message :",
         "feedbackPlaceholder": "Décrivez votre problème ou suggestion...",
         "sendFeedbackButton": "Envoyer Commentaires",
         "feedbackEmptyError": "Veuillez entrer votre message de commentaire.",
@@ -372,12 +373,16 @@
       "help": {
         "title": "Aide et Commentaires",
         "feedbackTitle": "Envoyer des Commentaires",
+        "titlePlaceholder": "Titre",
+        "subjectLabel": "Sujet",
+        "subjectPlaceholder": "De quoi s'agit votre commentaire ?",
         "feedbackLabel": "Votre Message :",
         "feedbackPlaceholder": "Entrez ici vos commentaires, rapport de bug ou suggestion...",
         "submitButton": "Envoyer Commentaires",
         "errorTitle": "Erreur d'Envoi",
         "successTitle": "Commentaires Envoyés",
-        "successMessage": "Merci pour vos commentaires !"
+        "successMessage": "Merci pour vos commentaires !",
+        "charsRemaining": "caractères restants"
       },
       "about": {
         "title": "À Propos de ROACook",
@@ -491,4 +496,4 @@
       "successLeave": "Quitté '{{kitchenName}}' avec succès."
     }
   }
-} 
+}

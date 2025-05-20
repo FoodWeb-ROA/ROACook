@@ -1,5 +1,6 @@
 import { SupabaseClient, RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Database } from '../data/database.types'; // Adjust path if needed
+import { appLogger } from '../services/AppLogService';
 
 type TableName = keyof Database['public']['Tables'];
 
@@ -30,7 +31,7 @@ export function subscribeToTable(
 ): () => Promise<string | void> { 
 
     const channelName = `public:${tableName}:${filter || 'all'}`;
-    console.log(`[Realtime] Attempting to subscribe to channel: ${channelName}`);
+    appLogger.log(`[Realtime] Attempting to subscribe to channel: ${channelName}`);
 
     const channel = supabase.channel(channelName);
 
@@ -45,7 +46,7 @@ export function subscribeToTable(
             },
             // Use 'any' for payload type, rely on caller to cast/validate
             (payload: RealtimePostgresChangesPayload<any>) => { 
-                console.log(`[Realtime] Change received on ${tableName}:`, payload);
+                appLogger.log(`[Realtime] Change received on ${tableName}:`, payload);
                 switch (payload.eventType) {
                     case 'INSERT':
                         if (handlers.onInsert && payload.new) {
@@ -63,19 +64,19 @@ export function subscribeToTable(
                         }
                         break;
                     default:
-                        console.warn(`[Realtime] Unhandled event type: ${payload.eventType}`);
+                        appLogger.warn(`[Realtime] Unhandled event type: ${payload.eventType}`);
                 }
             }
         )
         .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
-                console.log(`[Realtime] Successfully subscribed to ${channelName}`);
+                appLogger.log(`[Realtime] Successfully subscribed to ${channelName}`);
                 if (handlers.onSubscribed) {
                     handlers.onSubscribed(channel);
                 }
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
                 const error = err || new Error(`Channel status: ${status}`);
-                console.error(`[Realtime] Subscription error on ${channelName}:`, error);
+                appLogger.error(`[Realtime] Subscription error on ${channelName}:`, error);
                 if (handlers.onError) {
                     handlers.onError(error);
                 }
@@ -85,7 +86,7 @@ export function subscribeToTable(
 
     // Return an unsubscribe function
     const unsubscribe = async () => {
-        console.log(`[Realtime] Unsubscribing from channel: ${channelName}`);
+        appLogger.log(`[Realtime] Unsubscribing from channel: ${channelName}`);
         // subscription.unsubscribe() is deprecated, use removeChannel()
         return supabase.removeChannel(channel); // Remove the specific channel instance
     };

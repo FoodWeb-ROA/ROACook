@@ -1,55 +1,66 @@
-import { Client } from '@notionhq/client';
-import Constants from 'expo-constants';
 import { reportToNotion, NotionTicketData } from './notionService';
-
-const notionApiKey = process.env.EXPO_PUBLIC_NOTION_API_KEY;
-const notionDatabaseId = process.env.EXPO_PUBLIC_NOTION_DATABASE_ID;
-
-interface FeedbackData {
-  feedbackText: string;
-  kitchenName?: string;
-  userId?: string;
-}
+import { appLogger } from './AppLogService';
 
 interface ErrorReportData {
-  errorMessage: string;
-  errorStack?: string | null;
-  componentName?: string;
+  title?: string;
+  error: any; 
+  kitchenName?: string | null;
+  userEmail?: string | null;
+  clientVersion?: string;
   userId?: string;
   additionalInfo?: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
+  errorMessage?: string;
+  errorStack?: string;
+  componentName?: string;
 }
 
-interface FeedbackParams {
+export interface FeedbackParams {
+  title: string;
   feedbackText: string;
-  userId?: string;
-  kitchenName?: string;
+  userEmail?: string | null;
+  kitchenName?: string | null;
 }
 
 export const submitFeedback = async (params: FeedbackParams): Promise<boolean> => {
+  const userFeedback = `User Feedback Submitted:\n----------------------\n${params.feedbackText}`;
+  const recentAppLogs = appLogger.getLogs(); 
+  let combinedLogContent = userFeedback;
+
+  if (recentAppLogs && recentAppLogs.trim() !== '') {
+    combinedLogContent += `\n\nRecent Application Logs:\n----------------------\n${recentAppLogs}`;
+  }
+
   const ticketData: NotionTicketData = {
-    userMessage: params.feedbackText,
-    userName: params.userId ?? 'Anonymous',
-    kitchenName: params.kitchenName ?? 'N/A',
-    logContent: `User Feedback Submitted:\n----------------------\n${params.feedbackText}`,
-    };
-    
+    title: params.title,
+    kitchenName: params.kitchenName ?? null,
+    userEmail: params.userEmail ?? null,
+    logContent: combinedLogContent, 
+    logLevel: 'INFO', 
+  };
   return await reportToNotion(ticketData);
 };
 
 export const submitErrorReport = async (data: ErrorReportData): Promise<boolean> => {
   try {
     const payload: NotionTicketData = {
-      userName: data.userId ?? 'System',
-      kitchenName: 'N/A',
-      userMessage: `Error Report [${data.severity}]: ${data.errorMessage}`,
-      error: new Error(data.errorMessage),
-      logContent: `Component: ${data.componentName ?? 'Unknown'}\nSeverity: ${data.severity ?? 'medium'}\nAdditional Info: ${data.additionalInfo ?? 'None'}\n\nStack Trace:\n${data.errorStack ?? 'Not available'}`,
+      title: data.title || `Error Report: ${(data.error?.message || String(data.error)).substring(0, 50)}`,
+      error: data.error, 
+      logContent: data.error?.stack || String(data.error), 
+      kitchenName: data.kitchenName ?? null,
+      userEmail: data.userEmail ?? null,
+      clientVersion: data.clientVersion ?? null,
+      logLevel: data.severity?.toUpperCase() || 'ERROR',
     };
-    
+
+    if (data.additionalInfo) {
+      payload.logContent += `\n\nAdditional Info:\n------------------\n${data.additionalInfo}`;
+    }
+
+    appLogger.log('Submitting error report with payload:', payload);
     return await reportToNotion(payload);
   } catch (error) {
-    console.error('Error submitting error report:', error);
+    appLogger.error('Error submitting error report:', error);
     return false;
   }
 };
@@ -60,6 +71,7 @@ export const reportError = (componentName: string, userId?: string) => {
     const errorStack = error instanceof Error ? error.stack : undefined;
     
     submitErrorReport({
+      error: error, 
       errorMessage,
       errorStack,
       componentName,
@@ -67,9 +79,42 @@ export const reportError = (componentName: string, userId?: string) => {
       additionalInfo,
       severity,
     }).catch(e => {
-      console.error('Failed to report error:', e);
+      appLogger.error('Failed to report error:', e);
     });
     
     return error;
   };
 }; 
+
+// DEPRECATED: prefer using globalErrorHandler from `src/services/sentry`
+export const globalErrorReporter = (
+  error: Error, // Expect an actual Error object
+  context?: {
+    componentName?: string;
+    additionalInfo?: string;
+    severity?: 'low' | 'medium' | 'high' | 'critical';
+    userId?: string;
+  }
+) => {
+  appLogger.error(`Global error in ${context?.componentName || 'unknown component'}:`, error);
+  
+  let constructedTitle = `FE Error: ${context?.componentName || 'Unknown'} - ${error.message.substring(0,30)}`;
+  let constructedAdditionalInfo = `Component: ${context?.componentName || 'N/A'}`;
+  if (context?.additionalInfo) {
+    constructedAdditionalInfo += `\nContextual Info: ${context.additionalInfo}`;
+  }
+  // The stack trace is automatically included in payload.logContent by submitErrorReport if error.stack exists
+
+  submitErrorReport({
+    error: error, 
+    title: constructedTitle,
+    additionalInfo: constructedAdditionalInfo,
+    severity: context?.severity || 'high',
+    userId: context?.userId
+    // kitchenName, userEmail, clientVersion can be added here if available from context
+  }).catch(e => {
+    appLogger.error('Failed to report error via globalErrorReporter:', e);
+  });
+  
+  return error; 
+};

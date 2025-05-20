@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Database } from './database.types';
+import { appLogger } from '../services/AppLogService';
 
 // Define a type for valid table names based on the generated Database types
 type TableName = keyof Database['public']['Tables'];
@@ -52,7 +53,7 @@ export async function fetchData<T>(
     return { data: data as T, error: error as any };
 
   } catch (error) {
-    console.error(`Error fetching from ${tableName}:`, error);
+    appLogger.error(`Error fetching from ${tableName}:`, error);
     return { data: null, error: error as any };
   }
 }
@@ -79,7 +80,7 @@ export async function insertData<T>(
     }
     
   } catch (error) {
-    console.error(`Error inserting into ${tableName}:`, error);
+    appLogger.error(`Error inserting into ${tableName}:`, error);
     return { data: null, error: error as any };
   }
 }
@@ -110,7 +111,7 @@ export async function updateData<T>(
     }
 
   } catch (error) {
-    console.error(`Error updating ${tableName}:`, error);
+    appLogger.error(`Error updating ${tableName}:`, error);
     return { data: null, error: error as any };
   }
 }
@@ -140,7 +141,7 @@ export async function deleteData<T>(
     }
 
   } catch (error) {
-    console.error(`Error deleting from ${tableName}:`, error);
+    appLogger.error(`Error deleting from ${tableName}:`, error);
     return { data: null, error: error as any };
   }
 }
@@ -201,7 +202,7 @@ export async function fetchDishWithRelatedData(dishId: string) {
       menuSection
     };
   } catch (error) {
-    console.error('Error fetching dish with related data:', error);
+    appLogger.error('Error fetching dish with related data:', error);
     throw error;
   }
 } 

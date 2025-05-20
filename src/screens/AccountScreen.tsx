@@ -21,6 +21,7 @@ import AppHeader from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../data/supabaseClient';
+import { appLogger } from '../services/AppLogService';
 
 // Define navigation prop type - updated to use only Stack navigator
 type AccountScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Account'>;
@@ -65,7 +66,7 @@ const AccountScreen = () => {
       
       Alert.alert(t('common.success'), t('screens.account.success.profileUpdated'));
     } catch (error: any) {
-      console.error('Error updating profile:', error);
+      appLogger.error('Error updating profile:', error);
       Alert.alert(t('common.error'), error.message || t('screens.account.error.updateFailed'));
     } finally {
       setIsUpdatingProfile(false);
@@ -94,7 +95,7 @@ const AccountScreen = () => {
         t('screens.account.success.emailUpdateInitiated', { email: newEmail.trim() })
       );
     } catch (error: any) {
-      console.error('Error updating email:', error);
+      appLogger.error('Error updating email:', error);
       Alert.alert(t('common.error'), error.message || t('screens.account.error.emailUpdateFailed'));
     } finally {
       setIsUpdatingEmail(false);
@@ -131,7 +132,7 @@ const AccountScreen = () => {
       Alert.alert(t('common.success'), t('screens.account.success.passwordUpdated'));
 
     } catch (error: any) {
-      console.error('Error updating password:', error);
+      appLogger.error('Error updating password:', error);
       Alert.alert(t('common.error'), error.message || t('screens.account.error.passwordUpdateFailed'));
     } finally {
       setIsUpdatingPassword(false);

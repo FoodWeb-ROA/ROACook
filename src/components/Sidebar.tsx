@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 

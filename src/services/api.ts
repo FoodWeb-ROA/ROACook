@@ -1,3 +1,5 @@
+import { appLogger } from './AppLogService';
+
 // Get Notion API keys from environment variables
 // Will inject safely in production
 const NOTION_API_KEY = process.env.EXPO_PUBLIC_NOTION_API_KEY;
@@ -15,7 +17,7 @@ export const submitToNotion = async (data: Record<string, any>): Promise<boolean
   try {
     // Check for API key and database ID
     if (!NOTION_API_KEY || !NOTION_DATABASE_ID) {
-      console.error('Notion API key or database ID is missing');
+      appLogger.error('Notion API key or database ID is missing');
       return false;
     }
 
@@ -177,13 +179,13 @@ export const submitToNotion = async (data: Record<string, any>): Promise<boolean
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Notion API Error:', errorData);
+      appLogger.error('Notion API Error:', errorData);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Error submitting to Notion:', error);
+    appLogger.error('Error submitting to Notion:', error);
     return false;
   }
 }; 

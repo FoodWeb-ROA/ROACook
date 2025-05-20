@@ -3,6 +3,7 @@
 import { supabase } from './supabaseClient';
 import { Ingredient, Preparation, Dish } from '../types'; // Assuming types are defined here
 import { DbUnit, FetchedIngredientDetail, FetchedPreparationDataCombined, FetchedPreparationDetail, FetchedPreparationIngredient, transformPreparation, transformUnit } from '../utils/transforms';
+import { appLogger } from '../services/AppLogService';
 
 // --- Ingredient Lookups ---
 
@@ -21,12 +22,12 @@ export const checkIngredientNameExists = async (name: string): Promise<string | 
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
-      console.error('Error checking ingredient name:', error);
+      appLogger.error('Error checking ingredient name:', error);
       throw error; // Re-throw unexpected errors
     }
     return data?.ingredient_id || null;
   } catch (error) {
-    console.error('Supabase call failed (checkIngredientNameExists):', error);
+    appLogger.error('Supabase call failed (checkIngredientNameExists):', error);
     return null; // Return null on failure to avoid blocking UX
   }
 };
@@ -59,7 +60,7 @@ export const findCloseIngredient = async (
             .limit(limit);
 
         if (ingredientsError) {
-            console.error('Error finding close ingredients (step 1):', ingredientsError);
+            appLogger.error('Error finding close ingredients (step 1):', ingredientsError);
             throw ingredientsError;
         }
 
@@ -75,7 +76,7 @@ export const findCloseIngredient = async (
             .in('preparation_id', ingredientIds);
 
         if (preparationsError) {
-            console.error('Error checking preparations link (step 2):', preparationsError);
+            appLogger.error('Error checking preparations link (step 2):', preparationsError);
             // Decide how to handle this - return partial results or throw?
             // For now, let's return ingredients without the isPreparation flag set correctly.
             return ingredientsData.map(ing => ({ ...(ing as Ingredient), isPreparation: false }));
@@ -92,7 +93,7 @@ export const findCloseIngredient = async (
         return results;
 
     } catch (error) {
-        console.error('Supabase call failed (findCloseIngredient):', error);
+        appLogger.error('Supabase call failed (findCloseIngredient):', error);
         return [];
     }
 };
@@ -115,12 +116,12 @@ export const findPreparationByFingerprint = async (fingerprint: string): Promise
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error finding preparation by fingerprint:', error);
+      appLogger.error('Error finding preparation by fingerprint:', error);
       throw error;
     }
     return data?.preparation_id || null;
   } catch (error) {
-    console.error('Supabase call failed (findPreparationByFingerprint):', error);
+    appLogger.error('Supabase call failed (findPreparationByFingerprint):', error);
     return null;
   }
 };
@@ -142,7 +143,7 @@ export const checkPreparationNameExists = async (name: string): Promise<string |
       .single();
 
     if (ingErr && ingErr.code !== 'PGRST116') {
-      console.error('Error checking ingredient for preparation name:', ingErr);
+      appLogger.error('Error checking ingredient for preparation name:', ingErr);
       throw ingErr;
     }
 
@@ -157,14 +158,14 @@ export const checkPreparationNameExists = async (name: string): Promise<string |
       .single();
 
     if (prepErr && prepErr.code !== 'PGRST116') {
-      console.error('Error checking preparations link:', prepErr);
+      appLogger.error('Error checking preparations link:', prepErr);
       throw prepErr;
     }
 
     return prep ? ing.ingredient_id : null;
 
   } catch (error) {
-    console.error('Supabase call failed (checkPreparationNameExists):', error);
+    appLogger.error('Supabase call failed (checkPreparationNameExists):', error);
     return null;
   }
 };
@@ -187,12 +188,12 @@ export const findDishByName = async (name: string): Promise<string | null> => {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error finding dish by name:', error);
+      appLogger.error('Error finding dish by name:', error);
       throw error;
     }
     return data?.dish_id || null;
   } catch (error) {
-    console.error('Supabase call failed (findDishByName):', error);
+    appLogger.error('Supabase call failed (findDishByName):', error);
     return null;
   }
 }; 
@@ -297,7 +298,7 @@ export const fetchPreparationDetailsFromDB = async (preparationId: string | unde
         .in('preparation_id', ingredientIds);
 
       if (prepCheckError) {
-        console.warn(`[fetchPreparationDetailsFromDB] Failed to check for nested preparations:`, prepCheckError);
+        appLogger.warn(`[fetchPreparationDetailsFromDB] Failed to check for nested preparations:`, prepCheckError);
         // Continue without prep checks if this fails
       } else {
         preparationIdSet = new Set(prepCheckData?.map(p => p.preparation_id) || []);
@@ -324,7 +325,7 @@ export const fetchPreparationDetailsFromDB = async (preparationId: string | unde
 
     return { preparation: transformedPrep, ingredients: transformedPrep.ingredients || [] };
   } catch (error) {
-    console.error(`Error fetching preparation ${preparationId}:`, error);
+    appLogger.error(`Error fetching preparation ${preparationId}:`, error);
     return { preparation: null, ingredients: [] };
   }
 };

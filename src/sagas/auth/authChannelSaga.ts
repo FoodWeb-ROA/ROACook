@@ -3,9 +3,10 @@ import { EventChannel } from 'redux-saga';
 import { createAuthChannel } from './utils';
 import { authStateChanged } from '../../slices/authSlice';
 import { AuthEventPayload, Session } from './types';
+import { appLogger } from '../../services/AppLogService';
 
 export function* watchAuthChannel(): Generator {
-    console.log('* watchAuthChannel: starting...');
+    appLogger.log('* watchAuthChannel: starting...');
 
     const authChannel: EventChannel<AuthEventPayload> = yield call(createAuthChannel);
 
@@ -13,14 +14,14 @@ export function* watchAuthChannel(): Generator {
         while (true) {
             const { session }: { session: Session | null } = yield take(authChannel);
 
-            console.log(`* watchAuthChannel: event received, session:`, session ? 'exists' : 'null');
+            appLogger.log(`* watchAuthChannel: event received, session:`, session ? 'exists' : 'null');
 
             yield put(authStateChanged({ session }));
         }
     } catch (error) {
-         console.error('* watchAuthChannel: channel error', error);
+         appLogger.error('* watchAuthChannel: channel error', error);
     } finally {
-        console.log('* watchAuthChannel: channel terminated');
+        appLogger.log('* watchAuthChannel: channel terminated');
         
         authChannel.close();
     }

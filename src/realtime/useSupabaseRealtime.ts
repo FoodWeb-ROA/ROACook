@@ -6,6 +6,7 @@ import { supabase } from '../data/supabaseClient';
 import { queryClient } from '../data/queryClient';
 import { RootState } from '../store'; 
 import { applyRealtimeEvent } from './cacheInvalidation';
+import { appLogger } from '../services/AppLogService';
 
 // Define generic payload type for clarity
 type SupabasePayload = RealtimePostgresChangesPayload<{ [key: string]: any }>;
@@ -57,19 +58,19 @@ export function useSupabaseRealtime() {
         setError(null); // Clear previous error on new attempt
 
         if (!activeKitchenId || !userId) {
-            console.log('[useSupabaseRealtime] Cannot subscribe: Missing kitchen or user ID.');
+            appLogger.log('[useSupabaseRealtime] Cannot subscribe: Missing kitchen or user ID.');
             return; // Don't attempt if conditions not met
         }
 
         if (isRetry) {
             retryAttemptRef.current += 1;
-            console.log(`[useSupabaseRealtime] Retrying subscription (Attempt ${retryAttemptRef.current}/${MAX_RETRY_ATTEMPTS})...`);
+            appLogger.log(`[useSupabaseRealtime] Retrying subscription (Attempt ${retryAttemptRef.current}/${MAX_RETRY_ATTEMPTS})...`);
         } else {
             retryAttemptRef.current = 0; // Reset attempts on manual trigger
         }
 
         const channelName = `kitchen-${activeKitchenId}`;
-        console.log(`[useSupabaseRealtime] Attempting to subscribe to channel: ${channelName}`);
+        appLogger.log(`[useSupabaseRealtime] Attempting to subscribe to channel: ${channelName}`);
         const newChannel = supabase.channel(channelName);
 
         // Event listeners (same as before)
@@ -88,13 +89,13 @@ export function useSupabaseRealtime() {
         // Subscription status handler
         newChannel.subscribe((status: REALTIME_SUBSCRIBE_STATES, err?: Error) => {
             if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
-                console.log(`[useSupabaseRealtime] Successfully subscribed to ${channelName}`);
+                appLogger.log(`[useSupabaseRealtime] Successfully subscribed to ${channelName}`);
                 setIsConnected(true);
                 setError(null);
                 retryAttemptRef.current = 0; // Reset retries on success
                 clearRetryTimer(); // Clear any pending retry timers
             } else if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
-                console.error(`[useSupabaseRealtime] Subscription error on ${channelName}:`, status, err);
+                appLogger.error(`[useSupabaseRealtime] Subscription error on ${channelName}:`, status, err);
                 setIsConnected(false);
                 const currentError = err || new Error(`Subscription failed with status: ${status}`);
                 setError(currentError);
@@ -103,15 +104,15 @@ export function useSupabaseRealtime() {
                 // Schedule retry if attempts remaining
                 if (retryAttemptRef.current < MAX_RETRY_ATTEMPTS) {
                     const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, retryAttemptRef.current);
-                    console.log(`[useSupabaseRealtime] Scheduling retry in ${delay}ms...`);
+                    appLogger.log(`[useSupabaseRealtime] Scheduling retry in ${delay}ms...`);
                     clearRetryTimer(); // Clear previous timer just in case
                     retryTimeoutRef.current = setTimeout(() => attemptSubscription(true), delay);
                 } else {
-                    console.error(`[useSupabaseRealtime] Max retry attempts reached for channel ${channelName}.`);
+                    appLogger.error(`[useSupabaseRealtime] Max retry attempts reached for channel ${channelName}.`);
                     clearRetryTimer();
                 }
             } else if (status === REALTIME_SUBSCRIBE_STATES.CLOSED) {
-                console.log(`[useSupabaseRealtime] Subscription closed for ${channelName}.`);
+                appLogger.log(`[useSupabaseRealtime] Subscription closed for ${channelName}.`);
                 // Only set disconnected if it wasn't already handled by an error state
                 if (!error) {
                     setIsConnected(false);
@@ -125,16 +126,16 @@ export function useSupabaseRealtime() {
     };
 
     useEffect(() => {
-        console.log('[useSupabaseRealtime] Effect triggered. Kitchen:', activeKitchenId, 'User:', userId);
+        appLogger.log('[useSupabaseRealtime] Effect triggered. Kitchen:', activeKitchenId, 'User:', userId);
         // Start the initial subscription attempt
         attemptSubscription();
 
         // Cleanup function: Remove channel and clear timers
         return () => {
-            console.log('[useSupabaseRealtime] Cleanup effect');
+            appLogger.log('[useSupabaseRealtime] Cleanup effect');
             clearRetryTimer();
             if (channelRef.current) {
-                console.log(`[useSupabaseRealtime] Unsubscribing from ${channelRef.current.topic}`);
+                appLogger.log(`[useSupabaseRealtime] Unsubscribing from ${channelRef.current.topic}`);
                 supabase.removeChannel(channelRef.current);
                 channelRef.current = null;
             }

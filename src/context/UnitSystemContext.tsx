@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { appLogger } from '../services/AppLogService';
 
 export type UnitSystem = 'metric' | 'imperial';
 
@@ -28,7 +29,7 @@ export const UnitSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setUnitSystemState(savedSystem);
         }
       } catch (error) {
-        console.error('Failed to load unit system preference:', error);
+        appLogger.error('Failed to load unit system preference:', error);
       } finally {
         setIsLoading(false);
       }
@@ -43,7 +44,7 @@ export const UnitSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await AsyncStorage.setItem(UNIT_SYSTEM_STORAGE_KEY, system);
       setUnitSystemState(system);
     } catch (error) {
-      console.error('Failed to save unit system preference:', error);
+      appLogger.error('Failed to save unit system preference:', error);
     }
   };
 

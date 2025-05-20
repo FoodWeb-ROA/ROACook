@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DishComponent, PreparationIngredient, Unit } from '../types'; // Assuming these are the base types needed
+import { appLogger } from '../services/AppLogService';
 
 // Define the structure for a cached dish
 export interface OfflineDishPayload {
@@ -57,7 +58,7 @@ export async function saveOfflineRecipe(
   payload: OfflineRecipePayload // Use the combined type
 ): Promise<void> {
   if (!id) {
-    console.warn('[saveOfflineRecipe] Attempted to save recipe with invalid ID.');
+    appLogger.warn('[saveOfflineRecipe] Attempted to save recipe with invalid ID.');
     return;
   }
   const cacheKey = getCacheKey(id, kind);
@@ -70,9 +71,9 @@ export async function saveOfflineRecipe(
     };
     const jsonValue = JSON.stringify(dataToStore);
     await AsyncStorage.setItem(cacheKey, jsonValue);
-    console.log(`[saveOfflineRecipe] Saved ${kind} ${id} to offline cache.`);
+    appLogger.log(`[saveOfflineRecipe] Saved ${kind} ${id} to offline cache.`);
   } catch (e) {
-    console.error(`[saveOfflineRecipe] Failed to save ${kind} ${id} to AsyncStorage:`, e);
+    appLogger.error(`[saveOfflineRecipe] Failed to save ${kind} ${id} to AsyncStorage:`, e);
   }
 }
 
@@ -96,21 +97,21 @@ export async function getOfflineRecipe(
 
      // Validate schema version (optional but recommended)
      if (cachedData.schemaVersion !== CURRENT_SCHEMA_VERSION) {
-       console.warn(`[getOfflineRecipe] Schema mismatch for ${kind} ${id}. Discarding cache.`);
+       appLogger.warn(`[getOfflineRecipe] Schema mismatch for ${kind} ${id}. Discarding cache.`);
        await AsyncStorage.removeItem(cacheKey); // Clear outdated cache
        return null;
      }
 
-     console.log(`[getOfflineRecipe] Retrieved ${kind} ${id} from offline cache.`);
+     appLogger.log(`[getOfflineRecipe] Retrieved ${kind} ${id} from offline cache.`);
      // Cast back to the expected payload type after checks
      return cachedData as OfflineRecipePayload;
    } catch (e) {
-     console.error(`[getOfflineRecipe] Failed to retrieve ${kind} ${id} from AsyncStorage:`, e);
+     appLogger.error(`[getOfflineRecipe] Failed to retrieve ${kind} ${id} from AsyncStorage:`, e);
      // Attempt to clear potentially corrupted data
      try {
         await AsyncStorage.removeItem(cacheKey);
      } catch (clearError) {
-        console.error(`[getOfflineRecipe] Failed to clear corrupted cache for key ${cacheKey}:`, clearError);
+        appLogger.error(`[getOfflineRecipe] Failed to clear corrupted cache for key ${cacheKey}:`, clearError);
      }
      return null;
    }
@@ -127,9 +128,9 @@ export async function purgeOfflineRecipe(
   const cacheKey = getCacheKey(id, kind);
   try {
     await AsyncStorage.removeItem(cacheKey);
-    console.log(`[purgeOfflineRecipe] Removed ${kind} ${id} from offline cache.`);
+    appLogger.log(`[purgeOfflineRecipe] Removed ${kind} ${id} from offline cache.`);
   } catch (e) {
-    console.error(`[purgeOfflineRecipe] Failed to remove ${kind} ${id} from AsyncStorage:`, e);
+    appLogger.error(`[purgeOfflineRecipe] Failed to remove ${kind} ${id} from AsyncStorage:`, e);
   }
 }
 
@@ -142,9 +143,9 @@ export async function purgeAllOfflineRecipes(): Promise<void> {
         const recipeKeys = allKeys.filter(key => key.startsWith(CACHE_PREFIX_DISH) || key.startsWith(CACHE_PREFIX_PREP));
         if (recipeKeys.length > 0) {
             await AsyncStorage.multiRemove(recipeKeys);
-            console.log(`[purgeAllOfflineRecipes] Cleared ${recipeKeys.length} offline recipe caches.`);
+            appLogger.log(`[purgeAllOfflineRecipes] Cleared ${recipeKeys.length} offline recipe caches.`);
         }
     } catch (e) {
-        console.error('[purgeAllOfflineRecipes] Failed to clear offline recipe caches:', e);
+        appLogger.error('[purgeAllOfflineRecipes] Failed to clear offline recipe caches:', e);
     }
 } 

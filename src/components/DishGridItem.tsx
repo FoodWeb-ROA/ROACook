@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Dish } from '../types';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { appLogger } from '../services/AppLogService';
 
 interface DishGridItemProps {
   dish: Dish;

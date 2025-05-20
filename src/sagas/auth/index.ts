@@ -7,9 +7,10 @@ import { watchAuthCallback } from './authCallbackSaga';
 import { handleAuthStateChange } from './authStateChangeSaga';
 import { authStateChanged } from '../../slices/authSlice';
 import { watchAuthChannel } from './authChannelSaga';
+import { appLogger } from '../../services/AppLogService';
 
 export default function* authSaga(): Generator {
-	console.log('* authSaga: starting...');
+	appLogger.log('* authSaga: starting...');
 
 	yield all([
 		fork(watchAuthChannel),
@@ -21,5 +22,5 @@ export default function* authSaga(): Generator {
 		takeLatest(authStateChanged.type, handleAuthStateChange)
 	]);
 
-	console.log('* authSaga: all watchers forked.');
+	appLogger.log('* authSaga: all watchers forked.');
 }

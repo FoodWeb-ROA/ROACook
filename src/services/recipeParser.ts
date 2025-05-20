@@ -1,5 +1,6 @@
 import { Platform, Alert } from 'react-native';
 import { ParsedRecipe } from '../types'; // Import the type for the expected recipe structure
+import { appLogger } from '../services/AppLogService';
 
 // Type for the expected API response structure (based on parser README)
 interface BatchPredictionResponse {
@@ -17,7 +18,7 @@ export const uploadRecipeImages = async (imageUris: string[]): Promise<ParsedRec
     const parserUrl = process.env.EXPO_PUBLIC_RECIPE_PARSER_URL;
 
     if (!parserUrl) {
-        console.error('Recipe parser URL is not configured.');
+        appLogger.error('Recipe parser URL is not configured.');
         throw new Error('Recipe parsing service is not configured. Please set EXPO_PUBLIC_RECIPE_PARSER_URL.');
     }
 
@@ -45,7 +46,7 @@ export const uploadRecipeImages = async (imageUris: string[]): Promise<ParsedRec
     }
 
     try {
-        console.log(`Uploading ${imageUris.length} image(s) to ${parserUrl}/predict`);
+        appLogger.log(`Uploading ${imageUris.length} image(s) to ${parserUrl}/predict`);
         const response = await fetch(`${parserUrl}/predict`, {
             method: 'POST',
             body: formData,
@@ -57,8 +58,8 @@ export const uploadRecipeImages = async (imageUris: string[]): Promise<ParsedRec
         });
 
         const responseText = await response.text(); // Get text first for debugging
-        console.log('Parser Response Status:', response.status);
-        console.log('Parser Response Text:', responseText);
+        appLogger.log('Parser Response Status:', response.status);
+        appLogger.log('Parser Response Text:', responseText);
 
         if (!response.ok) {
             throw new Error(`Failed to parse recipe: ${response.status} ${response.statusText} - ${responseText}`);
@@ -78,7 +79,7 @@ export const uploadRecipeImages = async (imageUris: string[]): Promise<ParsedRec
             throw new Error(`Parser failed processing: ${firstPrediction.error || 'Unknown processing error'}`);
         }
         if (!firstPrediction.validation_success) {
-            console.warn('Parser validation errors:', firstPrediction.validation_errors);
+            appLogger.warn('Parser validation errors:', firstPrediction.validation_errors);
             // Decide if validation failure should throw an error or just return potentially incomplete data
             // For now, let's return the recipes but maybe warn the user later
         }
@@ -86,7 +87,7 @@ export const uploadRecipeImages = async (imageUris: string[]): Promise<ParsedRec
         return firstPrediction.recipes || []; // Return the array of parsed recipes
 
     } catch (error) {
-        console.error('Error uploading/parsing recipe images:', error);
+        appLogger.error('Error uploading/parsing recipe images:', error);
         if (error instanceof Error) {
              throw new Error(`Failed to communicate with recipe parser: ${error.message}`);
         } else {

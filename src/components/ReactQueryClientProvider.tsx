@@ -6,6 +6,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReactNode } from 'react';
+import { appLogger } from '../services/AppLogService';
 
 // Import the shared instance
 import { queryClient } from '../data/queryClient';

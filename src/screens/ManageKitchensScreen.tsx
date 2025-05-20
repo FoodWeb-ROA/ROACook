@@ -25,6 +25,7 @@ import { useQuery } from '@supabase-cache-helpers/postgrest-react-query';
 import { supabase } from '../data/supabaseClient';
 import { getKitchensForUserQuery, transformKitchensData } from '../queries/kitchenQueries';
 import { QueryClient } from '@tanstack/react-query';
+import { appLogger } from '../services/AppLogService';
 
 // Define navigation prop type
 type ManageKitchensScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ManageKitchens'>;
@@ -75,7 +76,7 @@ const ManageKitchensScreen = () => {
         { 
           text: t('common.ok'), 
           onPress: () => {
-            console.log('Switched to kitchen:', kitchenId);
+            appLogger.log('Switched to kitchen:', kitchenId);
             // You might want to reset the app state or redirect to home here
             navigation.goBack();
           }

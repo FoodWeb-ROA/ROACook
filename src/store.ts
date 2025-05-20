@@ -51,7 +51,7 @@
 // const createPurgeableReducer = (reducer: Reducer, persistor: Persistor): Reducer => {
 //   return (state: any, action: AnyAction) => {
 //     if (action.type === PURGE_ACTION_TYPE) {
-//       console.log('--- [Store] Purge action received, calling persistor.purge()');
+//       appLogger.log('--- [Store] Purge action received, calling persistor.purge()');
 //       persistor.purge(); 
 //       // We might want to return the initial state after purge
 //       // Or let the underlying reducer handle its state reset logic (e.g., based on logoutSuccess)
@@ -134,6 +134,7 @@ import {
     PURGE as REDUX_PERSIST_PURGE,
     REGISTER,
 } from 'redux-persist';
+import { appLogger } from './services/AppLogService';
 
 const authPersistConfig = {
     key: 'auth',
@@ -176,11 +177,11 @@ const createPurgeableReducer = <
     if (action.type === PURGE_ACTION_TYPE) {
       const persistor = getPersistor();
       if (persistor) {
-        console.log('--- [Store] Purge action received, calling persistor.purge()');
+        appLogger.log('--- [Store] Purge action received, calling persistor.purge()');
         persistor.purge().then(() => {
-            console.log('--- [Store] Persistor purge completed.');
+            appLogger.log('--- [Store] Persistor purge completed.');
         }).catch((err) => {
-            console.error('--- [Store] Persistor purge failed:', err);
+            appLogger.error('--- [Store] Persistor purge failed:', err);
         });
       }
 

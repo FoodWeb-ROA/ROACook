@@ -7,6 +7,7 @@ import { ActivityIndicator, View, TouchableOpacity, Dimensions, Text } from 'rea
 import { useNavigation, NavigationProp, RouteProp } from '@react-navigation/native';
 import Sidebar from '../components/Sidebar';
 import { useTranslation } from 'react-i18next';
+import { appLogger } from '../services/AppLogService';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -139,15 +140,15 @@ const AppNavigator = () => {
   // const kitchenId = useCurrentKitchenId();
   const kitchenId = useTypedSelector(state => state.kitchens.activeKitchenId);
 
-  console.log(`--- AppNavigator render: loading=${loading}, session=${session ? 'exists' : 'null'}`);
+  appLogger.log(`--- AppNavigator render: loading=${loading}, session=${session ? 'exists' : 'null'}`);
 
   // Start prefetching when session and kitchenId are available
   useEffect(() => {
     if (session && kitchenId) {
-      console.log('--- Starting data prefetch on app startup');
+      appLogger.log('--- Starting data prefetch on app startup');
       dataPrefetchService.prefetchAllRecipeData(kitchenId)
         .catch(error => {
-          console.error('Data prefetch error:', error);
+          appLogger.error('Data prefetch error:', error);
         });
     }
   }, [session, kitchenId]);

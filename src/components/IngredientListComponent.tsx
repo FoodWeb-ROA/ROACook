@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
 import { Unit, ComponentInput, EditablePrepIngredient } from '../types'; // Include both types
 import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
+import { appLogger } from '../services/AppLogService';
 
 // Accept either ComponentInput (from CreateRecipe) or EditablePrepIngredient (from CreatePreparation)
 type IngredientItem = ComponentInput | EditablePrepIngredient;
@@ -36,7 +37,7 @@ const IngredientListComponent: React.FC<IngredientListComponentProps> = ({
   amountLabel, // Use the passed label
   isPrepScreen = false, // Default to false
 }) => {
-  console.log('--- IngredientListComponent: passed ingredients:', ingredients);
+  appLogger.log('--- IngredientListComponent: passed ingredients:', ingredients);
 
   const { t } = useTranslation();
 

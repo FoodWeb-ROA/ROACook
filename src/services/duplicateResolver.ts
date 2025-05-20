@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import { findCloseIngredient, findDishByName, checkPreparationNameExists, findPreparationByFingerprint } from '../data/dbLookup';
+import { appLogger } from '../services/AppLogService';
 
 export type ResolutionMode = 'existing' | 'new' | 'overwrite' | 'rename' | 'cancel';
 export interface ResolutionResult {
@@ -23,7 +24,7 @@ export async function resolveIngredient(
     // Check for an exact case-insensitive match first
     const exact = matches.find(m => m.name.toLowerCase() === trimmed.toLowerCase());
     if (exact) {
-        console.log(`Exact ingredient match found for "${trimmed}", using ID: ${exact.ingredient_id}`);
+        appLogger.log(`Exact ingredient match found for "${trimmed}", using ID: ${exact.ingredient_id}`);
         return { mode: 'existing', id: exact.ingredient_id }; // Use existing silently
     }
 
@@ -45,7 +46,7 @@ export async function resolveIngredient(
     // No exact or similar matches found
     return { mode: 'new' };
   } catch (e) {
-    console.error('resolveIngredient error', e);
+    appLogger.error('resolveIngredient error', e);
     // Fallback to creating new on error
     return { mode: 'new' };
   }
@@ -76,7 +77,7 @@ export async function resolveDish(
       );
     });
   } catch (e) {
-    console.error('resolveDish error', e);
+    appLogger.error('resolveDish error', e);
     return { mode: 'new' };
   }
 }
@@ -95,7 +96,7 @@ export async function resolvePreparation(
     if (fingerprint) {
       const fpId = await findPreparationByFingerprint(fingerprint);
       if (fpId) {
-        console.log(`Exact preparation content match found for "${trimmed}" via fingerprint, using ID: ${fpId}`);
+        appLogger.log(`Exact preparation content match found for "${trimmed}" via fingerprint, using ID: ${fpId}`);
         // If content is identical, just use the existing one. No need to prompt.
         return { mode: 'existing', id: fpId }; 
     }
@@ -127,7 +128,7 @@ export async function resolvePreparation(
       );
     });
   } catch (e) {
-    console.error('resolvePreparation error', e);
+    appLogger.error('resolvePreparation error', e);
     return { mode: 'new' }; // Fallback to new on error
   }
 } 

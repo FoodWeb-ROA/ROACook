@@ -3,6 +3,7 @@ import { Kitchen } from '../types';
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { TypedSupabaseClient } from '../utils/types'; // Assuming this type exists or will be created
 import { SupabaseClient } from '@supabase/supabase-js';
+import { appLogger } from '../services/AppLogService';
 
 // Define a type for the client, accommodating potential differences if needed
 type Client = TypedSupabaseClient | SupabaseClient<any, "public", any>;

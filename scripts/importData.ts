@@ -14,16 +14,16 @@ async function importTableData(tableName: TableName, filePath: string) {
     const data = JSON.parse(fileData);
     
     if (!Array.isArray(data) || data.length === 0) {
-      console.log(`No data found in ${filePath} or data is not an array.`);
+      appLogger.log(`No data found in ${filePath} or data is not an array.`);
       return;
     }
     
-    console.log(`Importing ${data.length} records into ${tableName}...`);
+    appLogger.log(`Importing ${data.length} records into ${tableName}...`);
     
     // --- Data Pre-processing --- 
     let processedData = data;
     if (tableName === 'dishes') {
-        console.log(`Preprocessing data for table: ${tableName}`);
+        appLogger.log(`Preprocessing data for table: ${tableName}`);
         processedData = data.map((dish: any) => {
             let intervalString = '00:00:00'; // Default interval
             // Check if total_time is a number (e.g., minutes)
@@ -32,7 +32,7 @@ async function importTableData(tableName: TableName, filePath: string) {
                 const hours = Math.floor(totalMinutes / 60);
                 const minutes = totalMinutes % 60;
                 intervalString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-                console.log(`  Dish '${dish.dish_name}': Converted total_time ${dish.total_time} mins to ${intervalString}`);
+                appLogger.log(`  Dish '${dish.dish_name}': Converted total_time ${dish.total_time} mins to ${intervalString}`);
             } 
             // Check if total_time is already a string (potentially correct format)
             else if (typeof dish.total_time === 'string') {
@@ -42,19 +42,19 @@ async function importTableData(tableName: TableName, filePath: string) {
                     const parts = dish.total_time.split(':');
                     intervalString = `${String(parts[0]).padStart(2, '0')}:${String(parts[1]).padStart(2, '0')}:${parts[2] ? String(parts[2]).padStart(2, '0') : '00'}`;
                     if (dish.total_time !== intervalString) {
-                         console.log(`  Dish '${dish.dish_name}': Standardized total_time ${dish.total_time} to ${intervalString}`);
+                         appLogger.log(`  Dish '${dish.dish_name}': Standardized total_time ${dish.total_time} to ${intervalString}`);
                     }
                 } else {
-                    console.warn(`  Dish '${dish.dish_name}': Unrecognized total_time string format "${dish.total_time}". Using default ${intervalString}.`);
+                    appLogger.warn(`  Dish '${dish.dish_name}': Unrecognized total_time string format "${dish.total_time}". Using default ${intervalString}.`);
                 }
             } 
             // Handle null or undefined total_time
             else if (dish.total_time === null || dish.total_time === undefined) {
-                 console.log(`  Dish '${dish.dish_name}': total_time is null/undefined. Using default ${intervalString}.`);
+                 appLogger.log(`  Dish '${dish.dish_name}': total_time is null/undefined. Using default ${intervalString}.`);
                  // Keep default intervalString = '00:00:00' or set based on requirements
             } 
             else {
-                 console.warn(`  Dish '${dish.dish_name}': Unhandled total_time type "${typeof dish.total_time}" value "${dish.total_time}". Using default ${intervalString}.`);
+                 appLogger.warn(`  Dish '${dish.dish_name}': Unhandled total_time type "${typeof dish.total_time}" value "${dish.total_time}". Using default ${intervalString}.`);
             }
             // Return dish object with potentially updated total_time
             return { ...dish, total_time: intervalString };
@@ -70,15 +70,15 @@ async function importTableData(tableName: TableName, filePath: string) {
       .select();
     
     if (error) {
-      console.error(`Error importing data into ${tableName}:`, JSON.stringify(error, null, 2));
+      appLogger.error(`Error importing data into ${tableName}:`, JSON.stringify(error, null, 2));
       // Optionally stop execution on error:
       // throw new Error(`Failed to import data into ${tableName}`);
       return;
     }
     
-    console.log(`Successfully imported ${result?.length || 0} records into ${tableName}.`);
+    appLogger.log(`Successfully imported ${result?.length || 0} records into ${tableName}.`);
   } catch (error) {
-    console.error(`Error processing ${filePath}:`, error);
+    appLogger.error(`Error processing ${filePath}:`, error);
     // Optionally re-throw to stop the entire import process
     // throw error;
   }
@@ -131,15 +131,15 @@ async function importAllData() {
     if (fs.existsSync(filePath) && tableName) {
       await importTableData(tableName as TableName, filePath);
     } else {
-      console.log(`Skipping ${fileName} - file not found or table mapping missing.`);
+      appLogger.log(`Skipping ${fileName} - file not found or table mapping missing.`);
     }
   }
   
-  console.log('Import completed!');
+  appLogger.log('Import completed!');
 }
 
 // Run the import function
 importAllData().catch(error => {
-  console.error('Import failed:', error);
+  appLogger.error('Import failed:', error);
   process.exit(1);
 }); 

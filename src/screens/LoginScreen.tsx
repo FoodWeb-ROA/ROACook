@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/types';
 import { RootState } from '../store';
+import { appLogger } from '../services/AppLogService';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -50,7 +51,7 @@ const LoginScreen = () => {
 
 	// useEffect(() => {
 	// 	if (session) {
-	// 		console.log("Session detected in LoginScreen, navigating to MainDrawer...");
+	// 		appLogger.log("Session detected in LoginScreen, navigating to MainDrawer...");
 	// 		navigation.replace('MainDrawer');
 	// 	}
 	// }, [session, navigation]);
@@ -77,7 +78,7 @@ const LoginScreen = () => {
 
 	const handleSubmit = (values: SignInValues | SignUpValues) => {
 		if (selectedForm === 'SignIn') {
-			console.log(`--- sign in/values:`, values);
+			appLogger.log(`--- sign in/values:`, values);
 
 			dispatch(
 				loginWatch({
@@ -85,7 +86,7 @@ const LoginScreen = () => {
 				})
 			);
 		} else {
-			console.log(`--- sign up/values:`, values);
+			appLogger.log(`--- sign up/values:`, values);
 
 			dispatch(
 				registerWatch({

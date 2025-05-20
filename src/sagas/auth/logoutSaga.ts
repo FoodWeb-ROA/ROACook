@@ -9,21 +9,22 @@ import { AuthError } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { purgeAllOfflineRecipes } from '../../persistence/offlineRecipes';
 import { queryClient } from '../../data/queryClient';
+import { appLogger } from '../../services/AppLogService';
 
 const PURGE_ACTION_TYPE = 'persist/PURGE_REQUESTED';
 
 function* handleLogout(): Generator<any, void, any> {
-	console.log(`* handleLogout`);
+	appLogger.log(`* handleLogout`);
     
 	try {
 		const { error } = yield call(() => supabase.auth.signOut());
 
 		if (error) {
-			console.error(`* handleLogout/error:`, error.message);
+			appLogger.error(`* handleLogout/error:`, error.message);
 
 			yield put(logoutFailure(error.message));
 		} else {
-			console.log(
+			appLogger.log(
 				`* handleLogout: Sign-out successful. Clearing caches...`
 			);
 
@@ -31,25 +32,25 @@ function* handleLogout(): Generator<any, void, any> {
 
 			// Clear React Query cache using imported client and call effect
 			if (queryClient) {
-				console.log('* handleLogout: Clearing memory RQ cache...');
+				appLogger.log('* handleLogout: Clearing memory RQ cache...');
 				yield call([queryClient, queryClient.clear]);
-				console.log('[Logout Saga] React Query cache cleared.');
+				appLogger.log('[Logout Saga] React Query cache cleared.');
 			} else {
-				console.warn('[Logout Saga] QueryClient not available to clear cache.');
+				appLogger.warn('[Logout Saga] QueryClient not available to clear cache.');
 			}
 
 			// Remove persisted React Query cache from AsyncStorage
-			console.log('* handleLogout: Clearing persisted RQ cache...');
+			appLogger.log('* handleLogout: Clearing persisted RQ cache...');
 			yield call([AsyncStorage, 'removeItem'], 'rq-cache');
 
 			// Clear the individual offline recipe cache
-			console.log('* handleLogout: Clearing offline recipe cache...');
+			appLogger.log('* handleLogout: Clearing offline recipe cache...');
 			yield call(purgeAllOfflineRecipes);
 
 			yield put(logoutSuccess());
 		}
 	} catch (error: any) {
-		console.error(`* handleLogout/catch error:`, error);
+		appLogger.error(`* handleLogout/catch error:`, error);
 
 		if (error instanceof AuthError) {
 			yield put(logoutFailure(error.message));
@@ -62,5 +63,5 @@ function* handleLogout(): Generator<any, void, any> {
 export function* watchLogout(): Generator {
 	yield takeEvery(logoutWatch.type, handleLogout);
 
-	console.log('* watchLogout: watching', logoutWatch.type);
+	appLogger.log('* watchLogout: watching', logoutWatch.type);
 }

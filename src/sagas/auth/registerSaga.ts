@@ -2,11 +2,12 @@ import { call, put, takeEvery } from 'redux-saga/effects';
 import { supabase } from '../../data/supabaseClient';
 import { registerWatch, registerFailure } from '../../slices/authSlice';
 import { SignUpResponse, AuthError } from './types';
+import { appLogger } from '../../services/AppLogService';
 
 function* handleRegister(
 	action: ReturnType<typeof registerWatch>
 ): Generator<any, void, SignUpResponse> {
-	console.log(`* handleRegister/action:`, action);
+	appLogger.log(`* handleRegister/action:`, action);
 	try {
 		const { email, password, fullname, language } = action.payload;
 
@@ -24,7 +25,7 @@ function* handleRegister(
 			})
 		);
 
-		console.log(
+		appLogger.log(
 			`* handleRegister/response:`,
 			JSON.stringify(signUpResponse, null, 2)
 		);
@@ -32,7 +33,7 @@ function* handleRegister(
 		const { user, session } = signUpResponse.data;
 
 		if (signUpResponse.error) {
-			console.error(`* handleRegister/error:`, signUpResponse.error.message);
+			appLogger.error(`* handleRegister/error:`, signUpResponse.error.message);
 
 			yield put(registerFailure(signUpResponse.error.message));
 
@@ -40,7 +41,7 @@ function* handleRegister(
 		}
 
 		if (!session && user && !user.confirmed_at) {
-			console.log(`* handleRegister: Confirmation Email Sent to ${email}`);
+			appLogger.log(`* handleRegister: Confirmation Email Sent to ${email}`);
 
 			yield put(
 				registerFailure('Confirmation Email Sent. Please check your inbox.')
@@ -50,11 +51,11 @@ function* handleRegister(
 		}
 
 		if (session && user) {
-			console.log(
+			appLogger.log(
 				`* handleRegister: Sign-up successful, session active. Waiting for onAuthStateChange...`
 			);
 		} else {
-			console.warn(
+			appLogger.warn(
 				`* handleRegister: Unexpected signUp response state`,
 				JSON.stringify(signUpResponse, null, 2)
 			);
@@ -66,7 +67,7 @@ function* handleRegister(
 			);
 		}
 	} catch (error) {
-		console.error(`* handleRegister/catch error:`, error);
+		appLogger.error(`* handleRegister/catch error:`, error);
 
 		if (error instanceof AuthError) {
 			yield put(registerFailure(error.message));
@@ -79,5 +80,5 @@ function* handleRegister(
 export function* watchRegister(): Generator {
 	yield takeEvery(registerWatch.type, handleRegister);
 
-	console.log('* watchRegister: watching', registerWatch.type);
+	appLogger.log('* watchRegister: watching', registerWatch.type);
 }
