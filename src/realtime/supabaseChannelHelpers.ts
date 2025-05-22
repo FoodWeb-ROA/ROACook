@@ -15,7 +15,7 @@ interface SubscriptionHandlers {
 
 /**
  * Creates and manages a Supabase Realtime channel subscription for a specific table.
- * NOTE: Event handlers receive records as 'any'. Caller is responsible for type assertion.
+ * Note: Event handlers receive records as 'any'. Caller is responsible for type assertion.
  *
  * @param supabase - The initialized Supabase client instance.
  * @param tableName - The name of the table to subscribe to.

@@ -5,7 +5,7 @@ import { appLogger } from '../services/AppLogService';
 
 /**
  * Processes a raw parsed recipe from the AI parser into the ComponentInput[]
- * format needed by CreateRecipeScreen, performing initial lookups.
+ * format needed by CreateDishScreen, performing initial lookups.
  */
 export const processParsedRecipe = async (
     parsedRecipe: ParsedRecipe,

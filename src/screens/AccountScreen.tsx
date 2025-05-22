@@ -247,17 +247,7 @@ const AccountScreen = () => {
           </View>
         )}
 
-        {/* Manage Kitchens Section */}
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={() => navigation.navigate('ManageKitchens')}
-          >
-            <Text style={styles.buttonText}>{t('navigation.manageKitchens')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Logout Section */}
+{/* Logout Section */}
         <View style={styles.section}>
           <RNButton
             title={t('screens.account.logout.button')} 

@@ -68,28 +68,35 @@ const CategoryRecipesScreen = () => {
     );
   }
 
-  const handleDeleteDish = async (dishId: string) => {
+  const handleRemoveDishFromCategory = async (dishId: string) => {
     if (!activeKitchenId) {
       Alert.alert(t('common.error'), t('screens.categoryRecipes.error.missingKitchenId'));
       return;
     }
 
     try {
-      const { error: deleteError } = await supabase
+      // Update the dish to remove it from the current category
+      const { error: updateError } = await supabase
         .from('dishes')
-        .delete()
+        .update({ menu_section_id: null })
         .eq('dish_id', dishId)
-        .eq('kitchen_id', activeKitchenId);
+        .eq('kitchen_id', activeKitchenId); // Ensure operation is scoped to the active kitchen
 
-      if (deleteError) throw deleteError;
+      if (updateError) throw updateError;
 
+      // Invalidate queries to refresh the list on the current screen and potentially other lists
       queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: activeKitchenId, menu_section_id: categoryId }] });
-
-      queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: activeKitchenId }] });
+      queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: activeKitchenId }] }); // Invalidate all dishes for the kitchen
 
     } catch (error: any) {
-      console.error('Error deleting dish:', error);
-      Alert.alert(t('common.error'), t('screens.categoryRecipes.error.deleteDish', { dishName: dishes?.find(d => d.dish_id === dishId)?.dish_name || t('common.dish'), error: error.message }));
+      appLogger.error('Error removing dish from category:', error);
+      Alert.alert(
+        t('common.error'), 
+        t('screens.categoryRecipes.error.removeFromCategory', { 
+          dishName: dishes?.find(d => d.dish_id === dishId)?.dish_name || t('common.dish'), 
+          error: error.message 
+        })
+      );
     }
   };
 
@@ -109,7 +116,7 @@ const CategoryRecipesScreen = () => {
                 dish={item}
                 onPress={handleDishPress}
                 onPreparationPress={handlePreparationPress}
-                onDelete={handleDeleteDish}
+                onRemoveFromCategory={handleRemoveDishFromCategory}
               />
               {/* Removed the renderPreparations call to avoid duplicate sections */}
             </View>

@@ -41,8 +41,8 @@ export const formatQuantity = (value?: number | string): string => {
   
   if (isNaN(numValue)) return '';
   
-  // Always format to one decimal place
-  return numValue.toFixed(1);
+  // Always format to two decimal places
+  return numValue.toFixed(2);
 };
 
 /**

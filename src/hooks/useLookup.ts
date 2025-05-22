@@ -63,7 +63,7 @@ export const useLookup = () => {
         return []
       }
 
-      console.log(`--- lookupIngredient:`, data);
+      appLogger.log(`--- lookupIngredient:`, data);
       
       return data?.ingredients || []
     } catch (err) {

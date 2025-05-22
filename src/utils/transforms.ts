@@ -112,7 +112,7 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
           // Directly use the transformed yield unit from the fetched preparation data
           yield_unit: transformUnit(preparation.yield_unit), 
           // Yield amount comes from the base ingredient row linked to the prep
-          yield_amount: ingredient.amount ?? null, 
+          yield: ingredient.amount ?? null, 
           // Use the already transformed ingredients list passed in
           ingredients: prepIngredients || [], 
           cooking_notes: ingredient.cooking_notes ?? null, // Notes come from the base ingredient
@@ -158,7 +158,7 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
           directions: null,
           total_time: null,
           yield_unit: transformUnit(null),
-          yield_amount: null,
+          yield: null,
           ingredients: [],
           cooking_notes: null 
         };
@@ -188,7 +188,7 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
     directions: processedDirections, 
     total_time: combinedData.total_time || 0, 
     yield_unit: transformUnit(combinedData.yield_unit), 
-    yield_amount: combinedData.amount, // Get yield amount from ingredient data
+    yield: combinedData.amount, // Get yield amount from ingredient data
     ingredients: [], 
     cooking_notes: combinedData.cooking_notes ?? null, 
   };

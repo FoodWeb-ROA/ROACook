@@ -120,7 +120,7 @@ ROACook/
 *   **`src/services/supabaseClient.ts`:** Exports the configured Supabase client.
 *   **`src/persistence/offlineRecipes.ts`:** Helpers for caching individual recipe details in AsyncStorage.
 *   **`src/realtime/supabaseChannelHelpers.ts`:** Reusable helper for managing Supabase Realtime channel subscriptions.
-*   **`src/screens/`:** Contains individual screen components, representing different views within the app (e.g., `HomeScreen`, `RecipeDetailScreen`, `CreateRecipeScreen`).
+*   **`src/screens/`:** Contains individual screen components, representing different views within the app (e.g., `HomeScreen`, `RecipeDetailScreen`, `CreateDishScreen`).
 *   **`src/components/`:** Houses reusable UI elements used across multiple screens:
     *   `Button`, `Card`, `Input`: Basic UI elements
     *   `PreparationCard`, `ScaleSliderInput`, `UnitDisplay`: Recipe-specific components
@@ -186,7 +186,7 @@ This setup replaces the previous Redux Saga-based realtime handling, simplifying
 
 *   **Centralized Resolution:** Duplicate checking for ingredients, dishes, and preparations is handled by the functions `resolveIngredient`, `resolveDish`, and `resolvePreparation` in `src/services/duplicateResolver.ts`.
 *   **User Prompts:** When potential duplicates are detected (e.g., similar ingredient names, exact dish/preparation names), these resolver functions present the user with `Alert` prompts offering choices like "Use Existing", "Create New", "Replace", or "Rename".
-*   **Dish/Prep Creation Flow (`CreateRecipeScreen.tsx`):**
+*   **Dish/Prep Creation Flow (`CreateDishScreen.tsx`):**
     *   The `handleSaveDish` function now integrates with `resolveDish` and `resolvePreparation` before attempting inserts.
     *   It handles different resolution modes (`existing`, `new`, `overwrite`, `rename`, `cancel`) to guide the saving process (update existing record, insert new, rename and insert, or abort).
     *   Implicit creation of *new* preparations (identified during recipe parsing) during a *dish save* operation now correctly calls `createNewPreparation`, passing necessary data including `piece_type` (for sub-components).
@@ -238,14 +238,6 @@ The application supports both metric and imperial units with seamless conversion
     *   Length: mm/cm ↔ in, m ↔ ft
 
 The user can toggle between metric and imperial units from the Preferences screen. This preference is stored locally and applies throughout the app.
-
-## Data Management Scripts (`scripts/`)
-
-The `scripts/` directory contains Node.js scripts (using `ts-node`) for interacting with the Supabase database directly, primarily for backup and potentially seeding purposes.
-
-*   **Exporting:** `exportData.ts` (run via `npm run script:export`) fetches data from specified Supabase tables and saves it to JSON files in an `exports/` directory (this directory should likely be in `.gitignore`). It can export individual tables, all tables combined, and a detailed nested recipe structure.
-*   **Importing:** `importData.ts` (run via `npm run script:import`) reads data from the JSON files in `exports/` and inserts it into the Supabase database, respecting table dependencies.
-*   **Fetching Detailed Recipes:** `fetchDetailedRecipes.ts` (run via `npm run script:fetch-recipes`) generates `detailed-recipes.json` containing deeply nested recipe data.
 
 **Usage:**
 

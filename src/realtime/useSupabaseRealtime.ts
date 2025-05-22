@@ -39,6 +39,7 @@ export function useSupabaseRealtime() {
     const retryAttemptRef = useRef<number>(0);
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<Error | null>(null);
+    const [isSubscribing, setIsSubscribing] = useState(false); // Track if a subscription attempt is in progress
 
     const clearRetryTimer = () => {
         if (retryTimeoutRef.current) {
@@ -53,13 +54,17 @@ export function useSupabaseRealtime() {
         if (channelRef.current) {
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
-            setIsConnected(false);
+            setIsConnected(false); // Explicitly set to false when removing channel
         }
         setError(null); // Clear previous error on new attempt
+        setIsSubscribing(true); // Mark as attempting to subscribe
 
         if (!activeKitchenId || !userId) {
             appLogger.log('[useSupabaseRealtime] Cannot subscribe: Missing kitchen or user ID.');
-            return; // Don't attempt if conditions not met
+            setIsSubscribing(false); // No attempt will be made
+            setIsConnected(false); // Ensure disconnected state if pre-conditions fail
+            setError(new Error('Cannot subscribe: Missing kitchen or user ID.')); // Set an error state
+            return; 
         }
 
         if (isRetry) {
@@ -93,19 +98,21 @@ export function useSupabaseRealtime() {
                 setIsConnected(true);
                 setError(null);
                 retryAttemptRef.current = 0; // Reset retries on success
-                clearRetryTimer(); // Clear any pending retry timers
+                clearRetryTimer(); 
+                setIsSubscribing(false); // Subscription attempt finished
             } else if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
                 appLogger.error(`[useSupabaseRealtime] Subscription error on ${channelName}:`, status, err);
                 setIsConnected(false);
                 const currentError = err || new Error(`Subscription failed with status: ${status}`);
                 setError(currentError);
-                channelRef.current = null; // Channel is likely unusable
+                // Do not nullify channelRef.current here, supabase.removeChannel will handle it if needed during retry
+                setIsSubscribing(false); // Subscription attempt finished (with error)
 
                 // Schedule retry if attempts remaining
                 if (retryAttemptRef.current < MAX_RETRY_ATTEMPTS) {
                     const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, retryAttemptRef.current);
                     appLogger.log(`[useSupabaseRealtime] Scheduling retry in ${delay}ms...`);
-                    clearRetryTimer(); // Clear previous timer just in case
+                    clearRetryTimer(); 
                     retryTimeoutRef.current = setTimeout(() => attemptSubscription(true), delay);
                 } else {
                     appLogger.error(`[useSupabaseRealtime] Max retry attempts reached for channel ${channelName}.`);
@@ -113,11 +120,10 @@ export function useSupabaseRealtime() {
                 }
             } else if (status === REALTIME_SUBSCRIBE_STATES.CLOSED) {
                 appLogger.log(`[useSupabaseRealtime] Subscription closed for ${channelName}.`);
-                // Only set disconnected if it wasn't already handled by an error state
-                if (!error) {
+                if (!error) { // Only update if not already in an error state that implies disconnection
                     setIsConnected(false);
                 }
-                 // Don't automatically retry on manual close or unexpected close without error
+                setIsSubscribing(false); // Subscription attempt finished (closed)
                  clearRetryTimer(); 
             }
         });
@@ -142,10 +148,11 @@ export function useSupabaseRealtime() {
             setIsConnected(false);
             setError(null);
             retryAttemptRef.current = 0;
+            setIsSubscribing(false);
         };
 
     // Dependencies: Re-run effect if kitchen ID or user ID changes
     }, [activeKitchenId, userId]);
 
-    return { isConnected, error };
+    return { isConnected, error, retryAttempt: retryAttemptRef.current, isSubscribing };
 } 

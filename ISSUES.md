@@ -17,7 +17,7 @@
 **Status:** Unresolved
 
 **Attempted Fixes:**
-1.  Modified `handleSaveDish` in `CreateRecipeScreen.tsx` to pass top-level state values for time (`totalTimeMinutes`) and yield (`servingSize`) to the `createNewPreparation` function.
+1.  Modified `handleSaveDish` in `CreateDishScreen.tsx` to pass top-level state values for time (`totalTimeMinutes`) and yield (`servingSize`) to the `createNewPreparation` function.
     *   **Result:** Ineffective, as `createNewPreparation` is only called for *newly defined* preparations within the dish save flow, not for *existing* preparations identified by the parser.
 2.  Added logic within the component processing loop in `handleSaveDish` to explicitly update the `preparations` table (`total_time`) and the `ingredients` table (`amount`, `unit_id` for yield) for components identified as existing preparations (`component.isPreparation && component.ingredient_id && component.originalPrep`).
     *   **Result:** Did not resolve the issue. The time and yield values still appear incorrect after saving.

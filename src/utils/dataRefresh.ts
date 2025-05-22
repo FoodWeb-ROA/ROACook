@@ -1,4 +1,5 @@
 import { queryClient } from '../data/queryClient';
+import { appLogger } from '../services/AppLogService';
 
 /**
  * Utility function to refresh dish data after CRUD operations.

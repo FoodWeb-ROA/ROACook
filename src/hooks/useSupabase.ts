@@ -57,9 +57,9 @@ export function useCurrentKitchenId(): string | null {
 
 /**
  * Hook to fetch all dishes for the current kitchen, with optional filter by menu section.
- * REFACTORED: Uses TanStack Query (useQuery) for caching and automatic updates.
- * ADDED: Realtime subscription to invalidate cache on changes.
- * ADDED: Returns lastUpdateTime to signal Realtime updates.
+ * Uses TanStack Query (useQuery) for caching and automatic updates.
+ * Realtime subscription to invalidate cache on changes.
+ * Returns lastUpdateTime to signal Realtime updates.
  */
 export function useDishes(menuSectionId?: string) {
   const kitchenId = useCurrentKitchenId();
@@ -432,7 +432,13 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
           setLastUpdateTime(Date.now());
         }
       )
-      .subscribe(statusCallback('Dish'));
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          appLogger.log(`[useDishDetail] Subscribed to dish ${dishId}`);
+        } else if (err) {
+          appLogger.error(`[useDishDetail] Error subscribing to dish ${dishId}:`, err);
+        }
+      });
 
     const componentsChannel = supabase
       .channel(`public:dish_components:dish_id=eq.${dishId}`)
@@ -447,7 +453,13 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
           setLastUpdateTime(Date.now());
         }
       )
-      .subscribe(statusCallback('DishComponents'));
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          appLogger.log(`[useDishDetail] Subscribed to dishComponents ${dishId}`);
+        } else if (err) {
+          appLogger.error(`[useDishDetail] Error subscribing to dishComponents ${dishId}:`, err);
+        }
+      });
       
     // --- Dynamic listeners for nested preparations --- 
     const prepIds = dish.components
@@ -470,7 +482,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
           queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: prepId }] });
           setLastUpdateTime(Date.now());
         })
-        .subscribe(statusCallback(`NestedPrep-${prepId}`));
+        .subscribe(statusCallback('NestedPrep-${prepId}'));
       prepListeners.push(prepDetailChannel);
       
       // 2. Listen to the preparation's ingredients
@@ -496,7 +508,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
             queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: prepId }] });
             setLastUpdateTime(Date.now());
         })
-        .subscribe(statusCallback(`NestedPrepLinkedIng-${prepId}`));
+       .subscribe(statusCallback(`NestedPrepLinkedIng-${prepId}`));
       prepListeners.push(linkedIngChannel);
     });
 
@@ -529,8 +541,6 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
 
 /**
  * Hook to fetch all menu sections (categories) for the current kitchen.
- * ADDED: Realtime subscription to invalidate cache on changes.
- * ADDED: Returns lastUpdateTime to signal Realtime updates.
  */
 export function useMenuSections() {
   const kitchenId = useCurrentKitchenId();
@@ -563,7 +573,7 @@ export function useMenuSections() {
     data: menuSections, 
     isLoading, // Use isLoading from useQuery
     error, 
-    // refetch can be obtained if needed
+    refetch // Destructure refetch here
   } = useQuery({
     queryKey: queryKey,
     queryFn: fetchMenuSections,
@@ -595,12 +605,11 @@ export function useMenuSections() {
         }
       )
       .subscribe((status, err) => {
-        // Optional: Log status/errors
-        if (status === 'SUBSCRIBED') {
-           appLogger.log('[useMenuSections] Realtime channel subscribed');
-         } else if (err) {
-            appLogger.error('[useMenuSections] Realtime channel error:', err);
-         }
+           if (status === 'SUBSCRIBED') {
+               appLogger.log('[useMenuSections] Realtime channel subscribed');
+           } else if (err) {
+               appLogger.error('[useMenuSections] Realtime channel error:', err);
+           }
       });
 
     // Cleanup function
@@ -616,7 +625,8 @@ export function useMenuSections() {
     menuSections: menuSections ?? [], // Ensure it's always an array
     isLoading, 
     error,
-    lastUpdateTime // ADDED
+    lastUpdateTime, // ADDED
+    refresh: refetch // Add refresh function here
   };
 }
 
@@ -627,7 +637,7 @@ export function useMenuSections() {
  */
 
 export function usePreparationDetail(preparationId: string | undefined) {
-  console.log("[usePreparationDetail] Hook called", { preparationId });
+  appLogger.log("[usePreparationDetail] Hook called", { preparationId });
 
   const queryClient = useQueryClient();
   const queryKey = ['preparation', { preparation_id: preparationId }];
@@ -637,7 +647,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
   const fetchPreparationDetail = async () => {
     // Handle undefined preparationId
     if (!preparationId) {
-        console.log("[usePreparationDetail] fetchPreparationDetail: preparationId is undefined, returning null data");
+        appLogger.log("[usePreparationDetail] fetchPreparationDetail: preparationId is undefined, returning null data");
         return Promise.resolve({ preparation: null, ingredients: [] });
     }
 
@@ -649,9 +659,6 @@ export function usePreparationDetail(preparationId: string | undefined) {
         const cachedPayload = await getOfflineRecipe(preparationId, 'prep');
         if (cachedPayload && 'preparation_id' in cachedPayload) {
           appLogger.log(`[usePreparationDetail] Hydrating preparation ${preparationId} from offline cache.`);
-          // Force a background refetch after hydrating from cache
-          queryClient.invalidateQueries({ queryKey }); 
-          
           return {
             preparation: cachedPayload,
             ingredients: cachedPayload.ingredients || [],
@@ -671,7 +678,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
              name: preparation?.name || '',
              directions: preparation?.directions ?? null,
              total_time: preparation?.total_time ?? null,
-             yield_amount: preparation?.yield_amount ?? null,
+             yield: preparation?.yield ?? null,
              yield_unit_id: preparation?.yield_unit?.unit_id ?? null,
              yield_unit: preparation?.yield_unit ?? null,
              cooking_notes: preparation?.cooking_notes ?? null,
@@ -680,7 +687,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
         };
         await saveOfflineRecipe(preparationId, 'prep', payloadToCache);
        } catch (cacheError) {
-           console.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId} after fetch:`, cacheError);
+           appLogger.warn(`[usePreparationDetail] Failed to cache preparation ${preparationId} after fetch:`, cacheError);
        }
 
       return {
@@ -704,18 +711,18 @@ export function usePreparationDetail(preparationId: string | undefined) {
     staleTime: 5 * 60 * 1000
   });
 
-  // --- MODIFIED: Memoize the ingredients array for stable reference ---
+  // --- Memoize the ingredients array for stable reference ---
   const memoizedIngredients = useMemo(() => {
     return data?.ingredients || []; 
   }, [data?.ingredients]);
 
-  // --- UPDATED REALTIME SUBSCRIPTION ---
+  // --- REALTIME SUBSCRIPTION ---
   useEffect(() => {
     if (!preparationId) {
-         console.log(`[usePreparationDetail] Skipping subscriptions - preparationId is undefined.`);
+         appLogger.log(`[usePreparationDetail] Skipping subscriptions - preparationId is undefined.`);
          return;
     }
-    console.log(`[usePreparationDetail] Setting up subscriptions for preparation ${preparationId}.`);
+    appLogger.log(`[usePreparationDetail] Setting up subscriptions for preparation ${preparationId}.`);
 
     // --- Base listeners for preparation and preparation_ingredients ---
     const prepChannel = supabase
@@ -789,7 +796,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
         const nestedChannel = supabase
             .channel(`public:preparations:preparation_id=eq.${nestedPrepId}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'preparations', filter: `preparation_id=eq.${nestedPrepId}`}, (payload) => {
-                 console.log(`[usePreparationDetail] Nested prep ${nestedPrepId} update received!`);
+                 appLogger.log(`[usePreparationDetail] Nested prep ${nestedPrepId} update received!`);
                  queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: preparationId }] }); // Инвалидируем родительский преп
                  queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: nestedPrepId }] }); // Инвалидируем сам вложенный преп
                  setLastUpdateTime(Date.now());
@@ -801,7 +808,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
 
 
     return () => {
-        console.log(`[usePreparationDetail] Cleaning up listeners for preparation ${preparationId}`);
+        appLogger.log(`[usePreparationDetail] Cleaning up listeners for preparation ${preparationId}`);
         supabase.removeChannel(prepChannel);
         supabase.removeChannel(prepIngChannel);
         supabase.removeChannel(linkedIngChannel);
@@ -810,7 +817,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
 
    }, [preparationId, queryClient]); 
 
-  console.log('[usePreparationDetail] Returning data:', {
+  appLogger.log('[usePreparationDetail] Returning data:', {
       preparation: data?.preparation || null,
       ingredients: memoizedIngredients,
       loading,
@@ -830,8 +837,8 @@ export function usePreparationDetail(preparationId: string | undefined) {
 /**
  * Hook to fetch all preparations for the current kitchen.
  * Fetches ingredients that have a corresponding entry in the preparations table.
- * REFACTORED: Use useQuery for fetching and caching.
- * ADDED: Returns lastUpdateTime to signal Realtime updates.
+ * Use useQuery for fetching and caching.
+ * Returns lastUpdateTime to signal Realtime updates.
  */
 export function usePreparations() {
   const kitchenId = useCurrentKitchenId();
@@ -896,6 +903,7 @@ export function usePreparations() {
           directions: prepBaseData.directions,
           total_time: prepBaseData.total_time,
           yield_unit: prepBaseData.yield_unit,
+          yield: prepBaseData.yield,
           amount_unit_id: prepBaseData.amount_unit_id,
           fingerprint: prepBaseData.fingerprint,
           amount: ingredientData.amount ?? 0,
@@ -922,7 +930,7 @@ export function usePreparations() {
     enabled: !!kitchenId, // Only run the query if kitchenId is available
   });
 
-   // --- UPDATED REALTIME SUBSCRIPTION (using query invalidation) ---
+   // --- REALTIME SUBSCRIPTION (using query invalidation) ---
    useEffect(() => {
      if (!kitchenId) return;
 
@@ -952,8 +960,7 @@ export function usePreparations() {
        .subscribe(statusCallback('Preparations'));
 
      // Listener for linked ingredients table changes (that are preparations)
-     // SIMPLIFIED: Invalidate preparations list on ANY ingredient change in the kitchen.
-     // This is less precise but avoids relying on potentially stale cached 'preparations' state.
+     // Invalidate preparations list on ANY ingredient change in the kitchen.
      // Restore listener
      const ingChannel = supabase
        .channel('public:ingredients')
@@ -990,10 +997,7 @@ export function usePreparations() {
            if (prepId) {
                 // Invalidate the specific prep detail cache
                 queryClient.invalidateQueries({ queryKey: ['preparation', { preparation_id: prepId }] });
-                // Also invalidate the main list, as the composition changed.
-                // Note: This might be redundant if the prepChannel or ingChannel already fired for a related update.
-                // queryClient.invalidateQueries({ queryKey: ['preparations', { kitchen_id: kitchenId }] });
-                invalidateAndSignal(); // Use helper to signal update and invalidate list
+                invalidateAndSignal();
            } else {
                // If no specific prepId, invalidate the whole list as a fallback
                invalidateAndSignal();
@@ -1130,7 +1134,7 @@ export function useUnits() {
 
 /**
  * Hook to fetch ingredients for the current kitchen, optionally identifying which are preparations.
- * ADDED: Realtime subscription to invalidate cache on changes.
+ * Realtime subscription to invalidate cache on changes.
  */
 export function useIngredients(identifyPreparations: boolean = false) {
   // No queryClient needed here, using useState
@@ -1283,7 +1287,7 @@ export type PreparationComponentDetail = {
   preparationDetails?: {
     total_time: number | null;
     yield_unit: Unit | null;
-    yield_amount: number | null;
+    yield: number | null;
     ingredients: PreparationIngredient[]; // Add ingredients for nested preps
   } | null;
   // Details specific to raw ingredients

@@ -5,8 +5,8 @@ import { TypedSupabaseClient } from '../utils/types'; // Assuming this type exis
 import { SupabaseClient } from '@supabase/supabase-js';
 import { appLogger } from '../services/AppLogService';
 
-// Define a type for the client, accommodating potential differences if needed
-type Client = TypedSupabaseClient | SupabaseClient<any, "public", any>;
+// Use the specific TypedSupabaseClient for better type safety
+type Client = TypedSupabaseClient;
 
 /**
  * Query function to fetch kitchens for a given user ID.
@@ -22,7 +22,7 @@ export const getKitchensForUserQuery = (client: Client, userId: string) => {
       )
     `)
     .eq('user_id', userId)
-    .throwOnError(); // Throw error for React Query to catch
+    .throwOnError();
 };
 
 /**

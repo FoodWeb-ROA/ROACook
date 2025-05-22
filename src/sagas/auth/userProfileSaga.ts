@@ -1,9 +1,10 @@
-import { call, SagaReturnType } from 'redux-saga/effects';
+import { call, SagaReturnType, select } from 'redux-saga/effects';
 import { supabase } from '../../data/supabaseClient';
 import { User, CheckUser, CreateUser } from './types';
 import { ILanguage, IUser } from '../../types';
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
 import { appLogger } from '../../services/AppLogService';
+import { RootState } from '../../store';
 
 export function* checkExistingUser(
 	userId: string
@@ -46,50 +47,59 @@ export function* insertPublicUser(
 
 export type LinkUserToDefaultKitchen = SagaReturnType<() => PostgrestSingleResponse<{ kitchen_id: string } | null>>;
 
+const selectActiveKitchenId = (state: RootState) => state.kitchens.activeKitchenId;
+
 export function* linkUserToKitchen(
-    userId: string
+	userId: string
 ): Generator<any, LinkUserToDefaultKitchen, any> {
-    const defaultKitchenId = process.env.EXPO_PUBLIC_DEFAULT_KITCHEN_ID;
+	const activeKitchenId: string | null = yield select(selectActiveKitchenId);
 
-    if (!defaultKitchenId) {
-        const errMsg = 'EXPO_PUBLIC_DEFAULT_KITCHEN_ID is not set. Cannot link user to a kitchen.';
-        appLogger.error(`* linkUserToKitchen: ${errMsg}`);
-        return { data: null, error: new Error(errMsg) } as LinkUserToDefaultKitchen;
-    }
+	if (!activeKitchenId) {
+		const errorMessage = 'linkUserToKitchen: No active kitchen ID found. Cannot link user.';
+		appLogger.error(errorMessage);
+		// Return an error-like response that matches the expected type
+		return {
+			data: null,
+			error: { message: errorMessage, details: '', hint: '', code: 'PGRST116' }, // Mocking PostgrestError structure
+			status: 400, 
+			statusText: 'Bad Request',
+			count: null,
+		} as unknown as LinkUserToDefaultKitchen; 
+	}
 
-    appLogger.log(`* linkUserToKitchen: Linking user ${userId} to kitchen ${defaultKitchenId}`);
+	appLogger.log(`* linkUserToKitchen: Linking user ${userId} to kitchen ${activeKitchenId}`);
 
-    const insertResponse: LinkUserToDefaultKitchen = yield call(() =>
-        supabase
-            .from('kitchen_users')
-            .insert<{ user_id: string; kitchen_id: string }>({
-                user_id: userId,
-                kitchen_id: defaultKitchenId
-            })
-            .select('kitchen_id')
-            .maybeSingle()
-    );
+	const insertResponse: LinkUserToDefaultKitchen = yield call(() =>
+		supabase
+			.from('kitchen_users')
+			.insert<{ user_id: string; kitchen_id: string }>({ 
+				user_id: userId,
+				kitchen_id: activeKitchenId // Use the selected active kitchen ID
+			})
+			.select('kitchen_id')
+			.maybeSingle()
+	);
 
-    appLogger.log(`* linkUserToKitchen/insertResponse:`, insertResponse);
+	appLogger.log(`* linkUserToKitchen/insertResponse:`, insertResponse);
 
-    return insertResponse;
+	return insertResponse;
 }
 
 export type CheckKitchenLink = SagaReturnType<() => PostgrestSingleResponse<{ kitchen_id: string }[]>>;
 
 export function* checkKitchenUserLink(
-    userId: string
+	userId: string
 ): Generator<any, CheckKitchenLink, any> {
-    appLogger.log(`* checkKitchenUserLink: Checking kitchen link for user ID: ${userId}`);
+	appLogger.log(`* checkKitchenUserLink: Checking kitchen link for user ID: ${userId}`);
 
-    const checkResponse: CheckKitchenLink = yield call(() =>
-        supabase
-            .from('kitchen_users')
-            .select('kitchen_id')
-            .eq('user_id', userId)
-    );
+	const checkResponse: CheckKitchenLink = yield call(() =>
+		supabase
+			.from('kitchen_users')
+			.select('kitchen_id')
+			.eq('user_id', userId)
+	);
 
-    appLogger.log(`* checkKitchenUserLink/checkResponse:`, checkResponse);
+	appLogger.log(`* checkKitchenUserLink/checkResponse:`, checkResponse);
 
-    return checkResponse;
+	return checkResponse;
 }

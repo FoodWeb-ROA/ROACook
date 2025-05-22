@@ -1,4 +1,4 @@
-import { call, put } from 'redux-saga/effects';
+import { call, put, select } from 'redux-saga/effects';
 import {
     authStateChanged,
     loginSuccess,
@@ -13,6 +13,7 @@ import { checkExistingUser, checkKitchenUserLink, insertPublicUser, linkUserToKi
 import { CheckKitchenLink, CheckUser, CreateUser, LinkUserToDefaultKitchen } from './types';
 import { setActiveKitchen } from '../../slices/kitchensSlice';
 import { appLogger } from '../../services/AppLogService';
+import { RootState } from '../../store';
 
 export function* handleAuthStateChange(
     action: ReturnType<typeof authStateChanged>
@@ -75,9 +76,38 @@ export function* handleAuthStateChange(
                         );
                     }
 
-                } else if (checkExistingKitchen.data?.length > 0) {
-                    const activeKitchenId = checkExistingKitchen.data[0].kitchen_id;
-                    yield put(setActiveKitchen(activeKitchenId));
+                } else if (checkExistingKitchen.data && checkExistingKitchen.data.length > 0) {
+                    const userKitchens: { kitchen_id: string }[] = checkExistingKitchen.data;
+                    const rehydratedActiveKitchenId: string | null = yield select(
+                        (state: RootState) => state.kitchens.activeKitchenId
+                    );
+
+                    let kitchenToMakeActive: string | null = null;
+
+                    if (
+                        rehydratedActiveKitchenId &&
+                        userKitchens.some(k => k.kitchen_id === rehydratedActiveKitchenId)
+                    ) {
+                        // Valid rehydrated kitchen ID found and it's one of the user's current kitchens.
+                        kitchenToMakeActive = rehydratedActiveKitchenId;
+                        appLogger.log(
+                            `* handleAuthStateChange: Valid rehydrated activeKitchenId '${kitchenToMakeActive}' found and will be used.`
+                        );
+                    } else {
+                        // No valid rehydrated ID, or it's not in the user's current list. Set to the first available.
+                        kitchenToMakeActive = userKitchens[0].kitchen_id;
+                        appLogger.log(
+                            `* handleAuthStateChange: Rehydrated activeKitchenId '${rehydratedActiveKitchenId}' is invalid or not found. Setting to first available: '${kitchenToMakeActive}'.`
+                        );
+                    }
+
+                    if (kitchenToMakeActive) {
+                        // Dispatch setActiveKitchen. If it's the same as current state, the reducer handles it gracefully.
+                        yield put(setActiveKitchen(kitchenToMakeActive));
+                    } else {
+                        // This case should ideally not be reached if userKitchens.length > 0
+                        appLogger.warn('* handleAuthStateChange: No kitchen could be made active despite user having kitchens.');
+                    }
 
                     if (user.app_metadata.provider === 'email') {
                         const hasFullName =

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,26 +11,40 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import AppHeader from '../components/AppHeader';
-import { useTranslation } from 'react-i18next';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { useTypedSelector } from '../hooks/useTypedSelector';
+import { refreshKitchensWatch } from '../slices/kitchensSlice';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { useUnitSystem } from '../context/UnitSystemContext';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/types';
 import { DrawerActions } from '@react-navigation/native';
 import { appLogger } from '../services/AppLogService';
+import { useTranslation } from 'react-i18next';
 
 // Define navigation prop type for the Drawer
 type PreferencesScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Preferences'>;
 
 const PreferencesScreen = () => {
   const navigation = useNavigation<PreferencesScreenNavigationProp>();
+  const dispatch = useDispatch();
   const { t, i18n } = useTranslation();
   const { showActionSheetWithOptions } = useActionSheet();
   const { unitSystem, toggleUnitSystem, isMetric } = useUnitSystem();
+  const { kitchens, activeKitchenId } = useTypedSelector((state: RootState) => state.kitchens);
+  
+  // Refresh kitchens data when the screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refresh kitchens data to ensure we have the latest names
+      dispatch(refreshKitchensWatch());
+    }, [])
+  );
 
   const openDrawerMenu = () => {
     navigation.openDrawer();
@@ -140,6 +154,9 @@ const PreferencesScreen = () => {
         <View style={styles.section}>
           {renderActionItem('account-circle-outline', 'navigation.account', '', 
             () => navigation.getParent<StackNavigationProp<RootStackParamList>>().navigate('Account'))}
+          {renderActionItem('chef-hat', 'kitchen', 
+            kitchens.find(k => k.kitchen_id === activeKitchenId)?.name || t('screens.preferences.noKitchenSelected'),
+            () => navigation.getParent<StackNavigationProp<RootStackParamList>>().navigate('ManageKitchens'))}
           {renderActionItem('ruler', 'unitSystem', t(`common.${unitSystem}`), showUnitSystemSelector)}
           {renderActionItem('translate', 'language', currentLanguageName, showLanguageSelector)}
         </View>

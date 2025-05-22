@@ -229,14 +229,17 @@ export type Database = {
         Row: {
           kitchen_id: string
           name: string
+          type: Database["public"]["Enums"]["KitchenType"]
         }
         Insert: {
           kitchen_id?: string
           name?: string
+          type?: Database["public"]["Enums"]["KitchenType"]
         }
         Update: {
           kitchen_id?: string
           name?: string
+          type?: Database["public"]["Enums"]["KitchenType"]
         }
         Relationships: []
       }
@@ -390,6 +393,7 @@ export type Database = {
           preparation_id: string
           total_time: number | null
           updated_at: string | null
+          yield: number
         }
         Insert: {
           amount_unit_id?: string | null
@@ -400,6 +404,7 @@ export type Database = {
           preparation_id: string
           total_time?: number | null
           updated_at?: string | null
+          yield?: number
         }
         Update: {
           amount_unit_id?: string | null
@@ -410,6 +415,7 @@ export type Database = {
           preparation_id?: string
           total_time?: number | null
           updated_at?: string | null
+          yield?: number
         }
         Relationships: [
           {
@@ -428,45 +434,30 @@ export type Database = {
           },
         ]
       }
-      profiles: {
-        Row: {
-          created_at: string | null
-          full_name: string | null
-          id: string
-          updated_at: string | null
-          username: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string | null
-          username?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          full_name?: string | null
-          id?: string
-          updated_at?: string | null
-          username?: string | null
-        }
-        Relationships: []
-      }
       units: {
         Row: {
           abbreviation: string | null
+          measurement_type:
+            | Database["public"]["Enums"]["unit_measurement_type"]
+            | null
           system: Database["public"]["Enums"]["unit_system"] | null
           unit_id: string
           unit_name: string
         }
         Insert: {
           abbreviation?: string | null
+          measurement_type?:
+            | Database["public"]["Enums"]["unit_measurement_type"]
+            | null
           system?: Database["public"]["Enums"]["unit_system"] | null
           unit_id?: string
           unit_name: string
         }
         Update: {
           abbreviation?: string | null
+          measurement_type?:
+            | Database["public"]["Enums"]["unit_measurement_type"]
+            | null
           system?: Database["public"]["Enums"]["unit_system"] | null
           unit_id?: string
           unit_name?: string
@@ -524,6 +515,8 @@ export type Database = {
     }
     Enums: {
       IngredientType: "Preparation" | "RawIngredient"
+      KitchenType: "Personal" | "Team"
+      unit_measurement_type: "weight" | "volume" | "count"
       unit_system: "metric" | "imperial"
     }
     CompositeTypes: {
@@ -641,6 +634,8 @@ export const Constants = {
   public: {
     Enums: {
       IngredientType: ["Preparation", "RawIngredient"],
+      KitchenType: ["Personal", "Team"],
+      unit_measurement_type: ["weight", "volume", "count"],
       unit_system: ["metric", "imperial"],
     },
   },

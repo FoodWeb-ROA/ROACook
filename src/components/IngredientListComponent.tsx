@@ -3,8 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, SIZES, FONTS } from '../constants/theme';
-import { Unit, ComponentInput, EditablePrepIngredient } from '../types'; // Include both types
+import { Unit, ComponentInput, EditablePrepIngredient, MeasureKind } from '../types'; // Include both types
 import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
+import { unitKind, normalizeAmountAndUnit, convertAmount } from '../utils/unitHelpers';
 import { appLogger } from '../services/AppLogService';
 
 // Accept either ComponentInput (from CreateRecipe) or EditablePrepIngredient (from CreatePreparation)
@@ -19,7 +20,7 @@ interface IngredientListComponentProps {
   numServings?: number;     // Optional for scaling display (CreateRecipe)
   onUpdate: (key: string, field: 'amount' | 'amountStr' | 'unitId' | 'item' | 'scaledAmountStr', value: string | null) => void;
   onRemove: (key: string) => void;
-  onSelectUnit: (key: string) => void; // Callback to open unit modal in parent
+  onSelectUnit: (key: string, measureKind: MeasureKind | null) => void; // Callback to open unit modal in parent
   amountLabel?: string; // Optional label for amount column (e.g., "Base Amount", "Scaled Amount")
   isPrepScreen?: boolean; // Flag to differentiate behavior slightly if needed
 }
@@ -74,13 +75,63 @@ const IngredientListComponent: React.FC<IngredientListComponentProps> = ({
             const unit = units.find(u => u.unit_id === itemUnitId);
             const unitAbbr = unit?.abbreviation || t('common.unit', 'Unit');
 
-            // Determine the scale factor based on context
-            const currentRecipeScale = (originalServings && numServings && originalServings > 0) 
-                                       ? numServings / originalServings 
-                                       : scaleMultiplier; // Use scaleMultiplier if recipe servings unavailable
-                                       
+            const lockedKind: MeasureKind | null = unitKind(unit);
+
+            // Determine the base scaling from recipe servings or explicit multiplier
+            // Add a unique key based on scale to force re-render when scale changes
+            const recipeLevelScale = (originalServings && numServings && originalServings > 0)
+                                      ? numServings / originalServings
+                                      : scaleMultiplier; // Fallback to provided multiplier
+            
+            // Log scale changes for debugging
+            appLogger.log(`[IngredientList] ${item.name}: Scale factor ${recipeLevelScale.toFixed(2)}`);
+
+            // Apply per-component preparation scale if available (for preparations used as components)
+            const componentPrepScale = 'prepScaleMultiplier' in item && typeof item.prepScaleMultiplier === 'number'
+                                         ? item.prepScaleMultiplier
+                                         : 1;
+
+            const currentRecipeScale = recipeLevelScale * componentPrepScale;
+            
             const scaledAmount = isNaN(baseAmountNum) ? null : baseAmountNum * currentRecipeScale;
+            
+            // Debug logging to track scale factors and amount calculations
+            appLogger.log(`[IngredientList] ${item.name}: baseAmount=${baseAmountStr}, scale=${currentRecipeScale.toFixed(2)}, scaled=${scaledAmount?.toFixed(2) || 'null'}`);
             const formattedDisplay = formatQuantityAuto(scaledAmount, unitAbbr, itemDesc || undefined);
+
+            // Helper to convert user input back to base amount when scaling is applied (recipe context)
+            const handleAmountInputChange = (value: string) => {
+              const currentUnit = units.find(u => u.unit_id === itemUnitId);
+              const inputNum = parseFloat(value);
+
+              if (isNaN(inputNum) || !currentUnit) {
+                // If input is not a number or unit is missing, update with raw value
+                const amountField = isPrepScreen ? 'amountStr' : 'amount'; // Use 'amountStr' for EditablePrepIngredient
+                onUpdate(itemKey, amountField, value);
+                return;
+              }
+
+              let baseAmountToNormalize: number;
+              if (isPrepScreen) {
+                baseAmountToNormalize = inputNum;
+              } else {
+                if (currentRecipeScale !== 0 && currentRecipeScale !== undefined) {
+                  baseAmountToNormalize = inputNum / currentRecipeScale;
+                } else {
+                  baseAmountToNormalize = inputNum; // Fallback if scale is 0 or undefined
+                }
+              }
+
+              const { amount: normalizedAmount, unitAbbr: normalizedUnitAbbr } = normalizeAmountAndUnit(baseAmountToNormalize, currentUnit.abbreviation);
+              const newNormalizedUnit = units.find(u => u.abbreviation && u.abbreviation.toLowerCase() === normalizedUnitAbbr.toLowerCase());
+
+              const amountFieldToUpdate = isPrepScreen ? 'amountStr' : 'amount';
+              onUpdate(itemKey, amountFieldToUpdate, normalizedAmount.toString());
+
+              if (newNormalizedUnit && newNormalizedUnit.unit_id !== currentUnit.unit_id) {
+                onUpdate(itemKey, 'unitId', newNormalizedUnit.unit_id);
+              }
+            };
 
             return (
               <View key={itemKey} style={styles.componentItemContainer}>
@@ -95,13 +146,14 @@ const IngredientListComponent: React.FC<IngredientListComponentProps> = ({
                              style={styles.componentInputAmount}
                              placeholder={t('common.amount')}
                              placeholderTextColor={COLORS.placeholder}
-                             value={isPrepScreen ? formattedDisplay.amount : baseAmountStr}
-                             onChangeText={(value) => onUpdate(itemKey, isPrepScreen ? 'scaledAmountStr' : 'amount', value)}
+                             value={String(formattedDisplay.amount)}
+                             key={`amount-${item.key}-${currentRecipeScale.toFixed(2)}`} // Force re-render on scale change
+                             onChangeText={handleAmountInputChange}
                              keyboardType="numeric"
                          />
                          <TouchableOpacity
                              style={[styles.componentUnitTrigger, { marginLeft: SIZES.base }]}
-                             onPress={() => onSelectUnit(itemKey)} // Trigger parent modal
+                             onPress={() => onSelectUnit(itemKey, lockedKind)} // Trigger parent modal
                          >
                              <Text style={[styles.pickerText, !itemUnitId && styles.placeholderText]}>
                                  {unitAbbr}

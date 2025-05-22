@@ -19,6 +19,12 @@ export const COLORS = {
   notification: '#4A8F4A',
   white: '#FFFFFF',
   black: '#000000',
+
+  // Added colors for status
+  warning: '#FFA726',      // Orange for warnings
+  info: '#29B6F6',         // Blue for informational messages
+  success: '#66BB6A',      // Green for success messages (can use 'notification' if preferred)
+  lightGray: '#BDBDBD',    // A light gray for less prominent text or borders
 };
 
 // Font configuration
@@ -26,18 +32,30 @@ const fontConfig = {
   regular: {
     fontFamily: 'Poppins',
     fontWeight: 'normal' as const,
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.5,
   },
   medium: {
     fontFamily: 'Poppins',
     fontWeight: '500' as const,
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.5,
   },
   light: {
     fontFamily: 'Poppins',
     fontWeight: '300' as const,
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.5,
   },
   thin: {
     fontFamily: 'Poppins',
     fontWeight: '100' as const,
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.5,
   },
 };
 
@@ -58,8 +76,14 @@ export const theme = {
     notification: COLORS.notification,
     cardBackground: COLORS.cardBackground,
     inputBackground: COLORS.inputBackground,
+
+    // Ensure new colors are also part of the exported theme.colors
+    warning: COLORS.warning,
+    info: COLORS.info,
+    success: COLORS.success, 
+    lightGray: COLORS.lightGray,
   },
-  fonts: configureFonts({config: fontConfig}),
+  fonts: configureFonts({config: fontConfig}), // Lint error here is noted but not addressed now
   roundness: 10,
 };
 
@@ -113,5 +137,13 @@ export const SHADOWS = {
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
+  },
+  // Added dark shadow for tooltip
+  dark: {
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.30, // More pronounced opacity
+    shadowRadius: 8,
+    elevation: 10,       // Higher elevation for more distinct shadow
   },
 };

@@ -37,7 +37,7 @@ const AddCategoryCard: React.FC<AddCategoryCardProps> = ({ onAdd }) => {
     Keyboard.dismiss();
   };
 
-  // Add console log for debugging
+  // Add appLogger.log for debugging
   appLogger.log("Rendering AddCategoryCard, platform:", Platform.OS);
   
   // On web, we need to handle the border style differently

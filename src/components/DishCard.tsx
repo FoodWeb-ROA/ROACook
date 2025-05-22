@@ -1,17 +1,15 @@
 import React from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Dish, DishComponent } from '../types';
+import { Dish } from '../types';
 import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
 import { useTranslation } from 'react-i18next';
-import { relative } from 'path';
-import { appLogger } from '../services/AppLogService';
 
 interface DishCardProps {
   dish: Dish;
   onPress: (dish: Dish) => void;
   onPreparationPress?: (preparationId: string) => void;
-  onDelete?: (dishId: string) => void;
+  onRemoveFromCategory?: (dishId: string) => void;
 }
 
 const formatTime = (interval: string | null): string => {
@@ -35,26 +33,25 @@ const formatTime = (interval: string | null): string => {
   return interval;
 };
 
-const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress, onDelete }) => {
+const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress, onRemoveFromCategory }) => {
   const { t } = useTranslation();
   
-  // Filter to only include preparations
   const preparations = dish.components ? dish.components.filter(comp => comp.isPreparation) : [];
 
-  const handleDelete = () => {
-    if (onDelete) {
+  const handleRemovePress = () => {
+    if (onRemoveFromCategory) {
       Alert.alert(
-        t('common.confirmDelete', 'Confirm Delete'),
-        dish.dish_name,
+        t('components.dishCard.confirmRemoveTitle', 'Remove from Category'),
+        t('components.dishCard.confirmRemoveMessage', { dishName: dish.dish_name, defaultValue: `Are you sure you want to remove '${dish.dish_name}' from this category?` }),
         [
           {
             text: t('common.cancel', 'Cancel'),
             style: 'cancel',
           },
           {
-            text: t('common.delete', 'Delete'),
+            text: t('common.remove', 'Remove'),
             style: 'destructive',
-            onPress: () => onDelete(dish.dish_id),
+            onPress: () => onRemoveFromCategory(dish.dish_id),
           },
         ]
       );
@@ -67,6 +64,11 @@ const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress, 
       onPress={() => onPress(dish)}
       activeOpacity={0.8}
     >
+      {onRemoveFromCategory && (
+        <TouchableOpacity onPress={handleRemovePress} style={styles.removeButton}>
+          <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
+        </TouchableOpacity>
+      )}
       <Image 
         source={{ uri: dish.imageUrl || 'https://via.placeholder.com/150' }} 
         style={styles.image} 
@@ -119,12 +121,6 @@ const DishCard: React.FC<DishCardProps> = ({ dish, onPress, onPreparationPress, 
             <Text style={styles.noPreparationsText}>{t('components.dishCard.noPreparationsText', 'No preparations')}</Text>
           )}
         </View>
-
-        {onDelete && (
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-            <MaterialCommunityIcons name="delete" size={20} color={COLORS.error} />
-          </TouchableOpacity>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -138,7 +134,7 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.padding,
     ...SHADOWS.medium,
     overflow: 'hidden',
-    position: 'relative'
+    position: 'relative',
   },
   image: {
     width: '100%',
@@ -153,6 +149,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
     marginBottom: 8,
+    paddingRight: SIZES.padding * 2,
   },
   detailsContainer: {
     flexDirection: 'row',
@@ -200,21 +197,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   noPreparationsText: {
-    fontStyle: 'italic',
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.textLight,
+    fontStyle: 'italic',
   },
-  deleteButton: {
+  removeButton: {
     position: 'absolute',
-    bottom: SIZES.padding,
-    right: SIZES.padding,
-    width: SIZES.base * 4,
-    height: SIZES.base * 4,
-    borderRadius: 30,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  }
+    top: SIZES.padding / 2,
+    right: SIZES.padding / 2,
+    zIndex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+    padding: 2,
+  },
 });
 
-export default DishCard; 
+export default DishCard;

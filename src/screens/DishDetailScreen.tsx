@@ -114,7 +114,7 @@ const DishDetailScreen = () => {
   // Handler for edit button press
   const handleEditPress = () => {
     if (!dishId) return;
-    // Navigate to CreateRecipeScreen with dishId for editing
+    // Navigate to CreateDishScreen with dishId for editing
     navigation.navigate('CreateRecipe', { dishId });
   };
 
@@ -249,7 +249,7 @@ const DishDetailScreen = () => {
 
   const handleDeleteDish = async () => {
     if (!dishId) {
-      console.warn('Attempted to delete dish with invalid ID');
+      appLogger.warn('Attempted to delete dish with invalid ID');
       return;
     }
 
@@ -259,7 +259,7 @@ const DishDetailScreen = () => {
         t('screens.home.error.missingKitchenId'),
         [{ text: t('common.ok', 'OK') }]
       );
-      console.error('Error deleting dish: No active kitchen selected.');
+      appLogger.error('Error deleting dish: No active kitchen selected.');
       return;
     }
 
@@ -270,13 +270,13 @@ const DishDetailScreen = () => {
         {
           text: t('common.cancel', 'Cancel'),
           style: 'cancel',
-          onPress: () => console.log('Delete cancelled'),
+          onPress: () => appLogger.log('Delete cancelled'),
         },
         {
           text: t('common.delete', 'Delete'),
           style: 'destructive',
           onPress: async () => {
-            console.log(`Attempting to delete dish with ID: ${dishId}`);
+            appLogger.log(`Attempting to delete dish with ID: ${dishId}`);
             try {
               const { error: deleteDishError } = await supabase
                 .from('dishes')
@@ -285,10 +285,10 @@ const DishDetailScreen = () => {
                 .eq('kitchen_id', kitchenId);
 
               if (deleteDishError) {
-                console.error(`Error deleting dish ${dishId}:`, deleteDishError);
+                appLogger.error(`Error deleting dish ${dishId}:`, deleteDishError);
                 Alert.alert(t('common.error', 'Error'), t('alerts.errorDeletingDish', 'Failed to delete dish.'));
               } else {
-                console.log(`Dish ${dishId} deleted successfully.`);
+                appLogger.log(`Dish ${dishId} deleted successfully.`);
                 Alert.alert(t('common.success', 'Success'), t('alerts.dishDeletedSuccessfully', 'Dish deleted successfully.'));
 
                 queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: kitchenId }] });
@@ -296,7 +296,7 @@ const DishDetailScreen = () => {
                 navigation.goBack();
               }
             } catch (error: any) {
-              console.error("Unexpected error during dish deletion:", error);
+              appLogger.error("Unexpected error during dish deletion:", error);
               Alert.alert(t('common.error', 'Error'), error.message || t('alerts.errorDeletingDish', 'Failed to delete dish.'));
             }
           },
@@ -370,7 +370,7 @@ const DishDetailScreen = () => {
                 step={1}
                 currentValue={targetServings}
                 displayValue={String(targetServings)}
-                displaySuffix={t('components.scaleSlider.servingsSuffix')}
+                displaySuffix="servings"
                 onValueChange={(newTarget: number) => {
                   setTargetServings(Math.round(newTarget));
                 }}

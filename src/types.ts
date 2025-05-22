@@ -10,21 +10,6 @@ export type Ingredient = Database['public']['Tables']['ingredients']['Row'] & {
     item?: string | null; // Added: Item description for counts
 };
 
-// export interface Ingredient {
-//   name: string;
-//   synonyms: string[];
-//   ingredient_id: string;
-//   cooking_notes: string;
-//   unit_id: string;
-//   amount: number;
-//   storage_location: string;
-//   kitchen_id: string;
-//   deleted: boolean;
-
-//   isPreparation?: boolean; // Added by useIngredients hook
-//   base_unit?: Unit | null; // Potentially added by useIngredients hook
-//   item?: string | null; // Added: Item description for counts
-// }
 
 export type MenuSection = Database['public']['Tables']['menu_section']['Row'];
 
@@ -35,7 +20,7 @@ export type Preparation = {
     directions: string | null;
     total_time: number | null; // Re-added
     yield_unit: Unit | null;
-    yield_amount: number | null; // Add yield amount
+    yield: number; // Changed from number | null
     fingerprint?: string | null; // ADDED: Fingerprint for duplicate detection
     ingredients: PreparationIngredient[];
     cooking_notes: string | null;
@@ -80,6 +65,8 @@ export type DishComponent = {
     // Include details based on whether it's a raw ingredient or a preparation
     preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;
     rawIngredientDetails: (Ingredient & { base_unit: Unit | null; item?: string | null }) | null;
+    // Optional: carry scaling multiplier for preparation amount when used in parent recipe
+    prepScaleMultiplier?: number;
     // Add imageUrl or other specific fields?
 };
 
@@ -188,24 +175,32 @@ export type EditablePrepIngredient = {
     matched?: boolean; // Flag to indicate ingredient was auto-matched
 };
 
-export type ComponentInput = {
-    key: string; // Unique key for FlatList/mapping
-    ingredient_id: string;
-    name: string; // Store name for display convenience
-    amount: string; // Keep as string for input field (BASE amount)
-    unit_id: string | null; // Preparation's YIELD unit id
-    isPreparation: boolean;
-    originalPrep?: ParsedIngredient; // keep full parsed preparation when confirming
-    subIngredients?: ParsedIngredient[] | null; // Store parsed sub-ingredients
-    item?: string | null; // Item description (e.g., "cloves") for raw ingredients
-    matched?: boolean; // Flag if auto-matched to a database entry
+export type MeasureKind = 'weight' | 'volume' | 'count';
 
-    // --- State Persistence for CreatePreparationScreen ---
-    prepStateEditableIngredients?: EditablePrepIngredient[] | null; // Stores sub-ingredients state
-    prepStatePrepUnitId?: string | null; // Stores the preparation's own unit id (distinct from yield unit)
-    prepStateInstructions?: string[] | null; // Stores instructions state
-    prepStateIsDirty?: boolean; // <-- ADDED
-}; 
+export interface ComponentInput {
+  key: string;
+  ingredient_id: string;
+  name: string;
+  amount: string;
+  unit_id: string | null;
+  isPreparation: boolean;
+  item?: string | null;
+
+  // --- Fields for when isPreparation is true ---
+  originalPrep?: Preparation | null | undefined;
+
+  subIngredients?: ParsedIngredient[] | null;
+  matched?: boolean;
+  prepStateEditableIngredients?: EditablePrepIngredient[] | null;
+  prepStatePrepUnitId?: string | null;
+  prepStateInstructions?: string[] | null;
+  prepStateIsDirty?: boolean;
+  // Added for synchronization between preparation screens
+  prepScaleMultiplier?: number;
+  // Base yield metadata for preparations
+  prepYield?: number | null;
+  prepYieldUnitId?: string | null;
+}
 
 export interface IUser {
   user_id: string;

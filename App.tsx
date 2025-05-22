@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { theme } from './src/constants/theme';
+import { theme, COLORS, FONTS, SIZES } from './src/constants/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
@@ -16,8 +16,10 @@ import { persistStore } from 'redux-persist';
 import { DeepLinkHandler, useDeepLinking } from './src/hooks/useDeepLinking';
 import { ReactQueryClientProvider } from './src/components/ReactQueryClientProvider';
 import { PersistGate } from 'redux-persist/integration/react';
+import { RealtimeStatusProvider } from './src/context/RealtimeStatusContext';
 import { SupabaseRealtimeProvider } from './src/realtime/SupabaseRealtimeProvider';
 import { appLogger } from './src/services/AppLogService';
+import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -30,9 +32,11 @@ export default function App() {
 		<Provider store={store}>
 			<PersistGate loading={null} persistor={persistor}>
 				<ReactQueryClientProvider>
-					<SupabaseRealtimeProvider>
-						<DeepLinkInterceptor />
-					</SupabaseRealtimeProvider>
+					<RealtimeStatusProvider>
+						<SupabaseRealtimeProvider>
+							<DeepLinkInterceptor />
+						</SupabaseRealtimeProvider>
+					</RealtimeStatusProvider>
 				</ReactQueryClientProvider>
 			</PersistGate>
 		</Provider>
@@ -94,6 +98,39 @@ function DeepLinkInterceptor() {
 					</AuthProvider>
 				</PaperProvider>
 			</SafeAreaProvider>
+			{/* Global Toast component */}
+			<Toast config={toastConfig} />
 		</GestureHandlerRootView>
 	);
 }
+
+// Toast configuration
+const toastConfig = {
+	success: (props: any) => (
+		<BaseToast
+			{...props}
+			style={{ borderLeftColor: COLORS.success || '#69C779', backgroundColor: COLORS.surface || '#333', width: '90%' }}
+			contentContainerStyle={{ paddingHorizontal: 15 }}
+			text1Style={{ fontSize: SIZES.medium, fontWeight: 'bold', color: COLORS.text || '#FFF' }}
+			text2Style={{ fontSize: SIZES.font, color: COLORS.text || '#FFF' }}
+		/>
+	),
+	error: (props: any) => (
+		<ErrorToast
+			{...props}
+			style={{ borderLeftColor: COLORS.error || '#FE6301', backgroundColor: COLORS.surface || '#333', width: '90%' }}
+			contentContainerStyle={{ paddingHorizontal: 15 }}
+			text1Style={{ fontSize: SIZES.medium, fontWeight: 'bold', color: COLORS.text || '#FFF' }}
+			text2Style={{ fontSize: SIZES.font, color: COLORS.text || '#FFF' }}
+		/>
+	),
+	info: (props: any) => (
+		<BaseToast
+			{...props}
+			style={{ borderLeftColor: COLORS.info || '#2196F3', backgroundColor: COLORS.surface || '#333', width: '90%' }}
+			contentContainerStyle={{ paddingHorizontal: 15 }}
+			text1Style={{ fontSize: SIZES.medium, fontWeight: 'bold', color: COLORS.text || '#FFF' }}
+			text2Style={{ fontSize: SIZES.font, color: COLORS.text || '#FFF' }}
+		/>
+	),
+};

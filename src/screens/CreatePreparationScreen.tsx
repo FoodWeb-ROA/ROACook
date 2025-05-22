@@ -4,22 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { RootStackParamList, OnUpdatePrepAmountCallback } from '../navigation/types';
-import { ParsedIngredient, Unit, Preparation, DishComponent, Ingredient, EditablePrepIngredient } from '../types';
-import { useUnits, useIngredients } from '../hooks/useSupabase';
+import { RootStackParamList} from '../navigation/types';
+import { 
+  Preparation, 
+  EditablePrepIngredient, 
+  ParsedIngredient,
+  Unit, 
+  Ingredient, // Added Ingredient back
+} from '../types';
+import { useUnits} from '../hooks/useSupabase';
 import { useLookup } from '../hooks/useLookup';
 import AppHeader from '../components/AppHeader';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
-import { capitalizeWords, formatQuantity, formatQuantityAuto } from '../utils/textFormatters';
-import PreparationCard from '../components/PreparationCard';
+import { capitalizeWords, formatQuantityAuto} from '../utils/textFormatters';
 import { useTranslation } from 'react-i18next';
-import { slug, stripDirections, fingerprintPreparation } from '../utils/normalise';
+import { fingerprintPreparation } from '../utils/normalise';
 import { 
-  findDishByName, 
   findCloseIngredient, 
-  checkIngredientNameExists, 
-  checkPreparationNameExists,
-  findPreparationByFingerprint 
 } from '../data/dbLookup';
 import { 
   resolveIngredient, 
@@ -34,6 +35,7 @@ import DirectionsInputList from '../components/DirectionsInputList';
 import ComponentSearchModal, { SearchResultItem } from '../components/ComponentSearchModal';
 import IngredientListComponent from '../components/IngredientListComponent';
 import { appLogger } from '../services/AppLogService';
+import { MeasureKind, unitKind } from '../utils/unitHelpers'; // Removed Unit from here
 
 type CreatePrepRouteProp = RouteProp<RootStackParamList, 'CreatePreparation'>;
 
@@ -50,13 +52,18 @@ const CreatePreparationScreen = () => {
     initialEditableIngredients,
     initialPrepUnitId,
     initialInstructions,
-    dishComponentScaledAmount
+    dishComponentScaledAmount,
+    originalPrepBaseAmount: routeOriginalPrepBaseAmount,
+    onNewPreparationCreated,
   } = route.params; 
   
   const { units, loading: loadingUnits } = useUnits();
   const { lookupIngredient } = useLookup();
   const { t } = useTranslation();
   const activeKitchenId = useSelector((state: RootState) => state.kitchens.activeKitchenId);
+
+  // Determine if we arrived from AllRecipesScreen (stand-alone preview/edit) or from a parent recipe builder screen
+  const isStandaloneMode = !onUpdatePrepAmount && !onNewPreparationCreated; // If there's no callback, assume stand-alone
 
   // Define type guards first
   const isFullPreparation = (p: ParsedIngredient | Preparation): p is Preparation => {
@@ -69,7 +76,7 @@ const CreatePreparationScreen = () => {
 
   // Helper functions
   const getPreparationAmount = (prep: ParsedIngredient | Preparation): number | null => {
-    if (isFullPreparation(prep)) return prep.yield_amount ?? null;
+    if (isFullPreparation(prep)) return prep.yield ?? null;
     if (isParsedIngredient(prep)) return prep.amount ?? null;
     return null;
   };
@@ -88,7 +95,9 @@ const CreatePreparationScreen = () => {
 
   // Use the helpers in state initialization
   const [prepName, setPrepName] = useState(preparation.name || 'Preparation');
-  const [originalPrepBaseAmount, setOriginalPrepBaseAmount] = useState<number | null>(getPreparationAmount(preparation));
+  const [originalPrepBaseAmount, setOriginalPrepBaseAmount] = useState<number | null>(() => {
+    return routeOriginalPrepBaseAmount ?? getPreparationAmount(preparation);
+  });
   const [prepUnitId, setPrepUnitId] = useState<string | null>(initialPrepUnitId ?? null);
   const [editableIngredients, setEditableIngredients] = useState<EditablePrepIngredient[]>(initialEditableIngredients ?? []);
   const [instructions, setInstructions] = useState<string[]>(initialInstructions ?? getPreparationInstructions(preparation));
@@ -115,6 +124,10 @@ const CreatePreparationScreen = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const [searchMode, setSearchMode] = useState<'ingredient' | 'preparation'>('ingredient');
+
+  // State for measurement type locking
+  const [isTypeLocked, setIsTypeLocked] = useState<boolean>(false);
+  const [lockedType, setLockedType] = useState<MeasureKind | null>(null);
 
   const mapParsedIngredients = useCallback(async () => {
     const typedPrep = preparation as ParsedIngredient & { ingredients?: ParsedIngredient[]; instructions?: string[] };
@@ -223,12 +236,40 @@ const CreatePreparationScreen = () => {
   ]);
 
   useEffect(() => {
+    if (route.params?.onNewPreparationCreated) {
+      setIsCreatingNew(true);
+      if (!isFullPreparation(preparation)) {
+         setEditableIngredients([]);
+      }
+      if (!isFullPreparation(preparation) && !initialEditableIngredients) {
+         setInstructions(['']);
+      }
+      if (!isFullPreparation(preparation) && !initialPrepUnitId) {
+         const defaultUnit = units.find(u => u.unit_name.toLowerCase() === 'portion') || units[0];
+         setPrepUnitId(defaultUnit?.unit_id || null);
+      }
+      if (!isFullPreparation(preparation) && !preparation.name) {
+          setPrepName('New Preparation');
+      }
+    } else {
+        setIsCreatingNew(false);
+    }
     if (isFullPreparation(preparation)) {
+        appLogger.log("Editing existing full preparation, ID:", preparation.preparation_id);
+    } else {
+        appLogger.log("Editing/Creating based on ParsedIngredient or minimal data, Name:", preparation.name);
+    }
+  }, [route.params, preparation, initialEditableIngredients, initialInstructions, initialPrepUnitId, units]);
+
+  useEffect(() => {
+    if (routeOriginalPrepBaseAmount !== undefined) {
+      setOriginalPrepBaseAmount(routeOriginalPrepBaseAmount);
+    } else if (isFullPreparation(preparation)) {
       setPrepName(preparation.name || 'Preparation');
-      setOriginalPrepBaseAmount(preparation.yield_amount ?? null);
+      setOriginalPrepBaseAmount(preparation.yield ?? null);
     } else {
       setPrepName(preparation.name || 'Preparation');
-      setOriginalPrepBaseAmount(preparation.amount ?? null);
+      setOriginalPrepBaseAmount(preparation.amount ?? null); // For new preps from parser
     }
 
     let needsParsing = false;
@@ -275,30 +316,46 @@ const CreatePreparationScreen = () => {
   }, [preparation, isScreenLoading, units, initialEditableIngredients, initialInstructions, initialPrepUnitId, mapParsedIngredients]);
 
   useEffect(() => {
-    if (route.params?.onNewPreparationCreated) {
-      setIsCreatingNew(true);
-      if (!isFullPreparation(preparation)) {
-         setEditableIngredients([]);
+    if (isScreenLoading || units.length === 0) return;
+
+    let typeToLockInitial: MeasureKind | null = null;
+    let shouldLockInitial = false;
+
+    const fullPrep = preparation as Preparation; // Assuming it might be a full Preparation object
+
+    if (isFullPreparation(preparation) && preparation.preparation_id) { // Existing prep
+      // Ensure preparation.yield_unit is a Unit object, not just an ID string
+      // This might require fetching the Unit object if yield_unit is stored as ID
+      // For now, assuming preparation.yield_unit IS a Unit object or similar structure if it's a full prep.
+      // If preparation.yield_unit is just an ID, we need to find it in `units` array.
+      let yieldUnitObj: Unit | null | undefined = null;
+      if (fullPrep.yield_unit_id) { // if yield_unit_id is present from DB
+        yieldUnitObj = units.find(u => u.unit_id === fullPrep.yield_unit_id);
+      } else if (fullPrep.yield_unit) { // if yield_unit object is directly on prep
+        yieldUnitObj = fullPrep.yield_unit;
       }
-      if (!isFullPreparation(preparation) && !initialEditableIngredients) {
-         setInstructions(['']);
+
+      typeToLockInitial = unitKind(yieldUnitObj);
+      // Lock if it's an existing prep with a discernible type that isn't 'count'
+      // (count can always be changed to weight/volume)
+      if (typeToLockInitial && typeToLockInitial !== 'count') {
+        shouldLockInitial = true;
       }
-      if (!isFullPreparation(preparation) && !initialPrepUnitId) {
-         const defaultUnit = units.find(u => u.unit_name.toLowerCase() === 'portion') || units[0];
-         setPrepUnitId(defaultUnit?.unit_id || null);
+    } else if (initialPrepUnitId) { // New prep, but initial unit from parser/parent
+      const initialUnit = units.find(u => u.unit_id === initialPrepUnitId);
+      typeToLockInitial = unitKind(initialUnit);
+      // Lock if initial type from parser is weight or volume
+      if (typeToLockInitial === 'weight' || typeToLockInitial === 'volume') {
+        shouldLockInitial = true;
       }
-      if (!isFullPreparation(preparation) && !preparation.name) {
-          setPrepName('New Preparation');
-      }
-    } else {
-        setIsCreatingNew(false);
     }
-    if (isFullPreparation(preparation)) {
-        appLogger.log("Editing existing full preparation, ID:", preparation.preparation_id);
-    } else {
-        appLogger.log("Editing/Creating based on ParsedIngredient or minimal data, Name:", preparation.name);
-    }
-  }, [route.params, preparation, initialEditableIngredients, initialInstructions, initialPrepUnitId, units]);
+    // Else: truly fresh new prep, no lock yet.
+
+    setLockedType(typeToLockInitial);
+    setIsTypeLocked(shouldLockInitial);
+    appLogger.log(`[CreatePrepScreen] Initial type lock: ${shouldLockInitial}, type: ${typeToLockInitial}`);
+
+  }, [isScreenLoading, units, preparation, initialPrepUnitId]);
 
   const searchIngredients = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -468,20 +525,19 @@ const CreatePreparationScreen = () => {
   };
 
   const handleDisplayAmountChange = (text: string) => {
-    setDisplayAmountStr(text);
+    // Allow only numeric input with optional decimal point
+    const sanitized = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    setDisplayAmountStr(sanitized);
 
-    const newScaledAmount = parseFloat(text);
-    
-    if (!isNaN(newScaledAmount) && newScaledAmount > 0) { 
-      let baseAmount: number | null = null;
-      baseAmount = originalPrepBaseAmount; 
-
-      if (baseAmount !== null && !isNaN(baseAmount) && baseAmount > 0) {
-        const newScaleMultiplier = newScaledAmount / baseAmount;
-        setScaleMultiplier(newScaleMultiplier);
-        appLogger.log(`Scale updated to: ${newScaleMultiplier}`);
-      }
+    // When in standalone mode (editing a preparation directly), this field represents the base yield
+    const parsed = parseFloat(sanitized);
+    if (!isNaN(parsed)) {
+      setOriginalPrepBaseAmount(parsed);
+    } else {
+      setOriginalPrepBaseAmount(null);
     }
+
+    setIsDirty(true);
   };
 
   const createNewPreparation = async (
@@ -654,12 +710,37 @@ const CreatePreparationScreen = () => {
           );
         }
 
-        if (finalPrepId && route.params?.onNewPreparationCreated) {
-           route.params.onNewPreparationCreated({
+        // After successful creation of a new preparation, update the measurement type lock state
+        if (finalPrepId) {
+          const newlySavedUnit = units.find(u => u.unit_id === finalYieldUnitId);
+          const newKind = unitKind(newlySavedUnit);
+          
+          appLogger.log(`[CreatePrepScreen] New prep ${finalPrepId} saved. Yield unit: ${newlySavedUnit?.unit_name}, Kind: ${newKind}`);
+
+          if (newKind === 'weight' || newKind === 'volume') {
+            // Hard lock for weight/volume units
+            setLockedType(newKind);
+            setIsTypeLocked(true);
+            appLogger.log(`[CreatePrepScreen] Type HARD LOCKED to: ${newKind}`);
+          } else if (newKind === 'count') {
+            // For count units, we don't hard lock yet - allow switching to weight/volume
+            setLockedType('count'); 
+            setIsTypeLocked(false);
+            appLogger.log(`[CreatePrepScreen] Type is 'count'. Not hard-locked from weight/volume yet.`);
+          } else {
+            // For null/unknown unit kinds (shouldn't happen with selected units)
+            setLockedType(null);
+            setIsTypeLocked(false); 
+            appLogger.log(`[CreatePrepScreen] Yield unit kind is null/unknown. Lock cleared.`);
+          }
+        }
+
+        if (finalPrepId && onNewPreparationCreated) {
+           onNewPreparationCreated({
             id: finalPrepId,
             name: finalPrepName,
-            yieldAmount: finalYieldAmount, 
-            yieldUnitId: finalYieldUnitId,
+            yield: finalYieldAmount, 
+            amount_unit_id: finalYieldUnitId,
           });
         }
 
@@ -715,6 +796,62 @@ const CreatePreparationScreen = () => {
       ),
     });
   }, [navigation, handleSaveChangesAndGoBack]);
+
+  // Navigation guard – prompt to save/discard on back if there are unsaved edits
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!isDirty) return; // Nothing to save
+
+      e.preventDefault(); // Stop default behaviour
+
+      Alert.alert(
+        t('alerts.unsavedChangesTitle', 'Unsaved Changes'),
+        t('alerts.unsavedChangesMessage', 'Do you want to save your changes before leaving?'),
+        [
+          {
+            text: t('common.discard', 'Discard'),
+            style: 'destructive',
+            onPress: () => {
+              // Discard edits
+              setIsDirty(false);
+              navigation.dispatch(e.data.action);
+            },
+          },
+          {
+            text: t('common.save', 'Save'),
+            onPress: () => {
+              saveAndGoBack(e.data.action);
+            },
+          },
+          {
+            text: t('common.cancel', 'Cancel'),
+            style: 'cancel',
+          },
+        ],
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, isDirty]);
+
+  /**
+   * Helper that finalises save logic then navigates back.
+   * For embedded mode the parent already has latest edits via onUpdatePrepAmount; just mark clean.
+   * For standalone mode call existing save handler if it exists (handleSaveChangesAndGoBack).
+   */
+  const saveAndGoBack = (navAction?: any) => {
+    if (isStandaloneMode && typeof handleSaveChangesAndGoBack === 'function') {
+      // @ts-ignore – function is defined later in file
+      handleSaveChangesAndGoBack().then(() => {
+        setIsDirty(false);
+        if (navAction) navigation.dispatch(navAction); else navigation.goBack();
+      });
+    } else {
+      // Parent mode – data already propagated
+      setIsDirty(false);
+      if (navAction) navigation.dispatch(navAction); else navigation.goBack();
+    }
+  };
 
   const createNewIngredient = async (name: string): Promise<string | null> => {
     const trimmedName = name.trim();
@@ -792,7 +929,38 @@ const CreatePreparationScreen = () => {
   const prepYieldUnit = units.find(u => u.unit_id === prepUnitId);
   topDisplayUnitAbbr = prepYieldUnit?.abbreviation || 'Unit';
   
-  const amountLabel = t('screens.createPreparation.scaledPrepAmountLabel', 'Scaled Amount');
+  const amountLabel = t('screens.createPreparation.yieldLabel', 'Yield');
+
+  // Determine if warning about type lock should be shown
+  // Warning should show if:
+  // 1. Type is not already locked (isTypeLocked is false)
+  // 2. It's a truly new preparation (not an existing one being edited - identified by !preparation.preparation_id)
+  // 3. It's NOT a new preparation coming from the parser with a pre-determined weight/volume unit (identified by initialPrepUnitId having a weight/volume kind)
+  const isFromParserWithMassOrVolume = initialPrepUnitId && 
+                                     (unitKind(units.find(u => u.unit_id === initialPrepUnitId)) === 'weight' || 
+                                      unitKind(units.find(u => u.unit_id === initialPrepUnitId)) === 'volume');
+
+  const isFreshPrepNoLock = !isTypeLocked && 
+                            !(isFullPreparation(preparation) && preparation.preparation_id) && 
+                            !isFromParserWithMassOrVolume;
+
+  // Data source for the prep yield unit modal
+  const getPrepYieldUnitModalDataSource = () => {
+    if (isTypeLocked && lockedType && lockedType !== 'count') {
+      return units.filter(u => unitKind(u) === lockedType);
+    }
+    // If not strictly locked (e.g. fresh prep, or locked to 'count')
+    // And a weight/volume unit is currently selected for a fresh prep (but not yet saved to lock it)
+    // then restrict choices to that kind or 'count' for this modal session.
+    if (!isTypeLocked) {
+        const currentSelectedUnit = units.find(u => u.unit_id === prepUnitId);
+        const currentSelectedKind = unitKind(currentSelectedUnit);
+        if (currentSelectedKind && currentSelectedKind !== 'count') { 
+            return units.filter(u => unitKind(u) === currentSelectedKind || unitKind(u) === 'count' || unitKind(u) === null);
+        }
+    }
+    return units; // Default: show all units
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -808,28 +976,29 @@ const CreatePreparationScreen = () => {
         >
           <Text style={styles.prepName}>{capitalizeWords(prepName)}</Text>
 
+          {/* Unified numeric input for both modes; label changes depending on entry point */}
           <View style={styles.section}>
-              <Text style={styles.label}>{amountLabel}:</Text>
-              <View style={styles.componentControlsContainer}>
-                   <TextInput
-                       style={styles.componentInputAmount}
-                       value={displayAmountStr}
-                       onChangeText={handleDisplayAmountChange}
-                       keyboardType="numeric"
-                       placeholder={t('screens.createPreparation.amountPlaceholder')}
-                       placeholderTextColor={COLORS.placeholder}
-                   />
-                   <TouchableOpacity
-                       style={[styles.componentUnitTrigger]}
-                       onPress={openPrepUnitModal}
-                   >
-                       <Text style={[styles.pickerText, !prepUnitId && styles.placeholderText]}>
-                           {topDisplayUnitAbbr}
-                       </Text>
-                        <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
-                   </TouchableOpacity>
-               </View>
-           </View>
+            <Text style={styles.label}>{amountLabel}:</Text>
+            <View style={styles.componentControlsContainer}>
+              <TextInput
+                style={styles.componentInputAmount}
+                value={displayAmountStr}
+                onChangeText={handleDisplayAmountChange}
+                keyboardType="numeric"
+                placeholder={t('screens.createPreparation.yieldPlaceholder')}
+                placeholderTextColor={COLORS.placeholder}
+              />
+              <TouchableOpacity
+                style={[styles.componentUnitTrigger]}
+                onPress={openPrepUnitModal}
+              >
+                <Text style={[styles.pickerText, !prepUnitId && styles.placeholderText]}>
+                  {topDisplayUnitAbbr}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <View style={styles.section}>
               <Text style={styles.sectionHeader}>{t('screens.createPreparation.ingredientsTitle')}</Text>
@@ -896,18 +1065,18 @@ const CreatePreparationScreen = () => {
       </KeyboardAvoidingView>
 
        <Modal
-          animationType="slide"
-          transparent={true}
+          animationType="fade"
+          transparent
           visible={unitModalVisible}
           onRequestClose={closeUnitModal}
        >
-           <View style={styles.modalContainer}>
+           <TouchableOpacity style={styles.modalBackdrop} onPress={() => setUnitModalVisible(false)} activeOpacity={1}>
                <View style={styles.modalContent}>
                    <Text style={styles.modalTitle}>{t('screens.createPreparation.selectUnitModalTitle')}</Text>
                    <FlatList
                        data={units}
-                       keyExtractor={(item) => item.unit_id}
-                       renderItem={({ item }) => (
+                       keyExtractor={(item: Unit) => item.unit_id}
+                       renderItem={({ item }: { item: Unit }) => (
                            <TouchableOpacity
                                style={styles.modalItem}
                                onPress={() => handleUnitSelect(item)}
@@ -924,39 +1093,39 @@ const CreatePreparationScreen = () => {
                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                    </TouchableOpacity>
                </View>
-           </View>
+           </TouchableOpacity>
        </Modal>
 
        <Modal
-          animationType="slide"
-          transparent={true}
+          animationType="fade"
+          transparent
           visible={prepUnitModalVisible}
-          onRequestClose={closePrepUnitModal}
+          onRequestClose={() => setPrepUnitModalVisible(false)}
        >
-           <View style={styles.modalContainer}>
+           <TouchableOpacity style={styles.modalBackdrop} onPress={() => setPrepUnitModalVisible(false)} activeOpacity={1}>
                <View style={styles.modalContent}>
                    <Text style={styles.modalTitle}>{t('screens.createPreparation.selectPrepUnitModalTitle')}</Text>
                    <FlatList
-                       data={units}
-                       keyExtractor={(item) => item.unit_id}
-                       renderItem={({ item }) => (
+                       data={getPrepYieldUnitModalDataSource() as Unit[]} // Ensure data is typed correctly
+                       keyExtractor={(item: Unit) => item.unit_id}
+                       renderItem={({ item }: { item: Unit }) => (
                            <TouchableOpacity
                                style={styles.modalItem}
-                               onPress={() => handlePrepUnitSelect(item)}
+                               onPress={() => {
+                                   setPrepUnitId(item.unit_id);
+                                   setPrepUnitModalVisible(false);
+                                   setIsDirty(true);
+                               }}
                            >
-                               <Text style={styles.modalItemText}>{capitalizeWords(item.unit_name)} ({item.abbreviation || 'N/A'})</Text>
+                               <Text style={styles.modalItemText}>{`${item.unit_name} (${item.abbreviation || 'N/A'})`}</Text>
                            </TouchableOpacity>
                        )}
-                       ListEmptyComponent={<Text style={styles.emptyListText}>{t('screens.createRecipe.noUnitsFound')}</Text>}
                    />
-                   <TouchableOpacity
-                       style={styles.closeButton}
-                       onPress={closePrepUnitModal}
-                   >
-                       <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+                   <TouchableOpacity style={styles.modalCloseButton} onPress={() => setPrepUnitModalVisible(false)}>
+                     <Text style={styles.modalCloseButtonText}>{t('common.cancel')}</Text>
                    </TouchableOpacity>
                </View>
-           </View>
+           </TouchableOpacity>
        </Modal>
 
         <ComponentSearchModal
@@ -1275,6 +1444,31 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: COLORS.textLight,
+  },
+  warningTextSmall: {
+    ...FONTS.body3,
+    color: COLORS.warning,
+    marginTop: SIZES.base / 2,
+    textAlign: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: COLORS.backdrop,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    marginTop: SIZES.padding,
+    paddingVertical: SIZES.small,
+    paddingHorizontal: SIZES.padding,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius,
+    alignSelf: 'center',
+  },
+  modalCloseButtonText: {
+    ...FONTS.body2,
+    color: COLORS.white,
+    textAlign: 'center',
   },
 });
 

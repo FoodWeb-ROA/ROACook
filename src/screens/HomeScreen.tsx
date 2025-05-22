@@ -12,6 +12,9 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Modal,
+  TextInput,
+  Button,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -114,7 +117,7 @@ const SCROLL_EXTRA_PADDING = FAB_CONTAINER_HEIGHT + SIZES.padding/4;
 // ... existing code ...
 
 const HomeScreen = () => {
-  console.log("--- App code loaded successfully ---");
+  appLogger.log("--- App code loaded successfully ---");
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAuth();
   const { showActionSheetWithOptions } = useActionSheet();
@@ -130,6 +133,11 @@ const HomeScreen = () => {
   const lookupFunctions = useLookup();
 
   const [isParsing, setIsParsing] = useState(false);
+
+  // State for Rename Modal
+  const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
+  const [categoryToRename, setCategoryToRename] = useState<Category | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   // State and Ref for Banner
   const [showBanner, setShowBanner] = useState(false);
@@ -219,14 +227,14 @@ const HomeScreen = () => {
   }, []);
   const categoryViewabilityConfig = { itemVisiblePercentThreshold: 50 };
 
-  const handleDeleteCategory = async (categoryId: string) => {
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
     if (!activeKitchenId) {
       Alert.alert(
         t('common.error'),
         t('screens.home.error.missingKitchenId'),
         [{ text: t('common.ok', 'OK') }]
       );
-      console.error('Error deleting section: No active kitchen selected.');
+      appLogger.error('Error deleting section: No active kitchen selected.');
       return;
     }
 
@@ -239,15 +247,54 @@ const HomeScreen = () => {
 
       if (error) throw error;
 
-      console.log(`[HomeScreen] Invalidating menu section query for kitchen: ${activeKitchenId}`);
+      appLogger.log(`[HomeScreen] Invalidating menu section query for kitchen: ${activeKitchenId}`);
       queryClient.invalidateQueries({ queryKey: ['menu_section', { kitchen_id: activeKitchenId }] });
 
     } catch (error: any) {
-      console.error('Error deleting section:', error);
+      appLogger.error('Error deleting section:', error);
       Alert.alert(
         t('common.error'),
-        t('screens.home.deleteSectionError', { categoryName: menuSections?.find(ms => ms.menu_section_id === categoryId)?.name || t('common.category'), error: error.message || String(error) }),
+        t('screens.home.deleteSectionError', { categoryName, error: error.message || String(error) }),
         [{ text: t('common.ok', 'OK') }]
+      );
+    }
+  };
+
+  const handleRenameRequest = (category: Category) => {
+    setCategoryToRename(category);
+    setNewCategoryName(category.name); // Pre-fill with current name
+    setIsRenameModalVisible(true);
+  };
+
+  const handleCancelRename = () => {
+    setIsRenameModalVisible(false);
+    setCategoryToRename(null);
+    setNewCategoryName('');
+  };
+
+  const handleConfirmRename = async () => {
+    if (!categoryToRename || !newCategoryName.trim() || !activeKitchenId) {
+      Alert.alert(t('common.error'), t('screens.home.error.renameInvalidInput'));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('menu_section')
+        .update({ name: newCategoryName.trim() })
+        .eq('menu_section_id', categoryToRename.menu_section_id)
+        .eq('kitchen_id', activeKitchenId);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['menu_section', { kitchen_id: activeKitchenId }] });
+      Alert.alert(t('common.success'), t('screens.home.success.categoryRenamed', { oldName: categoryToRename.name, newName: newCategoryName.trim() }));
+      handleCancelRename(); // Close modal and reset state
+    } catch (error: any) {
+      appLogger.error('Error renaming category:', error);
+      Alert.alert(
+        t('common.error'),
+        t('screens.home.error.renameCategory', { categoryName: categoryToRename.name, error: error.message || String(error) })
       );
     }
   };
@@ -276,7 +323,8 @@ const HomeScreen = () => {
                     <CategoryCard
                       category={item}
                       onPress={() => handleCategoryPress(item)}
-                      onDelete={handleDeleteCategory} 
+                      onDelete={() => handleDeleteCategory(item.menu_section_id, item.name)}
+                      onRenameRequest={handleRenameRequest} // Added this prop
                     />
                   )}
                 </View>
@@ -341,7 +389,6 @@ const HomeScreen = () => {
                   <DishGridItem
                     dish={dish}
                     onPress={() => handleDishPress(dish)}
-                    onDelete={handleDeleteDish}
                   />
                 </View>
               );
@@ -433,7 +480,7 @@ const HomeScreen = () => {
                                 t // Pass translation function
                             );
                             appLogger.log("Finished pre-processing. Navigating...");
-                            // Navigate to CreateRecipeScreen with the first parsed recipe AND pre-processed components
+                            // Navigate to CreateDishScreen with the first parsed recipe AND pre-processed components
                             navigation.navigate('CreateRecipe', { 
                                 parsedRecipe: parsedRecipes[0],
                                 initialComponents: initialComponents // <-- PASS PROCESSED COMPONENTS
@@ -502,7 +549,7 @@ const HomeScreen = () => {
         if (selectedIndex === undefined || selectedIndex === cancelButtonIndex) return;
 
         if (selectedIndex === 0) { // Dish selected
-          appLogger.log("Navigating to CreateRecipeScreen (Dish)");
+          appLogger.log("Navigating to CreateDishScreen (Dish)");
           navigation.navigate('CreateRecipe', {});
         } else if (selectedIndex === 1) { // Preparation selected
           appLogger.log("Navigating to CreatePreparationScreen (Preparation)");
@@ -527,7 +574,7 @@ const HomeScreen = () => {
         t('screens.home.error.missingKitchenId'),
         [{ text: t('common.ok', 'OK') }]
       );
-      console.error('Error deleting dish: No active kitchen selected.');
+      appLogger.error('Error deleting dish: No active kitchen selected.');
       return;
     }
 
@@ -540,11 +587,11 @@ const HomeScreen = () => {
 
       if (error) throw error;
 
-      console.log(`[HomeScreen] Invalidating dish queries for kitchen: ${activeKitchenId}, dish: ${dishId}`);
+      appLogger.log(`[HomeScreen] Invalidating dish queries for kitchen: ${activeKitchenId}, dish: ${dishId}`);
       queryClient.invalidateQueries({ queryKey: ['dishes', { kitchen_id: activeKitchenId }] });
 
     } catch (error: any) {
-      console.error('Error deleting dish:', error);
+      appLogger.error('Error deleting dish:', error);
       Alert.alert(
         t('common.error'),
         t('screens.home.deleteDishError', { dishName: dishes?.find(d => d.dish_id === dishId)?.dish_name || t('common.dish'), error: error.message || String(error) }),
@@ -667,6 +714,32 @@ const HomeScreen = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Rename Category Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isRenameModalVisible}
+        onRequestClose={handleCancelRename}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>{t('screens.home.renameCategoryTitle', { categoryName: categoryToRename?.name ?? '' })}</Text>
+            <TextInput
+              style={styles.textInput}
+              onChangeText={setNewCategoryName}
+              value={newCategoryName}
+              placeholder={t('screens.home.newCategoryNamePlaceholder', 'Enter new category name')}
+              autoFocus
+            />
+            <View style={styles.modalButtonContainer}>
+              <Button title={t('common.cancel', 'Cancel')} onPress={handleCancelRename} color={COLORS.textLight} />
+              <View style={{ width: SIZES.padding }} />{/* Spacer */}
+              <Button title={t('common.save', 'Save')} onPress={handleConfirmRename} color={COLORS.text} />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* FAB */}
       {isParsing && (
@@ -890,6 +963,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    width: '80%',
+    backgroundColor: COLORS.surface, // Changed from lightGray to COLORS.surface
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding * 2,
+    alignItems: 'center',
+    ...SHADOWS.medium,
+  },
+  modalTitle: {
+    fontSize: SIZES.large,
+    fontWeight: 'bold',
+    marginBottom: SIZES.padding * 1.5,
+    color: COLORS.text, // Changed from textDark to COLORS.text
+  },
+  textInput: {
+    width: '100%',
+    height: 50, // Increased height for better touch target
+    borderColor: COLORS.border, // Changed from gray2 to COLORS.border
+    borderWidth: 1,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.padding,
+    marginBottom: SIZES.padding * 2,
+    backgroundColor: COLORS.white, // Keep text input background white
+    fontSize: SIZES.font, // Ensure font size is appropriate
+    color: COLORS.black, // Changed from textDark to COLORS.text
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around', // Changed to space-around for better spacing
+    width: '100%',
   },
 });
 

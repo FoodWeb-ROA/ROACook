@@ -41,7 +41,7 @@ const PreparationDetailScreen = () => {
   const route = useRoute<PreparationDetailRouteProp>();
   const { preparationId, recipeServingScale, prepAmountInDish } = route.params;
 
-  console.log(`--- PreparationDetailScreen/route.params:`, route.params);
+  appLogger.log(`--- PreparationDetailScreen/route.params:`, route.params);
 
   // Determine if navigated from a dish context
   const isFromDishContext = prepAmountInDish !== null && prepAmountInDish !== undefined;
@@ -128,9 +128,12 @@ const PreparationDetailScreen = () => {
   };
 
   const handleEditPress = () => {
-    if (!preparationId) return;
-    // Navigate to CreateRecipeScreen with preparationId for editing
-    navigation.navigate('CreateRecipe', { preparationId });
+    if (!preparation) return; // Ensure the full preparation object is loaded
+    // Navigate to CreatePreparationScreen with the full preparation object
+    navigation.navigate('CreatePreparation', {
+      preparation: preparation, // Pass the full preparation object
+      // No onUpdatePrepAmount or onNewPreparationCreated callbacks needed for standalone edit
+    });
   };
 
   // Use the ingredients array directly from the hook
@@ -197,7 +200,7 @@ const PreparationDetailScreen = () => {
 
   const directions = preparation.directions ? preparation.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
 
-  const baseYieldAmount = preparation.yield_amount;
+  const baseYieldAmount = preparation.yield;
   const yieldUnitAbbreviation = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
 
   // Ensure recipeServingScale has a default value and calculate scaled yield
@@ -216,11 +219,11 @@ const PreparationDetailScreen = () => {
 
   const handleDeletePreparation = async () => {
     if (!preparationId) {
-      console.warn('Attempted to delete preparation with invalid ID');
+      appLogger.warn('Attempted to delete preparation with invalid ID');
       return;
     }
 
-    console.log(`Checking if preparation ${preparationId} is used in any dishes...`);
+    appLogger.log(`Checking if preparation ${preparationId} is used in any dishes...`);
     try {
       const { count, error: countError } = await supabase
         .from('dish_components')
@@ -229,7 +232,7 @@ const PreparationDetailScreen = () => {
 
       if (countError) throw countError;
 
-      console.log(`Preparation ${preparationId} used in ${count} dish components.`);
+      appLogger.log(`Preparation ${preparationId} used in ${count} dish components.`);
 
       if (count && count > 0) {
         Alert.alert(
@@ -240,7 +243,7 @@ const PreparationDetailScreen = () => {
         return;
       }
     } catch (checkError: any) {
-      console.error(`Error checking preparation usage for ${preparationId}:`, JSON.stringify(checkError, null, 2));
+      appLogger.error(`Error checking preparation usage for ${preparationId}:`, JSON.stringify(checkError, null, 2));
 
       Alert.alert(t('common.error', 'Error'), t('alerts.errorCheckingPrepUsage', 'Failed to check if preparation is used.'));
       return;
@@ -253,13 +256,13 @@ const PreparationDetailScreen = () => {
         {
           text: t('common.cancel', 'Cancel'),
           style: 'cancel',
-          onPress: () => console.log('Delete cancelled'),
+          onPress: () => appLogger.log('Delete cancelled'),
         },
         {
           text: t('common.delete', 'Delete'),
           style: 'destructive',
           onPress: async () => {
-            console.log(`Preparation ${preparationId} is not used. Proceeding with deletion...`);
+            appLogger.log(`Preparation ${preparationId} is not used. Proceeding with deletion...`);
             try {
               const { error: deletePrepError } = await supabase
                 .from('preparations')
@@ -268,10 +271,10 @@ const PreparationDetailScreen = () => {
 
 
               if (deletePrepError) {
-                console.error(`Error deleting preparation ${preparationId}:`, deletePrepError);
+                appLogger.error(`Error deleting preparation ${preparationId}:`, deletePrepError);
                 Alert.alert(t('common.error', 'Error'), t('alerts.errorDeletingPrep', 'Failed to delete preparation.'));
               } else {
-                console.log(`Preparation ${preparationId} deleted successfully.`);
+                appLogger.log(`Preparation ${preparationId} deleted successfully.`);
                 Alert.alert(t('common.success', 'Success'), t('alerts.prepDeletedSuccessfully', 'Preparation deleted successfully.'));
 
                 queryClient.invalidateQueries({ queryKey: ['preparations'] });
@@ -279,7 +282,7 @@ const PreparationDetailScreen = () => {
                 navigation.goBack();
               }
             } catch (error: any) {
-              console.error("Unexpected error during preparation deletion:", error);
+              appLogger.error("Unexpected error during preparation deletion:", error);
               Alert.alert(t('common.error', 'Error'), error.message || t('alerts.errorDeletingPrep', 'Failed to delete preparation.'));
             }
           },
@@ -342,10 +345,10 @@ const PreparationDetailScreen = () => {
                   );
                 })()
               )}
-              {!isFromDishContext && preparation.yield_amount !== null && (
+              {!isFromDishContext && preparation.yield !== null && (
                 // --- Display Base Yield (Scaled) ---
                 (() => {
-                  const baseYield = preparation.yield_amount ?? 0;
+                  const baseYield = preparation.yield ?? 0;
                   const scale = recipeServingScale ?? 1; // Apply recipe scale if passed directly
                   const scaledBaseYield = baseYield * scale;
                   const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
@@ -378,7 +381,7 @@ const PreparationDetailScreen = () => {
 
                 if (isFromDishContext) {
                   // Scale based on amount used in dish
-                  const prepBaseYield = preparation.yield_amount;
+                  const prepBaseYield = preparation.yield;
                   const scaledTargetAmount = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
 
                   // Scale based on total yield
@@ -459,7 +462,7 @@ const PreparationDetailScreen = () => {
                     directions: null,
                     total_time: null, // Not available here
                     yield_unit: null, // Not available here
-                    yield_amount: null, // Not available here
+                    yield: 1, // Not available here, default to 1
                     cooking_notes: null,
                     ingredients: [], // Not available here
                   },

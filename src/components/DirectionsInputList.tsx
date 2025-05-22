@@ -69,7 +69,7 @@ const DirectionsInputList: React.FC<DirectionsInputListProps> = ({
   );
 };
 
-// Add relevant styles from CreateRecipeScreen/CreatePreparationScreen
+// Add relevant styles from CreateDishScreen/CreatePreparationScreen
 const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: SIZES.padding * 1.8,

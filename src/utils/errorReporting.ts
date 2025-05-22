@@ -28,7 +28,7 @@ export const handleError = (
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
   
-  // Log to console for development
+  // Log to appLogger.or development
   appLogger.error(`Error in ${options.componentName}:`, errorMessage);
   if (errorStack) appLogger.error(errorStack);
   

@@ -186,7 +186,7 @@ const ComponentSearchModal: React.FC<ComponentSearchModalProps> = ({
   );
 };
 
-// Add relevant styles from CreateRecipeScreen
+// Add relevant styles from CreateDishScreen
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,

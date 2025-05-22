@@ -9,14 +9,17 @@ export type OnUpdatePrepAmountCallback = (prepKey: string, updatedState: {
   prepUnitId: string | null;
   instructions: string[];
   isDirty: boolean;
+  // Added fields for amount synchronization
+  displayAmount?: string;
+  scaleMultiplier?: number;
 }) => void;
 
 // ADDED: Define callback type for new preparation creation
 export type OnNewPreparationCreatedCallback = (newPrepData: { 
   id: string; 
   name: string; 
-  yieldAmount?: number | null; 
-  yieldUnitId?: string | null 
+  yield?: number | null; 
+  amount_unit_id?: string | null 
 }) => void;
 
 export type RootStackParamList = {
@@ -45,6 +48,7 @@ export type RootStackParamList = {
     initialInstructions?: string[] | null;
     // --- ADDED: Specific amount used in parent dish ---
     dishComponentScaledAmount?: number | null; // The actual amount used in the parent recipe
+    originalPrepBaseAmount?: number | null; // The base yield amount of the preparation itself
     onNewPreparationCreated?: OnNewPreparationCreatedCallback; // ADDED: Callback for new prep creation
   };
   Account: undefined;

@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DishComponent, PreparationIngredient } from '../types';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
 import { formatQuantityAuto, capitalizeWords } from '../utils/textFormatters';
+import { convertAmount } from '../utils/unitHelpers';
 import { useTranslation } from 'react-i18next';
 import { appLogger } from '../services/AppLogService';
 
@@ -19,7 +20,7 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
   const { t } = useTranslation();
 
   // Use translated default for amountLabel
-  const displayLabel = amountLabel || t('components.preparationCard.amountInRecipeLabel', 'Amount in Recipe:');
+  const displayLabel = amountLabel || t('components.preparationCard.amountInRecipeLabel', 'Amount in Recipe');
 
   if (!preparation) {
     // Should ideally not happen if component.isPreparation is true, but handle defensively
@@ -40,8 +41,11 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
       return `${minutes} min`;
   };
 
+  // Calculate effective scale multiplier: prefer component.prepScaleMultiplier if provided
+  const effectiveScaleMultiplier = component.prepScaleMultiplier ?? scaleMultiplier;
+
   // Calculate scaled yield
-  const scaledYieldAmount = preparation.yield_amount ? preparation.yield_amount * scaleMultiplier : null;
+  const scaledYieldAmount = preparation.yield ? preparation.yield * effectiveScaleMultiplier : null;
   const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
   const formattedYield = formatQuantityAuto(scaledYieldAmount, yieldUnitAbbr);
 
@@ -49,7 +53,7 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
   const ingredients = preparation.ingredients || [];
 
   // Simplified display amount logic - always use the component's unit and amount
-  let displayAmount = component.amount ? component.amount * scaleMultiplier : null;
+  let displayAmount = component.amount ? component.amount * effectiveScaleMultiplier : null;
   let displayUnitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
   let displayText = 'N/A';
   
@@ -82,19 +86,22 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
       <Text style={styles.subTitle}>{t('components.preparationCard.subTitle')}</Text>
       {ingredients.length > 0 ? (
         ingredients.slice(0, 3).map((ing: PreparationIngredient) => {
-          // Simplified scaling logic - use the ratio of component amount to preparation yield
           let finalScaledAmount = null;
           const baseIngAmount = ing.amount;
-          const prepBaseYield = preparation.yield_amount; 
-          const scaledPrepAmountInDish = displayAmount; // Amount displayed (already scaled by multiplier)
+          const prepBaseYield = preparation.yield;
+          const componentUnitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
+
+          // Convert scaled amount of preparation used in dish to the unit of preparation yield
+          let scaledPrepAmountInDish: number | null = null;
+          if (displayAmount !== null) {
+            scaledPrepAmountInDish = convertAmount(displayAmount, componentUnitAbbr, yieldUnitAbbr);
+          }
 
           if (baseIngAmount !== null && scaledPrepAmountInDish !== null && prepBaseYield !== null && prepBaseYield > 0) {
-            // Scale based on the ratio of dish amount to preparation yield
             const scaleFactor = scaledPrepAmountInDish / prepBaseYield;
             finalScaledAmount = baseIngAmount * scaleFactor;
           } else if (baseIngAmount !== null) {
-            // Fallback if scaling fails
-            finalScaledAmount = baseIngAmount * scaleMultiplier; 
+            finalScaledAmount = baseIngAmount * effectiveScaleMultiplier;
           }
           
           const ingUnitAbbr = ing.unit?.abbreviation || ing.unit?.unit_name || '';

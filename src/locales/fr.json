@@ -8,7 +8,10 @@
     "changeToFrench": "Changer en français",
     "changeToItalian": "Changer en italien",
     "preferencesTitle": "Préférences",
+    "noKitchenSelected": "Aucune cuisine sélectionnée",
+    "kitchen": "Cuisine",
     "notifications": "Notifications",
+    "pushNotifications": "Notifications Push",
     "metricUnits": "Utiliser les unités métriques",
     "imperialUnits": "Utiliser les unités impériales",
     "unitSystem": "Système d'unités",
@@ -48,7 +51,6 @@
       "dishes": "Plats",
       "metric": "Métrique",
       "imperial": "Impérial",
-      "referenceIngredient": "Ingrédient de Référence",
       "updating": "Mise à jour...",
       "logout": "Déconnexion",
       "info": "Info",
@@ -56,10 +58,10 @@
       "unknownIngredient": "Ingrédient Inconnu",
       "unknownComponent": "Composant Inconnu",
       "unexpectedError": "Une erreur inattendue s'est produite",
-      "ofReferenceIngredient": "de {{ingredient}}",
       "replace": "Remplacer",
       "create": "Créer",
-      "done": "Terminé"
+      "done": "Terminé",
+      "remove": "Retirer"
     },
     "validation": {
       "required": "{{field}} est requis",
@@ -135,7 +137,9 @@
         "error": {
           "missingKitchenId": "ID de cuisine non configuré. Impossible d'ajouter la section.",
           "documentPick": "Impossible de choisir le document.",
-          "imagePick": "Impossible de choisir les images."
+          "imagePick": "Impossible de choisir les images.",
+          "renameInvalidInput": "Entrée invalide. Veuillez vous assurer qu'une catégorie est sélectionnée et qu'un nouveau nom est fourni.",
+          "renameCategory": "Erreur lors du renommage de la catégorie '{{categoryName}}' : {{error}}"
         },
         "addSectionSuccessTitle": "Succès",
         "addSectionSuccessMessage": "Section \"{{sectionName}}\" ajoutée avec succès.",
@@ -154,7 +158,9 @@
         "createDishOption": "Plat",
         "createPreparationOption": "Préparation",
         "createActionSheetTitle": "Créer Nouvelle Recette",
-        "newPreparationName": "Nouvelle Préparation"
+        "newPreparationName": "Nouvelle Préparation",
+        "renameCategoryTitle": "Renommer la Catégorie '{{categoryName}}'",
+        "newCategoryNamePlaceholder": "Entrez le nouveau nom de la catégorie"
       },
       "categories": {
         "loading": "Chargement des Catégories...",
@@ -167,7 +173,10 @@
         "preparationsTitle": "Préparations",
         "noDishesInCategory": "Aucun plat trouvé dans cette catégorie",
         "loading": "Chargement de {{categoryName}}...",
-        "titleFallback": "Plats de Catégorie"
+        "titleFallback": "Plats de Catégorie",
+        "error": {
+          "removeFromCategory": "Erreur lors du retrait de '{{dishName}}' de la catégorie : {{error}}"
+        }
       },
       "allRecipes": {
         "searchPlaceholder": "Rechercher des recettes...",
@@ -329,7 +338,7 @@
         "addStepButton": "+ Ajouter Étape",
         "editDishTitle": "Modifier Plat",
         "editPreparationTitle": "Modifier Préparation",
-        "confirmParsedTitle": "Confirmer Recette Analysée",
+        "confirmParsedTitle": "Recette Analysée",
         "createTitle": "Créer Nouvelle Recette",
         "adjustServingsLabelProportions": "Ajuster Portions (Proportions Seulement)",
         "updateRecipeButton": "Mettre à Jour Recette",
@@ -436,7 +445,12 @@
       "warningCannotCreatePrepInPrep": "Impossible de créer une nouvelle préparation directement dans une autre. Veuillez la créer séparément d'abord.",
       "errorCreatingIngredient": "Erreur lors de la création de l'ingrédient : {{name}}",
       "errorCreatingIngredientNoKitchen": "Impossible de créer l'ingrédient : Aucune cuisine active sélectionnée.",
-      "errorCreatingIngredientNoDefaultUnit": "Impossible de créer l'ingrédient : Aucune unité par défaut trouvée."
+      "errorCreatingIngredientNoDefaultUnit": "Impossible de créer l'ingrédient : Aucune unité par défaut trouvée.",
+      "toast_unableToSync": "Unable to sync kitchen data in realtime. Changes will be applied when connection is restored.",
+      "header_toast_connectionError_title": "Erreur de Connexion",
+      "header_toast_disconnected_title": "Mode Hors Ligne",
+      "header_toast_reconnected_title": "Reconnecté",
+      "header_toast_reconnected_message": "Connexion restaurée. Vous êtes à nouveau en ligne."
     },
     "components": {
       "sidebar": {
@@ -446,7 +460,9 @@
         "componentsTitle": "Composants",
         "noComponents": "Aucun composant listé",
         "servings_one": "{{count}} portion",
-        "servings_other": "{{count}} portions"
+        "servings_other": "{{count}} portions",
+        "confirmRemoveTitle": "Retirer de la Catégorie",
+        "confirmRemoveMessage": "Êtes-vous sûr de vouloir retirer '{{dishName}}' de cette catégorie ?"
       },
       "preparationCard": {
         "detailsMissingError": "Détails de préparation manquants.",
@@ -454,7 +470,7 @@
         "noIngredientsText": "Aucun ingrédient listé.",
         "subTitle": "Ingrédients",
         "errorText": "Erreur de chargement des détails de préparation",
-        "referenceIngredient": "Ingrédient de référence"
+        "amountInRecipeLabel": "Quantité dans la recette"
       },
       "addCategoryCard": {
         "addButton": "Ajouter",

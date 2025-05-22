@@ -18,7 +18,7 @@ import SupportScreen from '../screens/SupportScreen';
 import DishDetailScreen from '../screens/DishDetailScreen';
 import CategoryRecipesScreen from '../screens/CategoryRecipesScreen';
 import PreparationDetailScreen from '../screens/PreparationDetailScreen';
-import CreateRecipeScreen from '../screens/CreateRecipeScreen';
+import CreateDishScreen from '../screens/CreateDishScreen';
 import CreatePreparationScreen from '../screens/CreatePreparationScreen';
 import AllRecipesScreen from '../screens/AllRecipesScreen';
 import HelpScreen from '../screens/HelpScreen';
@@ -197,7 +197,7 @@ const AppNavigator = () => {
         />
         <Stack.Screen
           name="CreateRecipe"
-          component={CreateRecipeScreen}
+          component={CreateDishScreen}
           options={{
             headerShown: false,
           }}
