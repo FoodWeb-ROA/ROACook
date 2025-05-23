@@ -116,10 +116,8 @@ class DataPrefetchService {
             unit:fk_components_unit(*),
             ingredient:fk_components_ing (
               *,
-              base_unit:ingredients_unit_id_fkey ( * ),
               preparation:preparations!preparation_id (
                 *,
-                yield_unit:units!preparations_amount_unit_id_fkey (*),
                 ingredients:preparation_ingredients!fk_prep_ingredients_prep (
                   *,
                   unit:units!fk_prep_ingredients_unit (*),
@@ -213,11 +211,7 @@ class DataPrefetchService {
         .from('preparations')
         .select(`
           *,
-          yield_unit:units (*),
-          ingredient:ingredients!preparations_preparation_id_fkey (
-            *,
-            base_unit:ingredients_unit_id_fkey(*)
-          )
+          ingredient:ingredients!preparations_preparation_id_fkey
         `)
         .eq('ingredient.kitchen_id', kitchenId)
         .order('ingredient.name') as { 
@@ -227,7 +221,6 @@ class DataPrefetchService {
             directions: string | null;
             total_time: number | null;
             reference_ingredient: string | null;
-            yield_unit: DbUnit | null;
             amount_unit_id: string | null;
             fingerprint: string | null;
             // Assume ingredient includes all fields from FetchedIngredientDetail plus amount
@@ -254,19 +247,14 @@ class DataPrefetchService {
             // Fields from FetchedIngredientDetail
             ingredient_id: prepJoinItem.ingredient.ingredient_id,
             name: prepJoinItem.ingredient.name,
-            cooking_notes: prepJoinItem.ingredient.cooking_notes,
-            storage_location: prepJoinItem.ingredient.storage_location,
             unit_id: prepJoinItem.ingredient.unit_id,
-            base_unit: prepJoinItem.ingredient.base_unit,
             deleted: prepJoinItem.ingredient.deleted,
             kitchen_id: prepJoinItem.ingredient.kitchen_id ?? '',
-            synonyms: prepJoinItem.ingredient.synonyms,
+            cooking_notes: (prepJoinItem.ingredient as any)?.cooking_notes ?? null,
             // Fields from FetchedPreparationDetail (via prepJoinItem directly)
             preparation_id: prepJoinItem.preparation_id,
             directions: prepJoinItem.directions ?? '', // Provide default empty string for null
             total_time: prepJoinItem.total_time,
-            yield_unit: prepJoinItem.yield_unit,
-            amount_unit_id: prepJoinItem.amount_unit_id,
             fingerprint: prepJoinItem.fingerprint,
             // Fields explicitly required by FetchedPreparationDataCombined
             amount: prepJoinItem.ingredient.amount ?? 0, // Ensure amount is number
@@ -279,7 +267,7 @@ class DataPrefetchService {
 
         // Fetch sub-ingredients for this preparation
         const { data: ingredientsData, error: ingredientsError } = await supabase
-          .from('preparation_ingredients')
+          .from('preparation_components')
           .select(`
             *,
             unit:units (*),
@@ -367,8 +355,7 @@ class DataPrefetchService {
           ingredient_id,
           name,
           cooking_notes,
-          unit_id,
-          unit:ingredients_unit_id_fkey (*)
+          unit_id
         `)
         .order('name');
 

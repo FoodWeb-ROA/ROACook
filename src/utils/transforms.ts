@@ -18,7 +18,7 @@ type DbIngredient = Database['public']['Tables']['ingredients']['Row'];
 export type DbUnit = Database['public']['Tables']['units']['Row']; // Export needed for hook
 type DbPreparation = Database['public']['Tables']['preparations']['Row'];
 export type DbDishComponent = Database['public']['Tables']['dish_components']['Row']; // Export needed for hook
-type DbPreparationIngredient = Database['public']['Tables']['preparation_ingredients']['Row'];
+type DbPreparationIngredient = Database['public']['Tables']['preparation_components']['Row'];
 
 // --- Export TYPES REPRESENTING DATA STRUCTURES AS FETCHED in the refactored hooks ---
 
@@ -32,13 +32,11 @@ export type FetchedDishData = DbDish & {
 export type FetchedBaseComponent = Pick<DbDishComponent, 'ingredient_id' | 'unit_id' | 'amount' | 'piece_type'>;
 
 // Type for ingredient details fetched separately
-export type FetchedIngredientDetail = DbIngredient & { 
-    base_unit: DbUnit | null; // Joined base unit
-};
+export type FetchedIngredientDetail = DbIngredient;
 
 // Type for preparation details fetched separately
 export type FetchedPreparationDetail = DbPreparation & { 
-    yield_unit: DbUnit | null; // Joined yield unit
+    cooking_notes: string | null; // cooking_notes will now be part of DbPreparation
 };
 
 // Type for preparation ingredients fetched separately
@@ -60,13 +58,10 @@ export type AssembledComponentData = {
 // Update combined data type for transformPreparation input
 // Allow nulls for fields that can be null in DbIngredient/DbPreparation
 export type FetchedPreparationDataCombined = 
-    Omit<FetchedIngredientDetail, 'created_at' | 'updated_at'> & 
-    Omit<FetchedPreparationDetail, 'created_at'> & // Keep omitting created_at from prep
+    Omit<FetchedIngredientDetail, 'created_at' | 'updated_at' | 'cooking_notes'> & // cooking_notes removed from ingredient part
+    Omit<FetchedPreparationDetail, 'created_at'> & // cooking_notes will be inherited from FetchedPreparationDetail (DbPreparation)
     { 
         // Add missing fields from FetchedPreparationDetail
-        amount_unit_id: string | null; 
-        fingerprint: string | null;
-        // Explicitly list fields required by the combination
         amount: number;
         created_at: string | null; 
         updated_at: string | null;
@@ -98,24 +93,20 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
 
   const isPreparation = !!preparation; // Check if preparation details exist
   let finalPrepDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null = null;
-  let finalRawIngredientDetails: (Ingredient & { base_unit: Unit | null }) | null = null;
+  let finalRawIngredientDetails: Ingredient | null = null;
 
   if (isPreparation && preparation) {
       // --- MODIFIED: Construct finalPrepDetails directly ---
-      // Use the details from the already fetched 'preparation' object (which includes yield_unit)
+      // Use the details from the already fetched 'preparation' object
       // and the already transformed 'prepIngredients' list.
       finalPrepDetails = {
           preparation_id: preparation.preparation_id,
           name: ingredient.name, // Name comes from the base ingredient row linked to the prep
           directions: preparation.directions || null,
           total_time: preparation.total_time || null,
-          // Directly use the transformed yield unit from the fetched preparation data
-          yield_unit: transformUnit(preparation.yield_unit), 
-          // Yield amount comes from the base ingredient row linked to the prep
-          yield: ingredient.amount ?? null, 
           // Use the already transformed ingredients list passed in
           ingredients: prepIngredients || [], 
-          cooking_notes: ingredient.cooking_notes ?? null, // Notes come from the base ingredient
+          cooking_notes: preparation.cooking_notes ?? null, // Notes now come from the preparation itself
       };
       // --- END MODIFICATION ---
       // --- ADD LOGGING: Final Prep Details ---
@@ -125,7 +116,6 @@ export function transformDishComponent(assembledData: AssembledComponentData): D
       // Transform raw ingredient details
       finalRawIngredientDetails = {
           ...transformIngredient(ingredient),
-          base_unit: transformUnit(ingredient.base_unit)
       };
   }
 
@@ -157,8 +147,6 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
           name: 'Unknown Preparation',
           directions: null,
           total_time: null,
-          yield_unit: transformUnit(null),
-          yield: null,
           ingredients: [],
           cooking_notes: null 
         };
@@ -186,11 +174,9 @@ export function transformPreparation(combinedData: FetchedPreparationDataCombine
     preparation_id: combinedData.preparation_id, 
     name: combinedData.name, 
     directions: processedDirections, 
-    total_time: combinedData.total_time || 0, 
-    yield_unit: transformUnit(combinedData.yield_unit), 
-    yield: combinedData.amount, // Get yield amount from ingredient data
+    total_time: combinedData.total_time || null, // Keep null if it is null 
     ingredients: [], 
-    cooking_notes: combinedData.cooking_notes ?? null, 
+    cooking_notes: combinedData.cooking_notes ?? null, // cooking_notes will now be directly from combinedData (originating from DbPreparation)
   };
 
   // --- ADD LOGGING: Output data ---
@@ -229,38 +215,24 @@ export function transformPreparationIngredient(dbIngredient: FetchedPreparationI
 export function transformIngredient(dbIngredient: FetchedIngredientDetail | DbIngredient | null): Ingredient {
   if (!dbIngredient) return { 
       ingredient_id: '', 
-      name: 'Unknown', 
-      cooking_notes: null, 
-      storage_location: null,
-      amount: 0,          
+      name: 'Unknown',         
       created_at: '',    
-      synonyms: null,
       unit_id: '',
       updated_at: '',
       deleted: false, 
       kitchen_id: '', 
       isPreparation: false, 
-      base_unit: null
     };
-
-  // Safely access base_unit only if it exists (i.e., input is FetchedIngredientDetail)
-  const baseUnit = 'base_unit' in dbIngredient ? transformUnit(dbIngredient.base_unit) : null;
-
+  
   // Construct the Ingredient object, providing defaults for required fields if null/undefined
   const result: Ingredient = {
     ingredient_id: dbIngredient.ingredient_id, 
     name: dbIngredient.name, 
-    amount: dbIngredient.amount ?? 0, // Default to 0 if null/undefined
     created_at: dbIngredient.created_at || '', // Default to empty string
     deleted: dbIngredient.deleted ?? false, // Default to false
     kitchen_id: dbIngredient.kitchen_id || '', // Default to empty string
     unit_id: dbIngredient.unit_id || '', // Default to empty string
-    updated_at: dbIngredient.updated_at || '', // Default to empty string
-    // Optional fields
-    cooking_notes: dbIngredient.cooking_notes ?? null,
-    storage_location: dbIngredient.storage_location ?? null,
-    synonyms: dbIngredient.synonyms ?? null,
-    base_unit: baseUnit, 
+    updated_at: dbIngredient.updated_at || '', // Default to empty string 
     // isPreparation should be set based on context where this is called, not here
   };
 
@@ -270,15 +242,23 @@ export function transformIngredient(dbIngredient: FetchedIngredientDetail | DbIn
 /**
  * Transform a unit from the fetched data structure
  */
-export function transformUnit(dbUnit: DbUnit | null | undefined): Unit { // Allow undefined
-  if (!dbUnit) return { unit_id: '', unit_name: 'N/A', system: null, abbreviation: '' };
-  
-  return {
-    unit_id: dbUnit.unit_id,
-    unit_name: dbUnit.unit_name,
-    system: dbUnit.system,
-    abbreviation: dbUnit.abbreviation || dbUnit.unit_name
-  };
+export function transformUnit(dbUnit: DbUnit | null | undefined): Unit {
+    if (!dbUnit) {
+        return {
+            unit_id: '',
+            unit_name: 'N/A',
+            system: null,
+            abbreviation: 'N/A',
+            measurement_type: null,
+        };
+    }
+    return {
+        unit_id: dbUnit.unit_id,
+        unit_name: dbUnit.unit_name,
+        system: dbUnit.system,
+        abbreviation: dbUnit.abbreviation,
+        measurement_type: dbUnit.measurement_type ?? null,
+    };
 }
 
 /**
@@ -289,14 +269,14 @@ export function transformMenuSection(dbMenuSection: DbMenuSection | null): MenuS
   if (!dbMenuSection) return { 
       menu_section_id: '', 
       name: 'Uncategorized', 
-      kitchen_id: '' // Add default kitchen_id
+      kitchen_id: '' 
     };
   
   // Include kitchen_id in the returned object
   return {
     menu_section_id: dbMenuSection.menu_section_id,
     name: dbMenuSection.name,
-    kitchen_id: dbMenuSection.kitchen_id // Include kitchen_id
+    kitchen_id: dbMenuSection.kitchen_id 
   };
 }
 

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Session } from '@supabase/supabase-js';
 import { ILanguage, IUser } from '../types';
+import { appLogger } from '../services/AppLogService';
 
 export interface AuthState {
 	session: Session | null;

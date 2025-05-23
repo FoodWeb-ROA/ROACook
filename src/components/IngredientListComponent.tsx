@@ -106,26 +106,31 @@ const IngredientListComponent: React.FC<IngredientListComponentProps> = ({
 
               if (isNaN(inputNum) || !currentUnit) {
                 // If input is not a number or unit is missing, update with raw value
-                const amountField = isPrepScreen ? 'amountStr' : 'amount'; // Use 'amountStr' for EditablePrepIngredient
-                onUpdate(itemKey, amountField, value);
+                const amountFieldToUpdate = isPrepScreen ? 'amountStr' : 'amount'; 
+                onUpdate(itemKey, amountFieldToUpdate, value);
                 return;
               }
 
-              let baseAmountToNormalize: number;
-              if (isPrepScreen) {
-                baseAmountToNormalize = inputNum;
+              let baseAmountToStore: number;
+              // inputNum is the new scaled amount the user typed (or the base amount if scale is 1).
+              // We need to calculate the new base amount to store.
+              // currentRecipeScale is the effective scale factor that was used for display.
+              if (currentRecipeScale !== 0 && currentRecipeScale !== undefined) {
+                baseAmountToStore = inputNum / currentRecipeScale;
               } else {
-                if (currentRecipeScale !== 0 && currentRecipeScale !== undefined) {
-                  baseAmountToNormalize = inputNum / currentRecipeScale;
-                } else {
-                  baseAmountToNormalize = inputNum; // Fallback if scale is 0 or undefined
-                }
+                // Fallback if scale is 0 or undefined (e.g. slider at 0, or servings issue).
+                // In this case, the input is treated as the base amount directly.
+                baseAmountToStore = inputNum; 
               }
 
-              const { amount: normalizedAmount, unitAbbr: normalizedUnitAbbr } = normalizeAmountAndUnit(baseAmountToNormalize, currentUnit.abbreviation);
+              // Now normalize this new baseAmountToStore
+              const { amount: normalizedAmount, unitAbbr: normalizedUnitAbbr } = normalizeAmountAndUnit(baseAmountToStore, currentUnit.abbreviation);
               const newNormalizedUnit = units.find(u => u.abbreviation && u.abbreviation.toLowerCase() === normalizedUnitAbbr.toLowerCase());
 
-              const amountFieldToUpdate = isPrepScreen ? 'amountStr' : 'amount';
+              // For isPrepScreen, update 'amountStr' (EditablePrepIngredient's base amount string)
+              // For !isPrepScreen, update 'amount' (ComponentInput's base amount string)
+              // This variable was already correctly defined above, re-stating for clarity of target field.
+              const amountFieldToUpdate = isPrepScreen ? 'amountStr' : 'amount'; 
               onUpdate(itemKey, amountFieldToUpdate, normalizedAmount.toString());
 
               if (newNormalizedUnit && newNormalizedUnit.unit_id !== currentUnit.unit_id) {

@@ -2,13 +2,13 @@
 
 ## Issue: Preparation Self-Referencing During Save from Parser
 
-**Description:** When parsing a recipe containing a preparation (e.g., "Cauliflower Mash") which itself contains an ingredient with a similar name (e.g., "cauliflower"), the ingredient is incorrectly resolved to the preparation itself during the pre-processing stage (`recipeProcessor.ts`). This leads to a self-referencing entry in the `preparation_ingredients` table when the dish is saved.
+**Description:** When parsing a recipe containing a preparation (e.g., "Cauliflower Mash") which itself contains an ingredient with a similar name (e.g., "cauliflower"), the ingredient is incorrectly resolved to the preparation itself during the pre-processing stage (`recipeProcessor.ts`). This leads to a self-referencing entry in the `preparation_components` table when the dish is saved.
 
 **Status:** Unresolved (Persistent bad data likely)
 
 **Attempted Fixes:**
 *   Modified `recipeProcessor.ts` (`processParsedRecipe` function) to check if a matched sub-ingredient ID is the same as the parent preparation ID. If they match, the sub-ingredient is treated as unmatched. 
-    *   **Result:** Logs confirmed this check worked correctly during pre-processing, and the sub-ingredient was marked as unmatched (`ingredient_id: null`). However, the self-reference still appears in the saved data, suggesting that either the save logic (`handleSaveDish`/`createNewPreparation`) incorrectly handles the `null` ID later, or (more likely) previously saved bad data in `preparation_ingredients` is not being cleaned up by the current dish overwrite logic.
+    *   **Result:** Logs confirmed this check worked correctly during pre-processing, and the sub-ingredient was marked as unmatched (`ingredient_id: null`). However, the self-reference still appears in the saved data, suggesting that either the save logic (`handleSaveDish`/`createNewPreparation`) incorrectly handles the `null` ID later, or (more likely) previously saved bad data in `preparation_components` is not being cleaned up by the current dish overwrite logic.
 
 ## Issue: Missing Time/Yield for Preparations When Saving Dish from Parser
 

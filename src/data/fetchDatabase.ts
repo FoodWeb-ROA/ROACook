@@ -18,7 +18,7 @@ export async function fetchAllData() {
       supabase.from('units').select('*'),
       supabase.from('ingredients').select('*'),
       supabase.from('menu_section').select('*'),
-      supabase.from('preparation_ingredients').select('*'),
+      supabase.from('preparation_components').select('*'),
       supabase.from('preparations').select('*'),
       supabase.from('dishes').select('*'), 
       supabase.from('dish_components').select('*'), 
@@ -96,7 +96,7 @@ export async function fetchDishesWithRelatedData() { // Renamed function
     // Fetch ingredient details (including base unit)
     const { data: allIngredients, error: ingredientsError } = await supabase
         .from('ingredients')
-        .select('*, base_unit:ingredients_unit_id_fkey(*)')
+        .select('*')
         .in('ingredient_id', allIngredientIds);
     if (ingredientsError) throw ingredientsError;
     const ingredientsMap = new Map(allIngredients?.map(ing => [ing.ingredient_id, ing]));
@@ -104,7 +104,7 @@ export async function fetchDishesWithRelatedData() { // Renamed function
     // Fetch preparation details (for those ingredients that are preps)
     const { data: allPreparations, error: preparationsError } = await supabase
         .from('preparations')
-        .select('*, yield_unit:preparations_yield_unit_id_fkey(*)')
+        .select('*')
         .in('preparation_id', allIngredientIds);
     if (preparationsError) throw preparationsError;
     const preparationsMap = new Map(allPreparations?.map(prep => [prep.preparation_id, prep]));
@@ -114,8 +114,8 @@ export async function fetchDishesWithRelatedData() { // Renamed function
     let allPrepIngredients: any[] = [];
     if (preparationIds.length > 0) {
         const { data: fetchedPrepIngs, error: prepIngsError } = await supabase
-            .from('preparation_ingredients')
-            .select('*, unit:preparation_ingredients_unit_id_fkey(*), ingredient:preparation_ingredients_ingredient_id_fkey(*)')
+            .from('preparation_components')
+            .select('*, unit:preparation_components_unit_id_fkey(*), ingredient:preparation_components_ingredient_id_fkey(*)')
             .in('preparation_id', preparationIds);
         if (prepIngsError) throw prepIngsError;
         allPrepIngredients = fetchedPrepIngs || [];

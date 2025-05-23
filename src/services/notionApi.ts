@@ -24,7 +24,7 @@ export interface FeedbackParams {
 
 export const submitFeedback = async (params: FeedbackParams): Promise<boolean> => {
   const userFeedback = `User Feedback Submitted:\n----------------------\n${params.feedbackText}`;
-  const recentAppLogs = appLogger.etLogs(); 
+  const recentAppLogs = appLogger.getlogs(); 
   let combinedLogContent = userFeedback;
 
   if (recentAppLogs && recentAppLogs.trim() !== '') {

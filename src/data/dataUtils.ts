@@ -167,7 +167,6 @@ export async function fetchDishWithRelatedData(dishId: string) {
         unit:dish_components_unit_id_fkey(*),
         ingredient:dish_components_ingredient_id_fkey (
           *,
-          base_unit:ingredients_unit_id_fkey ( * ),
           preparation:preparations!preparation_id (*)
         )
       `)

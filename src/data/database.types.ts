@@ -170,41 +170,29 @@ export type Database = {
       }
       ingredients: {
         Row: {
-          amount: number
-          cooking_notes: string | null
           created_at: string
           deleted: boolean | null
           ingredient_id: string
           kitchen_id: string
           name: string
-          storage_location: string | null
-          synonyms: string[] | null
           unit_id: string
           updated_at: string
         }
         Insert: {
-          amount?: number
-          cooking_notes?: string | null
           created_at?: string
           deleted?: boolean | null
           ingredient_id?: string
           kitchen_id?: string
           name: string
-          storage_location?: string | null
-          synonyms?: string[] | null
           unit_id: string
           updated_at?: string
         }
         Update: {
-          amount?: number
-          cooking_notes?: string | null
           created_at?: string
           deleted?: boolean | null
           ingredient_id?: string
           kitchen_id?: string
           name?: string
-          storage_location?: string | null
-          synonyms?: string[] | null
           unit_id?: string
           updated_at?: string
         }
@@ -215,13 +203,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "kitchen"
             referencedColumns: ["kitchen_id"]
-          },
-          {
-            foreignKeyName: "ingredients_unit_id_fkey"
-            columns: ["unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
-            referencedColumns: ["unit_id"]
           },
         ]
       }
@@ -310,7 +291,7 @@ export type Database = {
           },
         ]
       }
-      preparation_ingredients: {
+      preparation_components: {
         Row: {
           amount: number | null
           created_at: string | null
@@ -385,7 +366,7 @@ export type Database = {
       }
       preparations: {
         Row: {
-          amount_unit_id: string | null
+          cooking_notes: string | null
           created_at: string | null
           deleted: boolean | null
           directions: string
@@ -393,10 +374,9 @@ export type Database = {
           preparation_id: string
           total_time: number | null
           updated_at: string | null
-          yield: number
         }
         Insert: {
-          amount_unit_id?: string | null
+          cooking_notes?: string | null
           created_at?: string | null
           deleted?: boolean | null
           directions: string
@@ -404,10 +384,9 @@ export type Database = {
           preparation_id: string
           total_time?: number | null
           updated_at?: string | null
-          yield?: number
         }
         Update: {
-          amount_unit_id?: string | null
+          cooking_notes?: string | null
           created_at?: string | null
           deleted?: boolean | null
           directions?: string
@@ -415,16 +394,8 @@ export type Database = {
           preparation_id?: string
           total_time?: number | null
           updated_at?: string | null
-          yield?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "preparations_amount_unit_id_fkey"
-            columns: ["amount_unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
-            referencedColumns: ["unit_id"]
-          },
           {
             foreignKeyName: "preparations_preparation_id_fkey"
             columns: ["preparation_id"]
@@ -514,9 +485,8 @@ export type Database = {
       }
     }
     Enums: {
-      IngredientType: "Preparation" | "RawIngredient"
       KitchenType: "Personal" | "Team"
-      unit_measurement_type: "weight" | "volume" | "count"
+      unit_measurement_type: "weight" | "volume" | "count" | "preparation"
       unit_system: "metric" | "imperial"
     }
     CompositeTypes: {
@@ -633,9 +603,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      IngredientType: ["Preparation", "RawIngredient"],
       KitchenType: ["Personal", "Team"],
-      unit_measurement_type: ["weight", "volume", "count"],
+      unit_measurement_type: ["weight", "volume", "count", "preparation"],
       unit_system: ["metric", "imperial"],
     },
   },

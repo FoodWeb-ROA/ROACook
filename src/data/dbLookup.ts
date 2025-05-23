@@ -1,7 +1,7 @@
 'use strict';
 
 import { supabase } from './supabaseClient';
-import { Ingredient, Preparation, Dish, PreparationIngredient } from '../types'; // Assuming types are defined here
+import { Ingredient } from '../types';
 import { DbUnit, FetchedIngredientDetail, FetchedPreparationDataCombined, FetchedPreparationDetail, FetchedPreparationIngredient, transformPreparation, transformPreparationIngredient, transformUnit } from '../utils/transforms';
 import { appLogger } from '../services/AppLogService';
 
@@ -36,66 +36,68 @@ export const checkIngredientNameExists = async (name: string): Promise<string | 
  * Finds ingredients with names similar to the query (case-insensitive prefix/suffix match).
  * Also flags if the ingredient is a preparation.
  */
+export interface SlimIngredient {
+  ingredient_id: string;
+  name: string;
+  isPreparation: boolean;
+}
+
 export const findCloseIngredient = async (
-    name: string,
-    limit: number = 10
-): Promise<(Ingredient & { isPreparation?: boolean })[]> => {
-    if (!name?.trim()) return [];
-    const searchTerm = `%${name.trim()}%`;
+  name: string,
+  limit: number = 10
+): Promise<SlimIngredient[]> => {
+  if (!name?.trim()) return [];
+  const searchTerm = `%${name.trim()}%`;
 
-    try {
-        // Step 1: Find ingredients matching the name
-        const { data: ingredientsData, error: ingredientsError } = await supabase
-            .from('ingredients')
-            .select(`
-                ingredient_id,
-                name,
-                unit_id,
-                amount,
-                synonyms,
-                cooking_notes,
-                storage_location
-            `)
-            .ilike('name', searchTerm)
-            .limit(limit);
+  try {
+    // Step 1: Find ingredients matching the name
+    const { data: ingredientsData, error: ingredientsError } = await supabase
+      .from('ingredients')
+      .select(`
+        ingredient_id,
+        name
+      `)
+      .ilike('name', searchTerm)
+      .limit(limit);
 
-        if (ingredientsError) {
-            appLogger.error('Error finding close ingredients (step 1):', ingredientsError);
-            throw ingredientsError;
-        }
-
-        if (!ingredientsData || ingredientsData.length === 0) {
-            return [];
-        }
-
-        // Step 2: Check which of these ingredients are also preparations
-        const ingredientIds = ingredientsData.map(ing => ing.ingredient_id);
-        const { data: preparationsData, error: preparationsError } = await supabase
-            .from('preparations')
-            .select('preparation_id')
-            .in('preparation_id', ingredientIds);
-
-        if (preparationsError) {
-            appLogger.error('Error checking preparations link (step 2):', preparationsError);
-            // Decide how to handle this - return partial results or throw?
-            // For now, let's return ingredients without the isPreparation flag set correctly.
-            return ingredientsData.map(ing => ({ ...(ing as Ingredient), isPreparation: false }));
-        }
-
-        const preparationIds = new Set(preparationsData?.map(p => p.preparation_id) || []);
-
-        // Step 3: Combine results
-        const results = ingredientsData.map((ing: any) => ({
-            ...(ing as Ingredient),
-            isPreparation: preparationIds.has(ing.ingredient_id),
-        }));
-
-        return results;
-
-    } catch (error) {
-        appLogger.error('Supabase call failed (findCloseIngredient):', error);
-        return [];
+    if (ingredientsError) {
+      appLogger.error('Error finding close ingredients (step 1):', ingredientsError);
+      throw ingredientsError;
     }
+
+    if (!ingredientsData || ingredientsData.length === 0) {
+      return [];
+    }
+
+    // Step 2: Check which of these ingredients are also preparations
+    const ingredientIds = ingredientsData.map((ing: any) => ing.ingredient_id);
+    const { data: preparationsData, error: preparationsError } = await supabase
+      .from('preparations')
+      .select('preparation_id')
+      .in('preparation_id', ingredientIds);
+
+    if (preparationsError) {
+      appLogger.error('Error checking preparations link (step 2):', preparationsError);
+      // Decide how to handle this - return partial results or throw?
+      // For now, let's return ingredients without the isPreparation flag set correctly.
+      return ingredientsData.map(ing => ({ ...ing, isPreparation: false } as any));
+    }
+
+    const preparationIds = new Set(preparationsData?.map(p => p.preparation_id) || []);
+
+    // Step 3: Combine results
+    const results: SlimIngredient[] = ingredientsData.map((ing: any) => ({
+      ingredient_id: ing.ingredient_id,
+      name: ing.name,
+      isPreparation: preparationIds.has(ing.ingredient_id),
+    }));
+
+    return results;
+
+  } catch (error) {
+    appLogger.error('Supabase call failed (findCloseIngredient):', error);
+    return [];
+  }
 };
 
 
@@ -210,10 +212,8 @@ export const fetchPreparationDetailsFromDB = async (preparationId: string | unde
       .from('preparations')
       .select(`
         *,
-        yield_unit:units!preparations_amount_unit_id_fkey (*),
         ingredient:ingredients!preparations_preparation_id_fkey (
-          *,
-          base_unit:ingredients_unit_id_fkey(*)
+          *
         )
       `)
       .eq('preparation_id', preparationId)
@@ -226,7 +226,7 @@ export const fetchPreparationDetailsFromDB = async (preparationId: string | unde
       kitchen_id: string | null;
     }) | null;
     // Type assertion for prepJoinData base properties
-    const prepBaseDetails = prepJoinData as FetchedPreparationDetail | null;
+    const prepBaseDetails = prepJoinData as (FetchedPreparationDetail & { cooking_notes: string | null }) | null;
 
     if (!prepBaseDetails || !ingredientDetails) {
       throw new Error(`Preparation ${preparationId} or its linked ingredient not found.`);
@@ -234,28 +234,23 @@ export const fetchPreparationDetailsFromDB = async (preparationId: string | unde
 
     // Construct the combined data for transformation
     const combinedDataForTransform: FetchedPreparationDataCombined = {
-      // Fields from FetchedIngredientDetail
+      // Fields from FetchedIngredientDetail (ingredient part)
       ingredient_id: ingredientDetails.ingredient_id,
       name: ingredientDetails.name,
-      cooking_notes: ingredientDetails.cooking_notes,
-      storage_location: ingredientDetails.storage_location,
-      unit_id: ingredientDetails.unit_id,
-      base_unit: ingredientDetails.base_unit,
+      unit_id: (ingredientDetails as any).unit_id ?? null,    
       deleted: ingredientDetails.deleted,
       kitchen_id: ingredientDetails.kitchen_id || '',
-      synonyms: ingredientDetails.synonyms,
-      // Fields from FetchedPreparationDetail (using prepBaseDetails)
+
+      // Fields from FetchedPreparationDetail (preparation part, via prepBaseDetails)
       preparation_id: prepBaseDetails.preparation_id,
       directions: prepBaseDetails.directions,
       total_time: prepBaseDetails.total_time,
-      yield_unit: prepBaseDetails.yield_unit,
-      yield: prepBaseDetails.yield,
-      amount_unit_id: prepBaseDetails.amount_unit_id, // Include amount_unit_id
-      fingerprint: prepBaseDetails.fingerprint, // Include fingerprint
-      // Fields explicitly required by FetchedPreparationDataCombined
-      amount: ingredientDetails.amount ?? 0,
-      created_at: ingredientDetails.created_at ?? null,
-      updated_at: ingredientDetails.updated_at ?? null,
+      cooking_notes: prepBaseDetails.cooking_notes,   // Sourced from preparation
+      fingerprint: prepBaseDetails.fingerprint,
+      // Fields explicitly required by FetchedPreparationDataCombined that might overlap or need specific sourcing
+      amount: ingredientDetails.amount ?? 0,          // This is the YIELD AMOUNT from the ingredient table
+      created_at: ingredientDetails.created_at ?? null, // from ingredient part
+      updated_at: ingredientDetails.updated_at ?? null, // from ingredient part
     };
 
     // Transform the base preparation details
@@ -263,7 +258,7 @@ export const fetchPreparationDetailsFromDB = async (preparationId: string | unde
 
     // Fetch sub-ingredients for the preparation
     const { data: ingredientsData, error: ingredientsError } = await supabase
-      .from('preparation_ingredients')
+      .from('preparation_components')
       .select(`
         *,
         unit:units!fk_prep_ingredients_unit (*),

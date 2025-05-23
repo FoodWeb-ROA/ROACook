@@ -1,7 +1,8 @@
-import { ParsedRecipe, ParsedIngredient, Unit, ComponentInput, EditablePrepIngredient } from '../types';
+import { ParsedRecipe, ParsedIngredient, Unit, ComponentInput, EditablePrepIngredient, Preparation } from '../types';
 import { findCloseIngredient, checkPreparationNameExists } from '../data/dbLookup';
 import { TFunction } from 'i18next'; // Assuming you use i18next
 import { appLogger } from '../services/AppLogService';
+import { PREPARATION_UNIT_ID } from '../constants/units'; // Corrected import path
 
 /**
  * Processes a raw parsed recipe from the AI parser into the ComponentInput[]
@@ -139,23 +140,27 @@ export const processParsedRecipe = async (
         const finalIngredientId = matchedPrepId ? matchedPrepId : (matchedIngredient?.ingredient_id ? matchedIngredient.ingredient_id : null); // Use null if no ID found
          appLogger.log(`  Final determined ID for ${ing.name}: ${finalIngredientId}`);
 
-        if (!finalIngredientId) {
-            appLogger.warn(`[processParsedRecipe] Skipping component '${ing.name}' because it could not be resolved to an existing ingredient or preparation ID.`);
-            continue; // Skip to the next component in the loop
+        // Determine amount and unit based on whether it's a preparation
+        const isActualPreparation = ing.ingredient_type === 'Preparation';
+        const finalAmount = isActualPreparation ? '1' : String(ing.amount || '');
+        const finalUnitId = isActualPreparation ? PREPARATION_UNIT_ID : matchedUnitId;
+
+        if (isActualPreparation) {
+            appLogger.log(`  Component ${ing.name} is a Preparation. Overriding amount to '1' and unit to PREPARATION_UNIT_ID.`);
         }
 
         mappedComponents.push({
             key: `parsed-${ing.name}-${Date.now()}`,
             ingredient_id: finalIngredientId, 
             name: matchedPrepId ? ing.name : (matchedIngredient?.name || ing.name), // Use matched name if available, else parsed name
-            amount: String(ing.amount || ''), 
-            unit_id: matchedUnitId, 
-            isPreparation: ing.ingredient_type === 'Preparation',
+            amount: finalAmount, 
+            unit_id: finalUnitId, 
+            isPreparation: isActualPreparation,
             // Store the original parsed ingredient data if it's a preparation for later use
-            originalPrep: ing.ingredient_type === 'Preparation' ? (ing as ParsedIngredient) : undefined,
+            originalPrep: isActualPreparation ? (ing as unknown as Preparation) : undefined,
             // Keep sub-ingredient state separate for clarity
             prepStateEditableIngredients: initialPrepStateIngredients,
-            prepStatePrepUnitId: initialPrepStateUnitId, 
+            prepStatePrepUnitId: isActualPreparation ? PREPARATION_UNIT_ID : initialPrepStateUnitId, // Also ensure this reflects the override if it's a prep
             prepStateInstructions: initialPrepStateInstructions,
             item: ing.item || null,
             matched: matched,

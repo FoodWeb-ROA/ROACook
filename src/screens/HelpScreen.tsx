@@ -83,7 +83,7 @@ const HelpScreen = () => {
         setFeedback('');
         
         // Clear logs after successful submission to avoid duplicate logs in future feedback
-        appLogger.learLogs();
+        appLogger.clearLogs();
         
         // Navigate back after successful submission
         setTimeout(() => {

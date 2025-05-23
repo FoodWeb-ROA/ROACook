@@ -1,7 +1,7 @@
 'use client';
 
+import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
 import { appLogger } from '../services/AppLogService';
 
 export const ReactQueryClientProvider = ({ children }: { children: React.ReactNode }) => {

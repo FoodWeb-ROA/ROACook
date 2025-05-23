@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { queryClient } from '../data/queryClient';
 import { supabase } from '../data/supabaseClient';
 import { useTypedSelector } from '../hooks/useTypedSelector';
+import { appLogger } from '../services/AppLogService';
 
 type CategoryRecipesRouteProp = RouteProp<RootStackParamList, 'CategoryRecipes'>;
 type CategoryRecipesNavigationProp = StackNavigationProp<RootStackParamList>;

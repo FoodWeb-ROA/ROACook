@@ -18,7 +18,7 @@ const WATCHED_TABLES = [
     'dishes', 
     'ingredients', 
     'preparations', 
-    'preparation_ingredients',
+    'preparation_components',
     'menu_section',
     'dish_components'
 ];

@@ -1,260 +1,158 @@
-# ROACook - Recipe Management Mobile App (Internal Developer Documentation)
+# ROACook Technical Documentation
 
-## Overview
+## 1. Overview
 
-`ROACook` is a mobile application built using the Expo framework with React Native and TypeScript. It serves as the primary user interface for managing and interacting with recipes. The application connects to a Supabase backend for data persistence and utilizes various libraries for navigation, UI components, styling, and internationalization.
+ROACook is a comprehensive mobile application meticulously designed for the intuitive management of recipes, ingredients, and broader kitchen-related data. It empowers users with the ability to seamlessly create, view, dynamically scale, and efficiently organize their culinary creations and their constituent components. The application is developed using React Native, leveraging the Expo framework for a streamlined development experience, and relies on Supabase for its robust backend infrastructure, encompassing database services, authentication, and potentially real-time features.
 
-## Project Structure
+This document serves as an in-depth technical guide for developers, outlining the application's architecture, data flow, core functionalities, interactions with external services, and setup procedures. Its goal is to provide a clear understanding of the application's internals to facilitate ongoing development, maintenance, and onboarding of new team members.
 
-```
-ROACook/
-├── .expo/             # Expo development cache and logs
-├── .git/              # Git repository data
-├── .vscode/           # VSCode workspace settings
-├── assets/            # Static assets (fonts, images)
-│   ├── fonts/
-│   └── *.png
-├── node_modules/      # Project dependencies
-├── scripts/           # Utility scripts (e.g., data import/export)
-├── src/               # Main application source code
-│   ├── components/    # Reusable UI components
-│   ├── constants/     # Constant values (theme, dimensions, etc.)
-│   ├── context/       # React Context providers
-│   ├── data/          # Data structures or static data
-│   ├── hooks/         # Custom React hooks (including data fetching)
-│   ├── locales/       # Internationalization (i18n) language files
-│   ├── navigation/    # Navigation setup (React Navigation)
-│   ├── persistence/   # Offline storage utilities
-│   │   └── offlineRecipes.ts # Individual recipe caching logic
-│   ├── realtime/      # Realtime subscription helpers
-│   │   └── supabaseChannelHelpers.ts # Supabase channel subscription helper
-│   ├── sagas/         # Redux Saga middleware for side effects
-│   │   ├── auth/         # Authentication flow sagas
-│   │   ├── kitchens/     # Kitchen management sagas (incl. realtime)
-│   │   ├── dishes/       # Dish realtime update saga
-│   │   ├── ingredients/  # Ingredient realtime update saga
-│   │   ├── preparations/ # Preparation realtime update saga
-│   │   └── rootSaga.ts   # Root saga combining all sagas
-│   ├── screens/       # Application screens/views
-│   ├── services/      # Services interacting with external APIs
-│   ├── slices/        # Redux Toolkit state slices
-│   ├── store.ts       # Redux store configuration
-│   ├── utils/         # Utility functions (transforms, formatting, etc.)
-│   ├── i18n.ts        # i18next initialization
-│   └── types.ts       # TypeScript type definitions
-├── .env               # Environment variables (**DO NOT COMMIT**)
-├── .gitignore         # Files and directories ignored by Git
-├── App.tsx            # Main application entry point component
-├── app.json           # Expo application configuration
-├── babel.config.js    # Babel configuration
-├── eas.json           # EAS Build configuration
-├── metro.config.js    # Metro bundler configuration
-├── package.json       # Project metadata and dependencies
-├── tsconfig.json      # TypeScript compiler configuration
-└── ...                # Other config files (yarn.lock, etc.)
-```
+## 2. Architecture
 
-## Key Technologies & Libraries
+The ROACook application is built upon a modular architectural paradigm, emphasizing a strong separation of concerns to enhance maintainability, scalability, and testability. This architecture primarily integrates React Native for the user interface, Redux for predictable global state management, React Query for efficient server state synchronization, and Supabase for all backend operations.
 
-*   **Framework:** Expo SDK / React Native
-*   **Language:** TypeScript
-*   **UI Toolkit:** React Native Paper, NativeWind (Tailwind for RN)
-*   **Navigation:** React Navigation (Stack, Bottom Tabs, Drawer)
-*   **State Management:**
-    *   **Client/UI State:** Redux Toolkit + Redux Saga (`src/store.ts`, `src/slices/`, `src/sagas/`)
-    *   **Server State & Caching:** TanStack Query (React Query) v5 (`@tanstack/react-query`)
-*   **Persistence:**
-    *   `redux-persist` for Redux state (`auth`, `kitchens` slices).
-    *   `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` for React Query cache.
-    *   Custom `AsyncStorage` caching for individual recipes (`src/persistence/offlineRecipes.ts`).
-*   **Local Storage:** AsyncStorage
-*   **Backend Integration:** Supabase JS Client (`@supabase/supabase-js`)
-*   **Realtime Updates:** Supabase Realtime + Redux Saga
-*   **Internationalization:** i18next, react-i18next, expo-localization
-*   **Fonts:** `expo-font`
-*   **Gestures & Animations:** `react-native-gesture-handler`, `react-native-reanimated`
-*   **Media:** `expo-image-picker`
-*   **Image Generation:** Together AI via Supabase Edge Functions
-*   **Error Reporting:** Custom Notion integration
+### 2.1. Core Technologies & Rationale
 
-## Setup & Running
+- **Frontend:** React Native (with Expo)
+  - **Rationale:** Chosen for its cross-platform capabilities, allowing for a single codebase to target both iOS and Android, significantly reducing development time and effort. Expo further simplifies development by managing build configurations, providing a rich set of pre-built native modules (e.g., camera, file system), offering Over-The-Air (OTA) updates for rapid deployment of fixes and features, and streamlining the submission process to app stores.
+- **State Management (Global):** Redux with Redux Toolkit and Redux Saga.
+  - **Rationale:** Redux provides a centralized store for global application state, such as user authentication status, active kitchen context, and UI preferences. This ensures a single source of truth and predictable state transitions. Redux Toolkit is utilized to simplify Redux development with best practices like Immer for immutable updates (reducing boilerplate and potential errors) and `createSlice` for generating reducers and action creators concisely. Redux Saga is employed to manage complex asynchronous operations and side effects (e.g., login sequences, multi-step data fetching/processing not directly tied to server state) in a more testable and manageable way than thunks, especially for intricate workflows involving multiple API calls or conditional logic.
+  - `redux-persist` is integrated to persist critical global state (e.g., authentication tokens, user's active kitchen ID) to `AsyncStorage`. This ensures a seamless user experience across app sessions, as users don't have to re-authenticate or re-select their kitchen every time they open the app.
+- **State Management (Server):** React Query (`@tanstack/react-query`)
+  - **Rationale:** Selected for its powerful capabilities in fetching, caching, synchronizing, and updating server state. It significantly reduces the amount of boilerplate code needed for data fetching compared to manual Redux-based approaches for server data. Features like automatic refetching on window focus or network reconnect, stale-while-revalidate caching strategies, optimistic updates, and query invalidation simplify the challenge of keeping the UI in sync with backend data and improve perceived performance.
+  - It leverages `@supabase-cache-helpers/postgrest-react-query` for optimized integration with Supabase, providing utilities that understand Supabase's PostgREST API structure for cache key generation and data manipulation, further streamlining development.
+- **Backend:** Supabase
+  - **Rationale:** An open-source Firebase alternative, Supabase offers a suite of backend tools including a PostgreSQL database, authentication, instant APIs (PostgREST), edge functions (serverless functions), real-time subscriptions, and storage. Its ease of use, auto-generated APIs based on the database schema, and integrated services make it an excellent choice for rapid development and scalable applications without the need to manage complex backend infrastructure.
+- **Navigation:** React Navigation (`@react-navigation`)
+  - **Rationale:** The de-facto standard for navigation in React Native applications. It provides a flexible and extensible solution for managing screen transitions, supporting various navigation patterns like stack navigators (for hierarchical navigation), drawer navigators (for main menu access), and tab navigators, all of which are utilized within ROACook to create an intuitive user flow.
+- **Unit Handling:** Custom logic within `src/utils/unitHelpers.ts`
+  - **Rationale:** Unit interpretation, conversion, and normalization are centralized in `src/utils/unitHelpers.ts`. This module employs a simplified, custom approach using predefined conversion factors for weight (`WEIGHT_FACTORS`) and volume (`VOLUME_FACTORS`) units (e.g., grams to kilograms, ml to liters). It does **not** use external libraries like `js-quantities`. This approach provides direct control over supported units and conversion logic, tailored specifically to the application's needs. The system handles a special `PREPARATION_UNIT_ABBR` ('prep') which signifies a preparation used as a component, treated as a unitless multiplier in scaling rather than a convertible unit. The focus is on storing user-entered units and normalizing them for display rather than enforcing a global user-selected unit system.
+- **Internationalization (i18n):** `i18next` with `react-i18next`.
+  - **Rationale:** Provides a comprehensive framework for translating the application into multiple languages, enhancing its accessibility and potential user base. It supports features like pluralization, context, and interpolation.
+- **Logging:** Custom `AppLogService` (`src/services/AppLogService.ts`)
+  - **Rationale:** A dedicated service for application-level logging. This allows for consistent log formatting (e.g., timestamps, log levels) and provides a central point for potentially integrating with external monitoring and error reporting services (e.g., Sentry, or the existing Notion integration for errors), facilitating easier debugging and issue tracking.
 
-1.  **Install Dependencies:**
-    ```bash
-    npm install
-    # or
-    yarn install
-    ```
-2.  **Environment Variables:**
-    *   Create a `.env` file in the `ROACook` root directory.
-    *   Add your Supabase URL and Anon Key:
-        ```dotenv
-        SUPABASE_URL=YOUR_SUPABASE_URL
-        SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-        # Notion integration (for error reporting and feedback)
-        EXPO_PUBLIC_NOTION_API_KEY=YOUR_NOTION_API_KEY
-        EXPO_PUBLIC_NOTION_DATABASE_ID=YOUR_NOTION_DATABASE_ID
-        ```
-    *   *Note:* Ensure `.env` is listed in `.gitignore`.
-3.  **Start the Development Server:**
-    ```bash
-    npm start
-    # or
-    yarn start
-    ```
-4.  **Run on Device/Emulator:**
-    *   Follow the instructions in the terminal after running `npm start`. You can run on Android, iOS, or Web.
-    *   `npm run android` / `yarn android`
-    *   `npm run ios` / `yarn ios`
-    *   `npm run web` / `yarn web`
+### 2.2. Directory Structure (Key `src` Folders Explained)
 
-## Core Components & Concepts
+- `src/assets`: Contains static resources such as images (icons, placeholders, illustrations), custom fonts, and potentially other static files used throughout the application.
+- `src/components`: Houses reusable UI components (e.g., `AppHeader.tsx`, `UnitDisplay.tsx`, `IngredientCard.tsx`, `CustomButton.tsx`) that are used across multiple screens. This promotes code reuse, consistent UI/UX, and easier maintenance of visual elements.
+- `src/constants`: Stores global constants, including theme definitions (colors, font sizes, spacing units in `theme.ts`), API endpoint keys (if not solely in .env), and other application-wide static values that don't change at runtime (e.g., `PREPARATION_UNIT_ID`, `PREPARATION_UNIT_ABBR` in `src/constants/units.ts`).
+- `src/context`: (Previously used for `UnitSystemContext.tsx`). This directory is now largely deprecated for unit handling, as this logic has been centralized in `src/utils/unitHelpers.ts`. It might still be used for other specific, localized React context needs if they arise.
+- `src/data`:
+  - `supabaseClient.ts`: The single source of truth for initializing and configuring the Supabase JavaScript client. It handles environment variables for Supabase credentials and sets up default options, including `AsyncStorage` for auth persistence, ensuring a consistent client instance is used app-wide.
+  - `database.types.ts`: Contains TypeScript definitions automatically generated from the Supabase database schema. This enables strong typing for all database interactions.
+  - `queryClient.ts`: Initializes and configures the React Query client instance (`QueryClient`).
+- `src/hooks`: Defines custom React hooks to encapsulate reusable logic, particularly for stateful logic, side effects, and interactions with Supabase/React Query (e.g., `useDishDetail.ts`, `usePreparationDetail.ts`, `useCurrentKitchenId.ts`).
+- `src/locales`: Contains JSON files for internationalization.
+- `src/navigation`: Configures the application's navigation structure using React Navigation.
+  - `AppNavigator.tsx`: The main navigation component.
+  - `types.ts`: Defines TypeScript types for navigation parameters.
+- `src/queries`: Contains functions that define specific Supabase queries for use with React Query.
+- `src/sagas`: Contains Redux Sagas for managing complex asynchronous operations.
+- `src/screens`: Contains top-level components for each distinct screen (e.g., `HomeScreen.tsx`, `DishDetailScreen.tsx`, `PreparationDetailScreen.tsx`).
+- `src/services`:
+  - `AppLogService.ts`: Centralized logging utility.
+  - `DataPrefetchService.ts`: Proactively fetches and caches essential data.
+  - `notionService.ts`: Manages integration with Notion for support tickets and logs.
+  - `recipeParser.ts`: Client for the external `multimodal-recipe-parser` API.
+- `src/slices`: Contains Redux Toolkit "slices" for global state management.
+- `src/store.ts`: Configures the Redux store.
+- `src/types.ts`: Defines core TypeScript interfaces and types for the application's data models (e.g., `Dish`, `Ingredient`, `Preparation`, `Unit`).
+- `src/utils`:
+  - `unitHelpers.ts`: The central module for all unit conversion and normalization logic. (See detailed explanation in Data Flow section).
+  - `transforms.ts`: Contains data transformation functions (Supabase raw data to app-specific types).
+  - `textFormatters.ts`: Utility functions for formatting text, numbers, and quantities for display.
+  - `recipeProcessor.ts`: Processes data from the `multimodal-recipe-parser` API.
 
-*   **`App.tsx`:** Root component. Initializes providers...
-*   **`src/components/ReactQueryClientProvider.tsx`:** Configures and provides the TanStack Query client, including persistence setup.
-*   **`src/store.ts`:** Configures Redux store, middleware (Saga), and persistence.
-*   **`src/slices/`:** Redux Toolkit slices...
-*   **`src/sagas/`:** Redux Saga files for side effects (auth, realtime management). See `rootSaga.ts` for structure.
-*   **`src/hooks/`:** Custom hooks, including data fetching hooks (`useDishes`, `usePreparationDetail`, etc.) using TanStack Query.
-*   **`src/context/`:** React Context...
-*   **`src/services/supabaseClient.ts`:** Exports the configured Supabase client.
-*   **`src/persistence/offlineRecipes.ts`:** Helpers for caching individual recipe details in AsyncStorage.
-*   **`src/realtime/supabaseChannelHelpers.ts`:** Reusable helper for managing Supabase Realtime channel subscriptions.
-*   **`src/screens/`:** Contains individual screen components, representing different views within the app (e.g., `HomeScreen`, `RecipeDetailScreen`, `CreateDishScreen`).
-*   **`src/components/`:** Houses reusable UI elements used across multiple screens:
-    *   `Button`, `Card`, `Input`: Basic UI elements
-    *   `PreparationCard`, `ScaleSliderInput`, `UnitDisplay`: Recipe-specific components
-    *   `RecipeImage`: Component for displaying and managing recipe images, handling uploads from camera/gallery and AI generation
-*   **`src/context/AuthContext.tsx`:** Manages user authentication state and provides it to the rest of the application.
-*   **`src/context/UnitSystemContext.tsx`:** Manages unit system preferences (metric or imperial) and provides conversion utilities.
-*   **`src/services/imageService.ts`:** Handles image operations for recipes, including:
-    *   Getting image URLs for dishes and preparations
-    *   Uploading images from the device's camera or gallery
-    *   Generating images using AI via Supabase Edge Functions
-*   **`src/i18n.ts` & `src/locales/`:** Manages language translations and internationalization setup.
-*   **NativeWind:** Used for styling via Tailwind CSS classes. Configuration might be in `tailwind.config.js` (if present) or integrated into `babel.config.js`.
-*   **`src/types.ts`:** Central location for shared TypeScript interfaces and types, promoting consistency.
+## 3. Data Flow and Management
 
-## Data Fetching, Caching, and Realtime Updates
+The application employs a sophisticated data management strategy, combining Supabase for backend persistence, React Query for server state caching and synchronization, and Redux for global UI and session state.
 
-This section details the application's strategy for managing server state, persistence, and live data updates.
+### 3.1. Supabase Interaction
 
-### State Management Approach
+- **Client Initialization:** The Supabase JavaScript client is initialized in `src/data/supabaseClient.ts`.
+- **Authentication:** Supabase Auth is used for user management.
+- **Database Operations:** Data is stored in PostgreSQL, accessed via PostgREST API using the Supabase JS client's query builder.
+- **Typed Queries:** `database.types.ts` enables strongly typed queries.
 
-The application employs a hybrid approach:
+### 3.2. Data Fetching and Caching with React Query
 
-*   **Redux Toolkit (+ Redux Saga):** Manages global client-side UI state (e.g., authentication status, active kitchen ID, theme preferences) and orchestrates complex asynchronous workflows like authentication and **non-realtime** kitchen management (fetching lists, leaving kitchens).
-*   **TanStack Query (React Query) v5:** Manages server state fetched from the Supabase backend. It handles caching, background updates, loading/error states, and optimizes data fetching via hooks like `useQuery` located in `src/hooks/`. Query keys generally follow the pattern `[tableName, { filterKey: filterValue }]` (e.g., `['dishes', { kitchen_id: '...' }]`).
+- **Server State Authority:** React Query is the source of truth for backend data.
+- **Custom Hooks:** Data fetching logic is encapsulated in custom hooks (e.g., `useDishDetail`, `usePreparationDetail` in `src/hooks/useSupabase.ts`).
+- **Query Keys:** Consistent query key strategy for caching and invalidation.
+- **Prefetching Strategy (`DataPrefetchService.ts`):** Minimizes latency by pre-loading essential data.
+- **Data Transformation (`transforms.ts`):** Maps raw Supabase data (e.g., `FetchedDishData`, `FetchedPreparationDataCombined`) to application-specific domain model types (e.g., `Dish`, `Preparation` defined in `src/types.ts`). This layer is crucial for decoupling and maintainability.
 
-### Caching & Persistence
+### 3.3. Global State with Redux
 
-Multiple layers of caching are used to improve performance and provide offline capabilities:
+- **Scope:** Manages client-side global state (auth status, active kitchen, UI preferences) via slices like `authSlice.ts` and `kitchensSlice.ts`.
+- **Sagas (`src/sagas/`):** Handle complex asynchronous workflows and side effects.
 
-1.  **React Query In-Memory Cache:** TanStack Query automatically caches fetched data in memory. Default `staleTime` (30 min) and `gcTime` (30 min) are configured in `src/data/queryClient.ts`.
-2.  **React Query Persisted Cache:**
-    *   The entire React Query cache is persisted to `AsyncStorage` using `@tanstack/react-query-persist-client` and `@tanstack/query-async-storage-persister` (configured in `src/components/ReactQueryClientProvider.tsx`).
-    *   The cache key in `AsyncStorage` is `rq-cache`.
-    *   Hydration occurs on cold starts, followed by background revalidation based on `staleTime`.
-    *   This cache is cleared on user logout (`logoutSaga.ts`).
-3.  **Offline Recipe Cache:**
-    *   To ensure recently viewed recipes are quickly available even if the main RQ cache is garbage collected or stale, individual dish and preparation details are saved separately to `AsyncStorage` upon successful fetching in `useDishDetail` and `usePreparationDetail` hooks.
-    *   Logic is handled by helpers in `src/persistence/offlineRecipes.ts`.
-    *   These individual caches provide fast initial data hydration for recipe detail screens and basic offline viewing.
-    *   This cache is also cleared on user logout (`logoutSaga.ts`).
-4.  **Redux Persisted State:**
-    *   `redux-persist` saves parts of the Redux state (`auth`, `kitchens` slices) to `AsyncStorage`.
-    *   Configuration is in `src/store.ts`.
-    *   This is purged on logout (`logoutSaga.ts`).
+### 3.4. Unit Handling (`src/utils/unitHelpers.ts`)
 
-### Realtime Updates via Supabase & React Query (Revised Sept 2024)
+This module has been significantly refactored to provide a self-contained, simplified approach to unit management, moving away from external libraries like `js-quantities` and a global user-selectable unit system.
 
-The application listens for database changes in realtime using Supabase and directly updates the React Query cache:
+- **Centralization:** All logic for unit interpretation, conversion, and normalization resides in `src/utils/unitHelpers.ts`.
+- **Custom Conversion Logic:**
+  - Employs internal, hardcoded conversion factor maps: `WEIGHT_FACTORS` (base: grams) and `VOLUME_FACTORS` (base: milliliters) for common culinary units.
+  - The `convertAmount(amount, fromUnitRaw, toUnitRaw)` function performs conversions between compatible units within the same measurement kind (weight or volume). If units are incompatible or not found in the factor maps, it returns the original amount.
+- **Preparation as a Unitless Multiplier:**
+  - A special constant `PREPARATION_UNIT_ABBR` (value: 'prep') is defined (see `src/constants/units.ts`).
+  - When a preparation is used as a component in a dish, its 'unit' is effectively this 'prep' identifier.
+  - The `convertAmount` function explicitly bypasses conversion for 'prep' units, treating them as direct multipliers for scaling purposes rather than convertible physical units.
+  - The `Unit` type in `src/types.ts` includes 'preparation' as a possible `measurement_type`.
+- **Normalization for Display:**
+  - The `normalizeAmountAndUnit(amount, unitAbbr)` function adjusts an amount and its unit to a more human-readable form (e.g., 1500g to 1.5kg, or 0.5kg to 500g) based on predefined thresholds. This is used primarily for display clarity.
+  - It also respects the `PREPARATION_UNIT_ABBR`, returning the amount and unit unchanged.
+- **No Global Unit System Preference:** The application no longer relies on a user-selectable global unit system (metric/imperial) for display. Instead, it aims to store amounts in their originally entered units and uses `normalizeAmountAndUnit` to present them clearly. Conversions via `convertAmount` are typically for specific, explicit needs rather than a blanket system-wide display change.
+- **Key Functions:**
+  - `unitKind(unit: Unit)`: Determines the measurement kind (e.g., 'weight', 'volume', 'count', 'preparation') of a unit object. This is derived from the `measurement_type` property of the `Unit` type.
+  - `convertAmount(...)`: Converts amounts between compatible units.
+  - `normalizeAmountAndUnit(...)`: Adjusts amounts and units for better readability.
 
-*   **Subscription Management:** The `src/realtime/useSupabaseRealtime.ts` hook manages the connection to a single Supabase Realtime channel (`kitchen-{activeKitchenId}`).
-    *   It subscribes/unsubscribes automatically based on the user's authentication state and active kitchen ID (selected via Redux).
-    *   It listens for `INSERT`, `UPDATE`, `DELETE` events on relevant tables (`kitchen`, `kitchen_users`, `dishes`, `ingredients`, `preparations`, `preparation_ingredients`, `menu_section`, `dish_components`).
-    *   Includes basic exponential backoff retry logic for connection errors.
-    *   The hook is activated globally via the `<SupabaseRealtimeProvider>` in `App.tsx`.
-*   **Cache Updates:** Upon receiving an event, the `useSupabaseRealtime` hook calls the `applyRealtimeEvent` function in `src/realtime/cacheInvalidation.ts`.
-    *   `applyRealtimeEvent` determines the appropriate cache keys to update based on the incoming event's table and data.
-    *   It uses `queryClient.invalidateQueries({ queryKey: [...] })` to mark relevant data as stale.
-*   **Automatic Refetching:** Components using TanStack Query hooks (`useQuery`) subscribed to the invalidated query keys will automatically and efficiently refetch the updated data in the background or display the updated data immediately if surgical cache updates (using `setQueryData`) are implemented in the future.
+## 4. Core Features & Logic
 
-This setup replaces the previous Redux Saga-based realtime handling, simplifying the data flow and leveraging React Query's caching mechanisms more directly.
+### 4.1. Recipe Management (Dishes)
 
-### Data Saving & Duplicate Handling (Revised July 2024)
+- **Creation/Editing (`CreateDishScreen.tsx`, `EditDishScreen.tsx`):** Users input dish details, components (ingredients/preparations), and directions.
+- **Details Display (`DishDetailScreen.tsx`):** Comprehensive view of a dish, including metadata, components, and directions. Amounts and units are formatted for clarity using `formatQuantityAuto` (which internally may use `normalizeAmountAndUnit`).
+- **Scaling Functionality (`DishDetailScreen.tsx`):
+  - Users adjust desired servings (`targetServings`) from the dish's original servings (`originalServings`).
+  - A `servingScale` factor is calculated: `servingScale = targetServings / originalServings`.
+  - The amounts of each `DishComponent` are multiplied by this `servingScale`.
+  - If a `DishComponent` is a preparation (i.e., its unit is effectively 'prep'), its amount (which represents how many 'units' of the preparation's base yield are needed) is scaled directly by `servingScale`. The scaling of the preparation's own internal ingredients is then handled within the `PreparationDetailScreen` or when the preparation component is processed, using this `servingScale` passed down.
+  - Displayed scaled amounts are normalized using `normalizeAmountAndUnit` for readability.
 
-*   **Centralized Resolution:** Duplicate checking for ingredients, dishes, and preparations is handled by the functions `resolveIngredient`, `resolveDish`, and `resolvePreparation` in `src/services/duplicateResolver.ts`.
-*   **User Prompts:** When potential duplicates are detected (e.g., similar ingredient names, exact dish/preparation names), these resolver functions present the user with `Alert` prompts offering choices like "Use Existing", "Create New", "Replace", or "Rename".
-*   **Dish/Prep Creation Flow (`CreateDishScreen.tsx`):**
-    *   The `handleSaveDish` function now integrates with `resolveDish` and `resolvePreparation` before attempting inserts.
-    *   It handles different resolution modes (`existing`, `new`, `overwrite`, `rename`, `cancel`) to guide the saving process (update existing record, insert new, rename and insert, or abort).
-    *   Implicit creation of *new* preparations (identified during recipe parsing) during a *dish save* operation now correctly calls `createNewPreparation`, passing necessary data including `piece_type` (for sub-components).
-*   **Schema Corrections:** Save logic has been updated to use correct database column names (e.g., `piece_type` instead of `item` in `dish_components`) and avoids attempting to write to non-existent columns.
-*   **Reference Ingredient Removal:** As of November 2024, the `reference_ingredient` field has been removed from the codebase. Preparations now always have a logical amount and unit, and ingredient amounts are scaled based on the ratio of the preparation's yield.
+### 4.2. Ingredient and Preparation Management
 
-## Recipe Image Management
+- **Ingredients (`Ingredient` type):** Basic culinary items. Managed via screens like `IngredientListScreen.tsx`.
+- **Preparations (`Preparation` type):** Reusable sub-recipes (e.g., "Pizza Dough"). Each has its own ingredients, directions, and a base yield (though yield is not directly used for scaling in the new model; scaling is based on the 'prep' unit as a multiplier).
+  - **Details Display (`PreparationDetailScreen.tsx`):** Shows preparation ingredients and directions. If navigated from a dish, it can receive `recipeServingScale` and `prepAmountInDish` to correctly display scaled ingredient quantities for that context. The scaling of its internal ingredients is based on the `recipeServingScale` multiplied by any scaling inherent to the `prepAmountInDish` relative to the preparation's base definition.
 
-The application includes a comprehensive system for managing recipe images:
+## 5. External Services
 
-*   **`src/components/RecipeImage.tsx`:** A reusable component for displaying and managing recipe images:
-    *   Displays existing images for dishes and preparations
-    *   Provides an interface for uploading custom images from the camera or gallery
-    *   Offers an option to generate images using AI
-    *   Handles loading and error states with appropriate UI feedback
+### 5.1. Supabase
 
-*   **`src/services/imageService.ts`:** Provides utility functions for managing recipe images:
-    *   `pickImage`: Opens the device's camera or gallery to select an image
-    *   `uploadRecipeImage`: Uploads an image to Supabase Storage and updates the database
-    *   `getRecipeImageUrl`: Retrieves the URL of a recipe image from the database
-    *   `generateRecipeImage`: Triggers AI image generation for a recipe
+- **Primary Backend:** PostgreSQL database, Authentication, Storage (optional), Instant APIs (PostgREST).
+- **Schema:** Defined in `src/data/database.types.ts`.
 
-*   **Image Generation:** New dishes and preparations automatically have images generated if they don't already have one. This happens through a Supabase Edge Function that:
-    1. Extracts recipe details (name, ingredients, directions)
-    2. Creates a prompt for Together AI, an image generation service
-    3. Uploads the generated image to Cloud Storage
-    4. Updates the database with the image URL
+### 5.2. Notion (via `src/services/notionService.ts`)
 
-*   **User-Uploaded Images:** Users can override AI-generated images by uploading their own photos through the camera or gallery. These are stored in Supabase Storage.
+- **Support Tickets & Logging:** Integrates with Notion for creating support tickets and detailed application log entries in designated Notion databases.
+- **Functionality:** `createAppLogEntryPage` (for detailed logs), `createNotionTicketEntry` (for main tickets), `reportToNotion` (orchestrator).
+- **Configuration:** Requires `EXPO_PUBLIC_NOTION_API_KEY`, `EXPO_PUBLIC_NOTION_DATABASE_ID`, `EXPO_PUBLIC_NOTION_APP_LOGS_DATABASE_ID` environment variables.
 
-## Unit System Management
+### 5.3. Multimodal Recipe Parsing API
 
-The application supports both metric and imperial units with seamless conversion between them:
+- **Functionality:** Allows users to create recipes from images by extracting structured data (name, ingredients, instructions).
+- **API Client (`src/services/recipeParser.ts`):** Handles communication with the external parsing service (endpoint via `EXPO_PUBLIC_RECIPE_PARSER_URL`).
+- **Data Processing (`src/utils/recipeProcessor.ts`):** Interprets the API response and integrates it into the application's data model, matching ingredients and units. If an ingredient or preparation from the parsed recipe does not match an existing entry in the database, it is now included in the processed output (with its `ingredient_id` set to `null` and a `matched` flag set to `false`), allowing the user interface to prompt for its creation rather than being silently skipped.
 
-*   **`src/context/UnitSystemContext.tsx`:** Manages the user's preferred unit system and provides conversion utilities:
-    *   `useUnitSystem()` hook for accessing the current unit system and utility functions
-    *   `convertWeight()`, `convertVolume()`, and `convertTemperature()` functions for unit conversions
-    *   `getUnitLabel()` for getting the appropriate unit label based on the unit system
-    *   Unit system preference is persisted using AsyncStorage
-*   **`src/components/UnitDisplay.tsx`:** A specialized component for displaying quantities with the appropriate unit system:
-    ```tsx
-    <UnitDisplay value={500} unit="g" />
-    // Displays "500 g" in metric mode or "17.6 oz" in imperial mode
-    ```
-*   **Unit conversions supported:**
-    *   Weight: g ↔ oz, kg ↔ lb
-    *   Volume: ml ↔ fl oz, l ↔ qt
-    *   Temperature: °C ↔ °F
-    *   Length: mm/cm ↔ in, m ↔ ft
+## 6. Key Files & Modules Summary
 
-The user can toggle between metric and imperial units from the Preferences screen. This preference is stored locally and applies throughout the app.
-
-**Usage:**
-
-```bash
-# Export Data
-npm run script:export -- --url "YOUR_SUPABASE_URL" --key "YOUR_SUPABASE_ANON_KEY"
-
-# Import Data
-npm run script:import -- --url "YOUR_SUPABASE_URL" --key "YOUR_SUPABASE_ANON_KEY"
-
-# Fetch Detailed Recipes
-npm run script:fetch-recipes -- --url "YOUR_SUPABASE_URL" --key "YOUR_SUPABASE_ANON_KEY"
-```
-
-*(Refer to the `package.json` for exact script definitions)*
-
-## Environment Variables
-
-*   `SUPABASE_URL`: The URL of your Supabase project.
-*   `
+- **App Entry & Setup:** `App.tsx`, `src/store.ts`, `src/navigation/AppNavigator.tsx`.
+- **Supabase Client & Types:** `src/data/supabaseClient.ts`, `src/data/database.types.ts`.
+- **React Query Client:** `src/data/queryClient.ts`.
+- **Data Prefetching:** `src/services/DataPrefetchService.ts`.
+- **Data Transformations:** `src/utils/transforms.ts`.
+- **Unit Logic & Scaling:** `src/utils/unitHelpers.ts`, `src/screens/DishDetailScreen.tsx`, `src/screens/PreparationDetailScreen.tsx`.
+- **Core Types:** `src/types.ts`.

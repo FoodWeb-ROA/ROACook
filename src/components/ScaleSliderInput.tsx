@@ -25,9 +25,10 @@ interface ScaleSliderInputProps {
   onSlidingComplete: (value: number) => void;
   onTextInputChange: (text: string) => void; // Handler for direct text input
   containerStyle?: ViewStyle;
-  yieldBase?: number;
-  yieldUnitAbbr?: string;
-  yieldItem?: string | null;
+  /** @deprecated preparation yields removed – these will be ignored */
+  yieldBase?: never;
+  yieldUnitAbbr?: never;
+  yieldItem?: never;
 }
 
 const ScaleSliderInput: React.FC<ScaleSliderInputProps> = ({
@@ -42,9 +43,7 @@ const ScaleSliderInput: React.FC<ScaleSliderInputProps> = ({
   onSlidingComplete,
   onTextInputChange,
   containerStyle,
-  yieldBase,
-  yieldUnitAbbr,
-  yieldItem,
+  ..._deprecated
 }) => {
   return (
     <View style={[styles.container, containerStyle]}>
@@ -71,21 +70,7 @@ const ScaleSliderInput: React.FC<ScaleSliderInputProps> = ({
         />
         <Text style={styles.suffixLabel}>{displaySuffix}</Text>
       </View>
-      {/* Display total yield if base and unit provided */}
-      {yieldBase != null && yieldUnitAbbr && (
-        (() => {
-          const totalYield = yieldBase * currentValue;
-          const formattedYield = formatQuantityAuto(totalYield, yieldUnitAbbr, yieldItem);
-          if (formattedYield.amount !== 'N/A' && totalYield > 0) {
-            return (
-              <Text style={styles.yieldText}>
-                (Yields: {formattedYield.amount} {formattedYield.unit} total)
-              </Text>
-            );
-          }
-          return null;
-        })()
-      )}
+      {/* Yield display removed for preparations */}
     </View>
   );
 };
@@ -129,12 +114,7 @@ const styles = StyleSheet.create({
     minWidth: 60, // Give it some minimum width
     textAlign: 'left',
   },
-  yieldText: {
-    ...FONTS.body3,
-    color: COLORS.textLight,
-    marginTop: SIZES.base / 2,
-    textAlign: 'center',
-  },
+  // yieldText removed
 });
 
 export default ScaleSliderInput; 

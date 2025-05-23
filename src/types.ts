@@ -1,89 +1,79 @@
 import { Database } from './data/database.types';
+import { PREPARATION_UNIT_ID } from './constants/units';
 
 // Re-exporting base types or defining custom app types
-export type Unit = Database['public']['Tables']['units']['Row'];
-
-// Update Ingredient type to include optional isPreparation flag and base_unit details
-export type Ingredient = Database['public']['Tables']['ingredients']['Row'] & {
-    isPreparation?: boolean; // Added by useIngredients hook
-    base_unit?: Unit | null; // Potentially added by useIngredients hook
-    item?: string | null; // Added: Item description for counts
+export type Unit = Database['public']['Tables']['units']['Row'] & {
+  measurement_type: Database['public']['Enums']['unit_measurement_type'] | 'preparation' | null;
 };
 
+export type Ingredient = Database['public']['Tables']['ingredients']['Row'] & {
+  isPreparation?: boolean; // Added by useIngredients hook
+  item?: string | null; // Added: Item description for counts
+};
 
 export type MenuSection = Database['public']['Tables']['menu_section']['Row'];
 
 // Define Preparation type based on DB + transformed structure
 export type Preparation = {
-    preparation_id: string;
-    name: string;
-    directions: string | null;
-    total_time: number | null; // Re-added
-    yield_unit: Unit | null;
-    yield: number; // Changed from number | null
-    fingerprint?: string | null; // ADDED: Fingerprint for duplicate detection
-    ingredients: PreparationIngredient[];
-    cooking_notes: string | null;
+  preparation_id: string;
+  name: string;
+  directions: string | null;
+  total_time: number | null; // Retain for display/analytics
+  fingerprint?: string | null; // For duplicate detection
+  ingredients: PreparationIngredient[];
+  cooking_notes: string | null;
 
-    amount_unit_id?: string | null;
-    yield_unit_id?: string | null;
-    // ingredient_id: string;
-    created_at?: string | null;
-    updated_at?: string | null;
+  /**
+   * Scale multiplier inherited from parent recipes. Defaults to 1.
+   */
+  scale?: number;
+
+  created_at?: string | null;
+  updated_at?: string | null;
 };
-
-// export type Preparation = {
-//     preparation_id: string;
-//     directions: string | null;
-//     amount_unit_id?: string | null;
-//     total_time: number | null; // Re-added
-//     fingerprint?: string | null; // ADDED: Fingerprint for duplicate detection
-//     created_at?: string | null;
-//     updated_at?: string | null;
-//     deleted: boolean;
-// };
 
 // Define PreparationIngredient based on transformed structure
 export type PreparationIngredient = {
-    preparation_id: string; 
-    ingredient_id: string;
-    name: string; // Ingredient name
-    amount: number | null;
-    unit: Unit | null;
-    isPreparation?: boolean; // Added by usePreparationDetail hook
+  preparation_id: string; 
+  ingredient_id: string;
+  name: string; // Ingredient name
+  amount: number | null;
+  unit: Unit | null;
+  isPreparation?: boolean; // Added by usePreparationDetail hook
 };
 
 // Define DishComponent based on transformed structure
 export type DishComponent = {
-    dish_id: string;
-    ingredient_id: string;
-    name: string; // Name of the component (ingredient or preparation)
-    amount: number | null;
-    unit: Unit | null;
-    item?: string | null; // <-- ADDED: Item description (e.g., "large", "medium")
-    isPreparation: boolean;
-    // Include details based on whether it's a raw ingredient or a preparation
-    preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;
-    rawIngredientDetails: (Ingredient & { base_unit: Unit | null; item?: string | null }) | null;
-    // Optional: carry scaling multiplier for preparation amount when used in parent recipe
-    prepScaleMultiplier?: number;
-    // Add imageUrl or other specific fields?
+  dish_id: string;
+  ingredient_id: string;
+  name: string; // Name of the component (ingredient or preparation)
+  amount: number | null;
+  unit: Unit | null;
+  unit_id?: string | null;
+  item?: string | null; // <-- ADDED: Item description (e.g., "large", "medium")
+  isPreparation: boolean;
+  // Include details based on whether it's a raw ingredient or a preparation
+  preparationDetails: (Preparation & { ingredients: PreparationIngredient[] }) | null;
+  rawIngredientDetails: (Ingredient & { item?: string | null }) | null;
+  // Optional: carry scaling multiplier for preparation amount when used in parent recipe
+  prepScaleMultiplier?: number;
+  // Add imageUrl or other specific fields?
 };
 
 // Define Dish type based on DB + transformed structure
 export type Dish = {
-    dish_id: string;
-    dish_name: string;
-    menu_section: MenuSection | null; // Transformed menu section
-    directions: string | null;
-    total_time: string | null; // Keep as string for now (interval type)
-    serving_size: number | null;
-    serving_unit: Unit | null; // Transformed unit
-    serving_item?: string | null; // Added: Item description for serving unit 'x' (e.g., "bowl", "portion")
-    num_servings: number | null; // New field replacing total_yield
-    components: DishComponent[]; // Array of components
-    cooking_notes: string | null;
-    imageUrl?: string; // Optional image URL
+  dish_id: string;
+  dish_name: string;
+  menu_section: MenuSection | null; // Transformed menu section
+  directions: string | null;
+  total_time: string | null; // Keep as string for now (interval type)
+  serving_size: number | null;
+  serving_unit: Unit | null; // Transformed unit
+  serving_item?: string | null; // Added: Item description for serving unit 'x' (e.g., "bowl", "portion")
+  num_servings: number | null; // New field replacing total_yield
+  components: DishComponent[]; // Array of components
+  cooking_notes: string | null;
+  imageUrl?: string; // Optional image URL
 };
 
 // Re-export Category if it's just MenuSection
@@ -163,25 +153,28 @@ export interface ParsedRecipe {
 
 // Type for managing ingredients within CreatePreparationScreen state
 export type EditablePrepIngredient = {
-    key: string; // Unique key for lists
-    ingredient_id?: string | null; // Keep track of existing ID
-    name: string;
-    amountStr: string; // Keep original (base) amount as string for TextInput
-    unitId: string | null; // Store matched unit ID
-    isPreparation?: boolean;
-    // Carry over other potentially useful fields from ParsedIngredient if needed
-    unit?: string | null; // Original unit string for reference
-    item?: string | null; // Item description
-    matched?: boolean; // Flag to indicate ingredient was auto-matched
+  key: string; // Unique key for lists
+  ingredient_id?: string | null; // Keep track of existing ID
+  name: string;
+  amountStr: string; // Keep original (base) amount as string for TextInput
+  unitId: string | null; // Store matched unit ID
+  isPreparation?: boolean;
+  // Carry over other potentially useful fields from ParsedIngredient if needed
+  unit?: string | null; // Original unit string for reference
+  item?: string | null; // Item description
+  matched?: boolean; // Flag to indicate ingredient was auto-matched
 };
 
-export type MeasureKind = 'weight' | 'volume' | 'count';
+export type MeasureKind = 'weight' | 'volume' | 'count' | 'preparation';
 
 export interface ComponentInput {
   key: string;
-  ingredient_id: string;
+  ingredient_id: string | null;
   name: string;
   amount: string;
+  /**
+   * Always PREPARATION_UNIT_ID when isPreparation === true; otherwise the chosen unit.
+   */
   unit_id: string | null;
   isPreparation: boolean;
   item?: string | null;
@@ -197,9 +190,6 @@ export interface ComponentInput {
   prepStateIsDirty?: boolean;
   // Added for synchronization between preparation screens
   prepScaleMultiplier?: number;
-  // Base yield metadata for preparations
-  prepYield?: number | null;
-  prepYieldUnitId?: string | null;
 }
 
 export interface IUser {

@@ -33,7 +33,7 @@ export const appLogger = {
     addLogEntry('error', ...args);
     console.error(...args);
   },
-  getLogs: (): string => {
+  getlogs: (): string => {
     const combinedLogs = logBuffer.join('\n');
     // Truncate to the last 2000 characters if longer
     if (combinedLogs.length > 2000) {

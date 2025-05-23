@@ -1,7 +1,4 @@
-import { Unit } from '../types';
-
-// Define broad measurement kinds for grouping units
-export type MeasureKind = 'weight' | 'volume' | 'count';
+import { Unit, MeasureKind } from '../types';
 
 // Very light-weight categorisation helper. Extend as needed.
 export const unitKind = (unit: Unit | null | undefined): MeasureKind | null => {
@@ -11,7 +8,6 @@ export const unitKind = (unit: Unit | null | undefined): MeasureKind | null => {
   const mType = (unit as any).measurement_type as string | undefined;
 
   return mType as MeasureKind;
-  
 };
 
 // Simple conversion factors to a base unit (grams for weight, millilitres for volume)
@@ -61,6 +57,9 @@ const VOLUME_FACTORS: Record<string, number> = {
   "fluid ounces": 29.5735,
 };
 
+// Abbreviation used to mark preparation pseudo-unit (unitless multiplier)
+export const PREPARATION_UNIT_ABBR = 'prep';
+
 /**
  * Convert an amount between two units of the same measurement kind.
  * If units are incompatible or missing a factor, the original amount is returned.
@@ -71,6 +70,11 @@ export const convertAmount = (
   toUnitRaw: string | undefined,
 ): number => {
   if (!fromUnitRaw || !toUnitRaw || fromUnitRaw.toLowerCase() === toUnitRaw.toLowerCase()) {
+    return amount;
+  }
+
+  // Treat 'preparation' as unitless multiplier – no conversion.
+  if (fromUnitRaw === PREPARATION_UNIT_ABBR || toUnitRaw === PREPARATION_UNIT_ABBR) {
     return amount;
   }
 
@@ -107,6 +111,10 @@ export const normalizeAmountAndUnit = (
 ): { amount: number; unitAbbr: string } => {
   if (amount === null || amount === undefined || !unitAbbr) {
     return { amount, unitAbbr: unitAbbr || '' } as any;
+  }
+
+  if (unitAbbr === PREPARATION_UNIT_ABBR) {
+    return { amount, unitAbbr };
   }
 
   const lower = unitAbbr.toLowerCase();

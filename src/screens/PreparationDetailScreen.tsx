@@ -200,14 +200,8 @@ const PreparationDetailScreen = () => {
 
   const directions = preparation.directions ? preparation.directions.split(/\r?\n/).filter((line: string) => line.trim()) : [];
 
-  const baseYieldAmount = preparation.yield;
-  const yieldUnitAbbreviation = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
-
-  // Ensure recipeServingScale has a default value and calculate scaled yield
+  // New logic: preparations are unit-less multipliers.  Use recipeServingScale directly.
   const currentServingScale = recipeServingScale ?? 1;
-  const scaledYieldAmount = typeof baseYieldAmount === 'number' ? baseYieldAmount * currentServingScale : null;
-  // Format the scaled yield for display using formatQuantityAuto
-  const formattedScaledYield = formatQuantityAuto(scaledYieldAmount, yieldUnitAbbreviation);
 
   const handleNestedPreparationPress = (nestedPrepId: string) => {
     // Pass the currentServingScale down to the nested preparation screen
@@ -331,7 +325,7 @@ const PreparationDetailScreen = () => {
                   const actualAmountNeeded = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
                   let displayAmountText = 'N/A';
 
-                  const prepUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
+                  const prepUnitAbbr = '';
                   const formattedAmount = formatQuantityAuto(actualAmountNeeded, prepUnitAbbr);
                   displayAmountText = `${formattedAmount.amount} ${formattedAmount.unit}`;
 
@@ -345,24 +339,7 @@ const PreparationDetailScreen = () => {
                   );
                 })()
               )}
-              {!isFromDishContext && preparation.yield !== null && (
-                // --- Display Base Yield (Scaled) ---
-                (() => {
-                  const baseYield = preparation.yield ?? 0;
-                  const scale = recipeServingScale ?? 1; // Apply recipe scale if passed directly
-                  const scaledBaseYield = baseYield * scale;
-                  const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
-                  const formattedYield = formatQuantityAuto(scaledBaseYield, yieldUnitAbbr);
-                  return (
-                    <View style={styles.infoItem}>
-                      <MaterialCommunityIcons name="scale-balance" size={18} color={COLORS.textLight} />
-                      <Text style={styles.infoText} numberOfLines={2} ellipsizeMode="tail">
-                        {t('common.yield')}: {formattedYield.amount} {formattedYield.unit}
-                      </Text>
-                    </View>
-                  );
-                })()
-              )}
+              {/* No yield display – preparations are treated as multipliers */}
             </View>
           </View>
 
@@ -381,12 +358,11 @@ const PreparationDetailScreen = () => {
 
                 if (isFromDishContext) {
                   // Scale based on amount used in dish
-                  const prepBaseYield = preparation.yield;
                   const scaledTargetAmount = (prepAmountInDish ?? 0) * (recipeServingScale ?? 1);
 
                   // Scale based on total yield
-                  const scaleForDishUsage = (prepBaseYield !== null && prepBaseYield > 0 && prepAmountInDish !== null)
-                    ? (prepAmountInDish / prepBaseYield) // Use unscaled prepAmountInDish for ratio
+                  const scaleForDishUsage = (prepAmountInDish !== null)
+                    ? (prepAmountInDish) // Use unscaled prepAmountInDish for ratio
                     : 1; // Fallback scale
                   amountToDisplay = baseIngAmount * scaleForDishUsage * (recipeServingScale ?? 1);
                 } else {
@@ -461,8 +437,6 @@ const PreparationDetailScreen = () => {
                     name: component.name,
                     directions: null,
                     total_time: null, // Not available here
-                    yield_unit: null, // Not available here
-                    yield: 1, // Not available here, default to 1
                     cooking_notes: null,
                     ingredients: [], // Not available here
                   },

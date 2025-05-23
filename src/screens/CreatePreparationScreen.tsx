@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Modal, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import ScaleSliderInput from '../components/ScaleSliderInput';
 import { RootStackParamList} from '../navigation/types';
 import { 
   Preparation, 
@@ -35,7 +36,8 @@ import DirectionsInputList from '../components/DirectionsInputList';
 import ComponentSearchModal, { SearchResultItem } from '../components/ComponentSearchModal';
 import IngredientListComponent from '../components/IngredientListComponent';
 import { appLogger } from '../services/AppLogService';
-import { MeasureKind, unitKind } from '../utils/unitHelpers'; // Removed Unit from here
+import { MeasureKind } from '../types';
+import { unitKind } from '../utils/unitHelpers'; // Removed Unit from here
 
 type CreatePrepRouteProp = RouteProp<RootStackParamList, 'CreatePreparation'>;
 
@@ -76,8 +78,6 @@ const CreatePreparationScreen = () => {
 
   // Helper functions
   const getPreparationAmount = (prep: ParsedIngredient | Preparation): number | null => {
-    if (isFullPreparation(prep)) return prep.yield ?? null;
-    if (isParsedIngredient(prep)) return prep.amount ?? null;
     return null;
   };
 
@@ -100,15 +100,10 @@ const CreatePreparationScreen = () => {
   });
   const [prepUnitId, setPrepUnitId] = useState<string | null>(initialPrepUnitId ?? null);
   const [editableIngredients, setEditableIngredients] = useState<EditablePrepIngredient[]>(initialEditableIngredients ?? []);
-  const [instructions, setInstructions] = useState<string[]>(initialInstructions ?? getPreparationInstructions(preparation));
+  const [instructions, _setInstructions] = useState<string[]>(initialInstructions ?? getPreparationInstructions(preparation));
 
   const [scaleMultiplier, setScaleMultiplier] = useState(parentScaleMultiplier);
   const [displayAmountStr, setDisplayAmountStr] = useState('');
-  
-  const [unitModalVisible, setUnitModalVisible] = useState(false);
-  const [currentManagingComponentKey, setCurrentManagingComponentKey] = useState<string | null>(null);
-
-  const [prepUnitModalVisible, setPrepUnitModalVisible] = useState(false);
 
   const [componentSearchModalVisible, setComponentSearchModalVisible] = useState(false);
   const [componentSearchQuery, setComponentSearchQuery] = useState('');
@@ -221,7 +216,7 @@ const CreatePreparationScreen = () => {
         const formatted = formatQuantityAuto(initialScaledAmount, unitAbbrForDisplay);
         setDisplayAmountStr(formatted.amount);
       } else {
-        setDisplayAmountStr('N/A');
+        setDisplayAmountStr('N/A'); // Or some other appropriate default/placeholder
       }
       setScaleMultiplier(parentScaleMultiplier);
     }
@@ -266,10 +261,10 @@ const CreatePreparationScreen = () => {
       setOriginalPrepBaseAmount(routeOriginalPrepBaseAmount);
     } else if (isFullPreparation(preparation)) {
       setPrepName(preparation.name || 'Preparation');
-      setOriginalPrepBaseAmount(preparation.yield ?? null);
+      setOriginalPrepBaseAmount(null);
     } else {
       setPrepName(preparation.name || 'Preparation');
-      setOriginalPrepBaseAmount(preparation.amount ?? null); // For new preps from parser
+      setOriginalPrepBaseAmount(null); // For new preps from parser
     }
 
     let needsParsing = false;
@@ -324,23 +319,8 @@ const CreatePreparationScreen = () => {
     const fullPrep = preparation as Preparation; // Assuming it might be a full Preparation object
 
     if (isFullPreparation(preparation) && preparation.preparation_id) { // Existing prep
-      // Ensure preparation.yield_unit is a Unit object, not just an ID string
-      // This might require fetching the Unit object if yield_unit is stored as ID
-      // For now, assuming preparation.yield_unit IS a Unit object or similar structure if it's a full prep.
-      // If preparation.yield_unit is just an ID, we need to find it in `units` array.
-      let yieldUnitObj: Unit | null | undefined = null;
-      if (fullPrep.yield_unit_id) { // if yield_unit_id is present from DB
-        yieldUnitObj = units.find(u => u.unit_id === fullPrep.yield_unit_id);
-      } else if (fullPrep.yield_unit) { // if yield_unit object is directly on prep
-        yieldUnitObj = fullPrep.yield_unit;
-      }
-
-      typeToLockInitial = unitKind(yieldUnitObj);
-      // Lock if it's an existing prep with a discernible type that isn't 'count'
-      // (count can always be changed to weight/volume)
-      if (typeToLockInitial && typeToLockInitial !== 'count') {
-        shouldLockInitial = true;
-      }
+      // Existing preparations are always unitless; lock measurement type
+      shouldLockInitial = true;
     } else if (initialPrepUnitId) { // New prep, but initial unit from parser/parent
       const initialUnit = units.find(u => u.unit_id === initialPrepUnitId);
       typeToLockInitial = unitKind(initialUnit);
@@ -445,99 +425,36 @@ const CreatePreparationScreen = () => {
   };
 
   const handleIngredientUpdate = (key: string, field: 'amount' | 'amountStr' | 'unitId' | 'item' | 'scaledAmountStr', value: string | null) => {
-    let newDisplayAmountStr = displayAmountStr;
-
-    if (field === 'scaledAmountStr') {
-      const newScaledAmount = parseFloat(value || '0');
-      if (!isNaN(newScaledAmount) && scaleMultiplier !== 0 && !isNaN(scaleMultiplier)) {
-        const impliedBaseAmount = newScaledAmount >= 0 ? newScaledAmount / scaleMultiplier : 0; 
-        
-        setEditableIngredients(prev =>
-          prev.map(ing => {
-            if (ing.key === key) {
-              return { ...ing, amountStr: String(impliedBaseAmount) };
-            }
-            return ing;
-          })
-        );
-        
-        const updatedIngName = editableIngredients.find(ing => ing.key === key)?.name;
-      }
-    } else {
-      setEditableIngredients(prev =>
-        prev.map(ing => {
-          if (ing.key === key) {
-            if (field === 'unitId' || field === 'item') {
-               return { ...ing, [field]: value };
-            } else if (field === 'amountStr') {
-              return { ...ing, amountStr: value ?? '' };
-            }
+    setEditableIngredients(prev =>
+      prev.map(ing => {
+        if (ing.key === key) {
+          if (field === 'unitId' || field === 'item') {
+             return { ...ing, [field]: value };
+          } else if (field === 'amountStr') {
+            return { ...ing, amountStr: value ?? '' };
           }
-          return ing;
-        })
-      );
-       if (field === 'unitId') {
-          closeUnitModal();
-       }
-    }
-
-    if (newDisplayAmountStr !== displayAmountStr) {
-        setDisplayAmountStr(newDisplayAmountStr);
-    }
-
+        }
+        return ing;
+      })
+    );
     setIsDirty(true);
   };
 
   const openUnitModal = (key: string) => {
-    setCurrentManagingComponentKey(key);
-    setUnitModalVisible(true);
+    // This will be handled by IngredientListComponent's own modal
+    appLogger.log(`Request to open unit modal for component key: ${key} (handled by IngredientListComponent)`);
   };
 
   const closeUnitModal = () => {
-      setCurrentManagingComponentKey(null);
-      setUnitModalVisible(false);
-  }
+    // This will be handled by IngredientListComponent's own modal
+    appLogger.log(`Request to close unit modal (handled by IngredientListComponent)`);
+  };
 
   const handleUnitSelect = (unit: Unit) => {
-    if (currentManagingComponentKey) {
-      handleIngredientUpdate(currentManagingComponentKey, 'unitId', unit.unit_id);
-    }
-  };
-
-  const openPrepUnitModal = () => {
-      setPrepUnitModalVisible(true);
-  };
-
-  const closePrepUnitModal = () => {
-      setPrepUnitModalVisible(false);
-  };
-
-  const handlePrepUnitSelect = (unit: Unit) => {
-      setPrepUnitId(unit.unit_id);
-      closePrepUnitModal();
-      setIsDirty(true);
-  };
-
-  const handleSubPreparationPress = (ingredient: EditablePrepIngredient) => {
-    if (ingredient.isPreparation) {
-      appLogger.warn("Navigation to sub-preparation edit from within preparation edit not fully implemented yet.");
-    }
-  };
-
-  const handleDisplayAmountChange = (text: string) => {
-    // Allow only numeric input with optional decimal point
-    const sanitized = text.replace(/[^0-9.,]/g, '').replace(',', '.');
-    setDisplayAmountStr(sanitized);
-
-    // When in standalone mode (editing a preparation directly), this field represents the base yield
-    const parsed = parseFloat(sanitized);
-    if (!isNaN(parsed)) {
-      setOriginalPrepBaseAmount(parsed);
-    } else {
-      setOriginalPrepBaseAmount(null);
-    }
-
-    setIsDirty(true);
+    // This logic should now reside within IngredientListComponent or be passed to it.
+    // For now, if CreatePreparationScreen still needs to react, it needs the key.
+    // However, the current setup implies IngredientListComponent manages its own unit selection.
+    appLogger.log(`Unit selected: ${unit.unit_name}. Parent screen notified (if wired up).`);
   };
 
   const createNewPreparation = async (
@@ -545,8 +462,6 @@ const CreatePreparationScreen = () => {
     prepFingerprint: string | null, 
     components: EditablePrepIngredient[], 
     directions: string[],
-    yieldUnitId: string | null,
-    yieldAmount: number | null,
     totalTimeMinutes: number | null,
     cookingNotes: string | null
   ): Promise<string | null> => { 
@@ -557,7 +472,7 @@ const CreatePreparationScreen = () => {
               key: epi.key,
               name: epi.name,
               ingredient_id: epi.ingredient_id || "",
-              amount: epi.amountStr,
+              amount: '', // Add missing amount field
               amountStr: epi.amountStr,
               unit_id: epi.unitId || null,
               isPreparation: epi.isPreparation || false,
@@ -569,18 +484,17 @@ const CreatePreparationScreen = () => {
 
       try {
           appLogger.log(`Creating new preparation DB entry: ${prepName}`);
-          if (!yieldUnitId) {
-            throw new Error(`Cannot create preparation '${prepName}': Missing yield unit ID.`);
-          }
           if (!activeKitchenId) {
             throw new Error(`Cannot create preparation '${prepName}': No active kitchen selected.`);
           }
 
+          // Use a default 'piece' unit for unitless preparation ingredient row
+          const pieceUnit = units.find(u => u.unit_name?.toLowerCase() === 'piece' || u.abbreviation?.toLowerCase() === 'x') || units[0];
+          const pieceUnitId = pieceUnit?.unit_id!;
+
           const ingredientInsert: Database['public']['Tables']['ingredients']['Insert'] = {
             name: prepName.trim(),
-            cooking_notes: cookingNotes?.trim() || undefined,
-            unit_id: yieldUnitId,
-            amount: yieldAmount ?? 1,
+            unit_id: pieceUnitId,
             kitchen_id: activeKitchenId,
           };
           const { data: ingredientInsertData, error: ingredientError } = await supabase
@@ -617,9 +531,9 @@ const CreatePreparationScreen = () => {
                 preparation_id: newPreparationId,
                   ingredient_id: c.ingredient_id!,
                 amount: parseFloat(c.amountStr) || 0,
-                  unit_id: c.unitId!,
+                  unit_id: c.unitId!, // Ensure unit_id is not null
              }));
-             const { error: prepIngErr } = await supabase.from('preparation_ingredients').insert(prepIngredientsInsert);
+             const { error: prepIngErr } = await supabase.from('preparation_components').insert(prepIngredientsInsert);
              if (prepIngErr) { throw prepIngErr; }
              }
           }
@@ -642,17 +556,12 @@ const CreatePreparationScreen = () => {
           setSubmitting(false);
           return;
         }
-        if (!prepUnitId) {
-          Alert.alert(t('common.error'), t('alerts.errorMissingPrepYieldUnit'));
-          setSubmitting(false);
-          return;
-        }
 
         const componentsForFingerprint: ComponentInput[] = editableIngredients.map(epi => ({
               key: epi.key,
               name: epi.name,
               ingredient_id: epi.ingredient_id || "",
-              amount: epi.amountStr,
+              amount: '', // Add missing amount field
               amountStr: epi.amountStr, 
               unit_id: epi.unitId || null,
               isPreparation: epi.isPreparation || false,
@@ -666,8 +575,8 @@ const CreatePreparationScreen = () => {
 
         let finalPrepId: string | null = null;
         let finalPrepName = trimmedName;
-        let finalYieldAmount = originalPrepBaseAmount;
-        let finalYieldUnitId = prepUnitId;
+        let finalYieldAmount = null;
+        let finalYieldUnitId = null;
 
         if (prepResolution.mode === 'cancel') {
           appLogger.log("User cancelled preparation creation.");
@@ -691,8 +600,6 @@ const CreatePreparationScreen = () => {
             prepFingerprint,
             editableIngredients,
             instructions,
-            prepUnitId,
-            originalPrepBaseAmount,
             null,
             null
           );
@@ -703,8 +610,6 @@ const CreatePreparationScreen = () => {
             prepFingerprint,
             editableIngredients,
             instructions,
-            prepUnitId,
-            originalPrepBaseAmount,
             null,
             null
           );
@@ -739,8 +644,6 @@ const CreatePreparationScreen = () => {
            onNewPreparationCreated({
             id: finalPrepId,
             name: finalPrepName,
-            yield: finalYieldAmount, 
-            amount_unit_id: finalYieldUnitId,
           });
         }
 
@@ -758,9 +661,9 @@ const CreatePreparationScreen = () => {
       if (onUpdatePrepAmount && prepKey) {
         appLogger.log(`Calling update callback for prepKey: ${prepKey}, isDirty: ${isDirty}`);
         onUpdatePrepAmount(prepKey, {
-          editableIngredients: editableIngredients,
-          prepUnitId: prepUnitId,
-          instructions: instructions,
+          editableIngredients,
+          prepUnitId,
+          instructions,
           isDirty: isDirty,
         });
       } else {
@@ -776,7 +679,6 @@ const CreatePreparationScreen = () => {
     prepUnitId, 
     editableIngredients, 
     instructions, 
-    originalPrepBaseAmount,
     t, 
     createNewPreparation, 
     resolvePreparation, 
@@ -867,7 +769,7 @@ const CreatePreparationScreen = () => {
     
     // Find a default unit (e.g., 'piece' or the first available unit)
     const defaultUnit = units.find(u => u.unit_name?.toLowerCase() === 'piece' || u.abbreviation?.toLowerCase() === 'x') || units[0];
-    const defaultUnitId = defaultUnit?.unit_id;
+    const defaultUnitId = defaultUnit?.unit_id!;
     
     if (!defaultUnitId) {
        appLogger.error(`Cannot create ingredient '${trimmedName}': No default unit found.`);
@@ -880,8 +782,7 @@ const CreatePreparationScreen = () => {
       const ingredientInsert: Database['public']['Tables']['ingredients']['Insert'] = {
         name: trimmedName,
         kitchen_id: activeKitchenId,
-        unit_id: defaultUnitId, 
-        amount: 1, // Default amount
+        unit_id: defaultUnitId,
       };
       const { data, error } = await supabase
         .from('ingredients')
@@ -917,9 +818,31 @@ const CreatePreparationScreen = () => {
 
   // ADDED: Handler to open unit modal (passed to IngredientListComponent)
   const openIngredientUnitSelector = (key: string) => {
-    setCurrentManagingComponentKey(key);
-    setUnitModalVisible(true);
+    // This will be handled by IngredientListComponent's own modal
+    appLogger.log(`Request to open unit modal for component key: ${key} (handled by IngredientListComponent)`);
   }
+
+  // helper to ensure keys are strings
+  const safePrepKey = prepKey ?? '';
+
+  // Helper to propagate amount/scale updates back to parent recipe screen
+  const pushAmountUpdateToParent = useCallback((amountStr: string, newScale?: number) => {
+    if (onUpdatePrepAmount && prepKey) {
+      onUpdatePrepAmount(safePrepKey, {
+        editableIngredients,
+        prepUnitId,
+        instructions,
+        isDirty: true,
+        displayAmount: amountStr,
+        scaleMultiplier: newScale ?? scaleMultiplier,
+      });
+    }
+  }, [onUpdatePrepAmount, safePrepKey, editableIngredients, prepUnitId, instructions, scaleMultiplier]);
+
+  const setInstructions = useCallback((newInstructions: string[]) => {
+    _setInstructions(newInstructions);
+    setIsDirty(true);
+  }, [_setInstructions, setIsDirty]);
 
   if (isScreenLoading) { 
       return <SafeAreaView style={styles.safeArea}><View style={styles.centered}><ActivityIndicator size="large" color={COLORS.primary} /></View></SafeAreaView>
@@ -929,7 +852,7 @@ const CreatePreparationScreen = () => {
   const prepYieldUnit = units.find(u => u.unit_id === prepUnitId);
   topDisplayUnitAbbr = prepYieldUnit?.abbreviation || 'Unit';
   
-  const amountLabel = t('screens.createPreparation.yieldLabel', 'Yield');
+  const amountLabel = t('screens.createPreparation.amountLabel', 'Amount');
 
   // Determine if warning about type lock should be shown
   // Warning should show if:
@@ -976,29 +899,38 @@ const CreatePreparationScreen = () => {
         >
           <Text style={styles.prepName}>{capitalizeWords(prepName)}</Text>
 
-          {/* Unified numeric input for both modes; label changes depending on entry point */}
-          <View style={styles.section}>
-            <Text style={styles.label}>{amountLabel}:</Text>
-            <View style={styles.componentControlsContainer}>
-              <TextInput
-                style={styles.componentInputAmount}
-                value={displayAmountStr}
-                onChangeText={handleDisplayAmountChange}
-                keyboardType="numeric"
-                placeholder={t('screens.createPreparation.yieldPlaceholder')}
-                placeholderTextColor={COLORS.placeholder}
-              />
-              <TouchableOpacity
-                style={[styles.componentUnitTrigger]}
-                onPress={openPrepUnitModal}
-              >
-                <Text style={[styles.pickerText, !prepUnitId && styles.placeholderText]}>
-                  {topDisplayUnitAbbr}
-                </Text>
-                <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.textLight} />
-              </TouchableOpacity>
-            </View>
-          </View>
+          {/* Amount / Scale Section */}
+          {!isStandaloneMode ? (
+            <ScaleSliderInput
+              label={`${t('screens.createPreparation.amountInParent', 'Amount in')} ${parentScaleMultiplier} ${t('screens.createPreparation.unitsOfParent', 'units of parent recipe')}`}
+              minValue={0}
+              maxValue={parentScaleMultiplier * 10}
+              step={0.1}
+              currentValue={parseFloat(displayAmountStr) || 0}
+              displayValue={displayAmountStr}
+              displaySuffix="×"
+              onValueChange={(val) => {
+                const vStr = val.toFixed(2);
+                setDisplayAmountStr(vStr); // Keep local state in sync for the input
+                pushAmountUpdateToParent(vStr, val);
+              }}
+              onSlidingComplete={(val)=>{ const v=val.toFixed(2); setDisplayAmountStr(v); pushAmountUpdateToParent(v, val);} } // also pass val for newScale
+              onTextInputChange={(text)=>{ setDisplayAmountStr(text); pushAmountUpdateToParent(text);} } // newScale will be derived from text if possible by parent
+            />
+          ) : (
+            <ScaleSliderInput
+              label={t('screens.createPreparation.scaleLabel', 'Scale')}
+              minValue={0.1}
+              maxValue={10}
+              step={0.1}
+              currentValue={scaleMultiplier}
+              displayValue={scaleMultiplier.toFixed(2)}
+              displaySuffix="×"
+              onValueChange={(val)=>{ setScaleMultiplier(val); }}
+              onSlidingComplete={(val)=>{ setScaleMultiplier(parseFloat(val.toFixed(2))); }}
+              onTextInputChange={(text)=>{ const num=parseFloat(text); if(!isNaN(num)) setScaleMultiplier(num);} }
+            />
+          )}
 
           <View style={styles.section}>
               <Text style={styles.sectionHeader}>{t('screens.createPreparation.ingredientsTitle')}</Text>
@@ -1067,10 +999,10 @@ const CreatePreparationScreen = () => {
        <Modal
           animationType="fade"
           transparent
-          visible={unitModalVisible}
-          onRequestClose={closeUnitModal}
+          visible={false}
+          onRequestClose={() => {}}
        >
-           <TouchableOpacity style={styles.modalBackdrop} onPress={() => setUnitModalVisible(false)} activeOpacity={1}>
+           <TouchableOpacity style={styles.modalBackdrop} onPress={() => {}} activeOpacity={1}>
                <View style={styles.modalContent}>
                    <Text style={styles.modalTitle}>{t('screens.createPreparation.selectUnitModalTitle')}</Text>
                    <FlatList
@@ -1079,7 +1011,7 @@ const CreatePreparationScreen = () => {
                        renderItem={({ item }: { item: Unit }) => (
                            <TouchableOpacity
                                style={styles.modalItem}
-                               onPress={() => handleUnitSelect(item)}
+                               onPress={() => {}}
                            >
                                <Text style={styles.modalItemText}>{capitalizeWords(item.unit_name)} ({item.abbreviation || 'N/A'})</Text>
                            </TouchableOpacity>
@@ -1088,7 +1020,7 @@ const CreatePreparationScreen = () => {
                    />
                    <TouchableOpacity
                        style={styles.closeButton}
-                       onPress={closeUnitModal}
+                       onPress={() => {}}
                    >
                        <Text style={styles.closeButtonText}>{t('common.close')}</Text>
                    </TouchableOpacity>
@@ -1099,10 +1031,10 @@ const CreatePreparationScreen = () => {
        <Modal
           animationType="fade"
           transparent
-          visible={prepUnitModalVisible}
-          onRequestClose={() => setPrepUnitModalVisible(false)}
+          visible={false}
+          onRequestClose={() => {}}
        >
-           <TouchableOpacity style={styles.modalBackdrop} onPress={() => setPrepUnitModalVisible(false)} activeOpacity={1}>
+           <TouchableOpacity style={styles.modalBackdrop} onPress={() => {}} activeOpacity={1}>
                <View style={styles.modalContent}>
                    <Text style={styles.modalTitle}>{t('screens.createPreparation.selectPrepUnitModalTitle')}</Text>
                    <FlatList
@@ -1113,7 +1045,6 @@ const CreatePreparationScreen = () => {
                                style={styles.modalItem}
                                onPress={() => {
                                    setPrepUnitId(item.unit_id);
-                                   setPrepUnitModalVisible(false);
                                    setIsDirty(true);
                                }}
                            >
@@ -1121,7 +1052,7 @@ const CreatePreparationScreen = () => {
                            </TouchableOpacity>
                        )}
                    />
-                   <TouchableOpacity style={styles.modalCloseButton} onPress={() => setPrepUnitModalVisible(false)}>
+                   <TouchableOpacity style={styles.modalCloseButton} onPress={() => {}}>
                      <Text style={styles.modalCloseButtonText}>{t('common.cancel')}</Text>
                    </TouchableOpacity>
                </View>

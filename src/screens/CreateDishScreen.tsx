@@ -20,6 +20,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../constants/theme';
+import { PREPARATION_UNIT_ID } from '../constants/units';
 import { RootStackParamList, OnUpdatePrepAmountCallback, OnNewPreparationCreatedCallback } from '../navigation/types';
 import { supabase } from '../data/supabaseClient';
 import { Unit, MenuSection, Ingredient, RecipeKind, ParsedIngredient, ParsedRecipe, Preparation, ComponentInput, EditablePrepIngredient, PreparationIngredient } from '../types';
@@ -181,7 +182,6 @@ const CreateDishScreen = () => {
         name: trimmedName,
         kitchen_id: activeKitchenId,
         unit_id: defaultUnitId, // Use resolved default unit ID
-        amount: 1, // Default amount
       };
       const { data, error } = await supabase
         .from('ingredients')
@@ -241,6 +241,7 @@ const CreateDishScreen = () => {
             amount: updatedState.displayAmount !== undefined 
               ? updatedState.displayAmount 
               : comp.amount,
+            unit_id: PREPARATION_UNIT_ID, // Ensure unit_id is PREPARATION_UNIT_ID for preps
           };
           
           // Store the scale multiplier in the component for reference by PreparationCard
@@ -293,7 +294,7 @@ const CreateDishScreen = () => {
       initialInstructions: prepComponent.prepStateInstructions,
       // Pass the calculated scaled amount
       dishComponentScaledAmount: dishComponentScaledAmount,
-      originalPrepBaseAmount: prepComponent.prepYield ?? null,
+      originalPrepBaseAmount: null,
     });
   }, [navigation, originalServings, numServings, handlePrepSaveChanges]);
   const searchIngredients = useCallback(async (query: string) => {
@@ -357,7 +358,7 @@ const CreateDishScreen = () => {
       setTotalTimeHours(String(parseInt(timeParts[0]) || 0));
       setTotalTimeMinutes(String(parseInt(timeParts[1]) || 0));
       setServingSize(String(dishToEdit.serving_size || 1));
-      setServingUnitId(dishToEdit.serving_unit?.unit_id || null);
+      setServingUnitId(null);
       const initialDishServings = (dishToEdit as any).num_servings ?? 1;
       setNumServings(initialDishServings);
       setOriginalServings(initialDishServings);
@@ -366,7 +367,7 @@ const CreateDishScreen = () => {
 
       const loadDishComponents = async () => {
         const componentPromises = dishToEdit.components.map(async (comp, index) => {
-          const baseComponentInput: Omit<ComponentInput, 'originalPrep' | 'prepYield' | 'prepYieldUnitId' | 'subIngredients'> = {
+          const baseComponentInput: Omit<ComponentInput, 'originalPrep' | 'subIngredients'> = {
             key: `loaded-${comp.ingredient_id}-${index}`,
             ingredient_id: comp.ingredient_id,
             name: comp.name || t('common.unknownComponent'),
@@ -384,8 +385,6 @@ const CreateDishScreen = () => {
                 return {
                   ...baseComponentInput,
                   originalPrep: prepDetails.preparation,
-                  prepYield: prepDetails.preparation.yield ?? null,
-                  prepYieldUnitId: prepDetails.preparation.yield_unit_id ?? prepDetails.preparation.yield_unit?.unit_id ?? null,
                   subIngredients: prepDetails.ingredients,
                 } as ComponentInput;
               } else {
@@ -419,9 +418,9 @@ const CreateDishScreen = () => {
       setTotalTimeHours('0'); // Assuming prep time is only minutes
       setTotalTimeMinutes(String(prepTimeMinutes));
 
-      // Populate yield as serving size/unit
-      setServingSize(String(prepToEdit.yield || 1));
-      setServingUnitId(prepToEdit.yield_unit?.unit_id || null);
+      // Preparations now unitless; default serving size 1
+      setServingSize('1');
+      setServingUnitId(null);
 
       setCookingNotes(prepToEdit.cooking_notes || '');
 
@@ -567,7 +566,7 @@ const CreateDishScreen = () => {
               name: trimmedName,
               isPreparation: true,
               amount: '',
-              unit_id: preparation.amount_unit_id || null,
+              unit_id: PREPARATION_UNIT_ID, // Preparations as components use PREPARATION_UNIT_ID
               originalPrep: preparation as any,
               subIngredients: ingredients.map(ing => ({
                 name: ing.name,
@@ -588,11 +587,9 @@ const CreateDishScreen = () => {
                 item: null,
                 matched: true,
               })),
-              prepStatePrepUnitId: preparation.yield_unit?.unit_id || null,
+              prepStatePrepUnitId: null,
               prepStateInstructions: preparation.directions ? [preparation.directions] : null,
               prepStateIsDirty: false,
-              prepYield: preparation.yield ?? null,
-              prepYieldUnitId: preparation.amount_unit_id || null,
             };
 
             setComponents(prev => [...prev, newComponentData]);
@@ -631,8 +628,6 @@ const CreateDishScreen = () => {
         unit_id: null,
         isPreparation: isPrep,
         matched: matched,
-        prepYield: baseYield,
-        prepYieldUnitId: baseYieldUnitId,
       }
     ]);
   }
@@ -645,8 +640,6 @@ const CreateDishScreen = () => {
       newPrepData.name,
       true, // It's a preparation
       false, // It's newly created, not matched initially
-      newPrepData.yield ?? null,
-      newPrepData.amount_unit_id ?? null
     );
     // Optionally set default amount/unit based on returned yield?
     // For now, just adds it with empty amount/unit
@@ -930,9 +923,9 @@ const CreateDishScreen = () => {
                 // Calculate total minutes from top-level state
                 const prepTotalMinutes = (parseInt(totalTimeHours, 10) || 0) * 60 + (parseInt(totalTimeMinutes, 10) || 0);
                 // Parse yield amount from top-level state
-                const prepYieldAmount = parseFloat(servingSize);
+                const prepYieldAmount = null;
                 // Get yield unit from component state
-                const prepYieldUnitId = component.prepStatePrepUnitId ?? null;
+                const prepYieldUnitId = null;
 
                 appLogger.log(`  [handleSaveDish] Pre-createNewPreparation Log for: ${nameToCreate}`);
                 appLogger.log(`    Component State (Key ${component.key}):`, JSON.stringify(component, null, 2));
@@ -947,9 +940,9 @@ const CreateDishScreen = () => {
                   {
                     components: resolvedSubComponentsInput,
                     directions: component.prepStateInstructions || [],
-                    yieldUnitId: prepYieldUnitId, // Use the variable captured above
+                    yieldUnitId: null, // Use the variable captured above
                     // Pass parsed top-level yield amount, default to 1 if NaN
-                    yieldAmount: isNaN(prepYieldAmount) ? 1 : prepYieldAmount,
+                    yieldAmount: null,
                     // Pass calculated total minutes, default to null if 0
                     totalTimeMinutes: prepTotalMinutes > 0 ? prepTotalMinutes : null,
                     // TODO: Decide where cooking notes for a new sub-prep should come from. Defaulting to null.
@@ -961,7 +954,7 @@ const CreateDishScreen = () => {
                   preparationId = newPrepId;
                   ingredientId = newPrepId; // Update ingredientId as well
                   createdPreparationIds.set(component.key, newPrepId); // Track created ID by component key
-                  appLogger.log(`  Successfully created preparation ${nameToCreate} with ID: ${preparationId}`);
+                  appLogger.log(`  Successfully created preparation '${nameToCreate}' with ID: ${preparationId}`);
                 } else {
                   appLogger.error(`  Failed to create the preparation '${nameToCreate}'. Aborting dish save.`);
                   Alert.alert(t('common.error'), t('alerts.errorCreatePreparationFailed', { name: nameToCreate }));
@@ -1041,24 +1034,23 @@ const CreateDishScreen = () => {
           // 2. Update Ingredient Yield (amount/unit in ingredients table)
           // Use the unit ID matched during pre-processing (stored in component.unit_id)
           // Use the amount parsed for the prep component itself (stored in component.originalPrep.amount)
-          const parsedYieldAmount = (component.originalPrep as any)?.amount;
-          const matchedYieldUnitId = component.unit_id; // Unit ID matched by recipeProcessor
+          const parsedYieldAmount = null;
 
-          if (parsedYieldAmount != null && matchedYieldUnitId) {
+          if (parsedYieldAmount != null) {
             const { error: ingredientUpdateError } = await supabase
               .from('ingredients')
-              .update({ amount: parsedYieldAmount, unit_id: matchedYieldUnitId })
+              .update({ amount: parsedYieldAmount, unit_id: undefined })
               .eq('ingredient_id', component.ingredient_id); // Use prep ID = ingredient ID
             if (ingredientUpdateError) {
               appLogger.error(`Error updating ingredient yield for ${component.name}:`, ingredientUpdateError);
               // Decide if this is critical - maybe just warn?
             } else {
-              appLogger.log(`  Updated ingredient yield to: ${parsedYieldAmount} (Unit: ${matchedYieldUnitId})`);
+              appLogger.log(`  Updated ingredient yield to: ${parsedYieldAmount} (Unit: ${undefined})`);
             }
           }
 
           // 3. (Future Improvement) Update Preparation Ingredients
-          // We could potentially delete/re-insert preparation_ingredients here
+          // We could potentially delete/re-insert preparation_components here
           // using component.prepStateEditableIngredients, ensuring the 'cauliflower'
           // entry with ingredient_id=null is handled correctly (skipped or resolved).
           // For now, we'll skip this to avoid complexity and focus on time/yield.
@@ -1236,11 +1228,11 @@ const CreateDishScreen = () => {
         throw prepError;
       }
 
-      // Next, update preparation_ingredients if needed
+      // Next, update preparation_components if needed
       if (prepComponent.prepStateEditableIngredients?.length) {
-        // First, delete existing preparation_ingredients
+        // First, delete existing preparation_components
         const { error: deleteError } = await supabase
-          .from('preparation_ingredients')
+          .from('preparation_components')
           .delete()
           .eq('preparation_id', existingPrepId);
 
@@ -1261,7 +1253,7 @@ const CreateDishScreen = () => {
 
         if (validComponents.length) {
           const { error: insertError } = await supabase
-            .from('preparation_ingredients')
+            .from('preparation_components')
             .insert(validComponents);
 
           if (insertError) {
@@ -1294,11 +1286,11 @@ const CreateDishScreen = () => {
     prepFingerprint: string | null,
     _componentDetails: any | null,
     options: {
-      components: ComponentInput[],
-      directions: string[],
-      yieldUnitId: string | null,
-      yieldAmount: number | null,
-      totalTimeMinutes: number | null,
+      components: ComponentInput[];
+      directions: string[];
+      yieldUnitId: string | null;
+      yieldAmount: number | null;
+      totalTimeMinutes: number | null;
       cookingNotes: string | null
     }
   ): Promise<string | null> => {
@@ -1402,7 +1394,7 @@ const CreateDishScreen = () => {
             unit_id: c.unit_id!,
           }));
 
-          const { error: prepIngErr } = await supabase.from('preparation_ingredients').insert(prepIngredientsInsert);
+          const { error: prepIngErr } = await supabase.from('preparation_components').insert(prepIngredientsInsert);
 
           if (prepIngErr) {
             appLogger.error(`Error adding ingredients to preparation '${trimmedPrepName}':`, prepIngErr);
@@ -1568,20 +1560,18 @@ const CreateDishScreen = () => {
             </View>
           )}
 
-          {/* Display total yield calculated from the target servings */}
+          {/* Display total quantity using base serving unit without yield abstraction */}
           {originalServings > 0 && typeof parseFloat(servingSize) === 'number' && servingUnitId && (
             (() => {
               const targetServings = numServings; // Already a number
               const servingSizeNum = parseFloat(servingSize);
               const totalYieldAmount = servingSizeNum * targetServings;
-              const yieldUnit = units.find(u => u.unit_id === servingUnitId);
-              const yieldUnitAbbr = yieldUnit?.abbreviation || yieldUnit?.unit_name || '';
-              const itemForYield = servingItem.trim() || null; // Use the state value directly
-              const formattedTotalYield = formatQuantityAuto(totalYieldAmount, yieldUnitAbbr, itemForYield);
-              if (formattedTotalYield.amount !== 'N/A' && totalYieldAmount > 0) {
+              const unitAbbr = units.find(u => u.unit_id === servingUnitId)?.abbreviation || '';
+              const formatted = formatQuantityAuto(totalYieldAmount, unitAbbr, servingItem);
+              if (formatted.amount !== 'N/A' && totalYieldAmount > 0) {
                 return (
                   <Text style={styles.calculatedYieldText}>
-                    (Yields: {formattedTotalYield.amount} {formattedTotalYield.unit} total)
+                    (Yields: {formatted.amount} {formatted.unit})
                   </Text>
                 );
               }
@@ -2160,7 +2150,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     borderRadius: SIZES.radius,
     paddingHorizontal: SIZES.padding,
-    paddingVertical: SIZES.padding * 0.75,
+    paddingVertical: SIZES.padding * 0.75, // Match input padding
     ...FONTS.body3,
     borderWidth: 1,
     borderColor: COLORS.border,

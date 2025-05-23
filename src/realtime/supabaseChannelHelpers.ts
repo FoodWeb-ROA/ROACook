@@ -45,9 +45,10 @@ export function subscribeToTable(
                 filter: filter,
             },
             // Use 'any' for payload type, rely on caller to cast/validate
-            (payload: RealtimePostgresChangesPayload<any>) => { 
+            (payload: RealtimePostgresChangesPayload<any> | any) => { 
                 appLogger.log(`[Realtime] Change received on ${tableName}:`, payload);
-                switch (payload.eventType) {
+                const eventType = (payload as any)?.eventType ?? 'UNKNOWN';
+                switch (eventType) {
                     case 'INSERT':
                         if (handlers.onInsert && payload.new) {
                             handlers.onInsert(payload.new);
@@ -64,7 +65,7 @@ export function subscribeToTable(
                         }
                         break;
                     default:
-                        appLogger.warn(`[Realtime] Unhandled event type: ${payload.eventType}`);
+                        appLogger.warn(`[Realtime] Unhandled event type: ${eventType}`);
                 }
             }
         )

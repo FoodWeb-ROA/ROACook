@@ -386,9 +386,6 @@ const DishDetailScreen = () => {
                     setTargetServings(originalServings);
                   }
                 }}
-                yieldBase={dish.serving_size ?? undefined}
-                yieldUnitAbbr={(dish.serving_unit?.abbreviation || dish.serving_unit?.unit_name) ?? undefined}
-                yieldItem={dish.serving_item ?? undefined}
               />
             </View>
           )}

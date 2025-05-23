@@ -44,15 +44,10 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
   // Calculate effective scale multiplier: prefer component.prepScaleMultiplier if provided
   const effectiveScaleMultiplier = component.prepScaleMultiplier ?? scaleMultiplier;
 
-  // Calculate scaled yield
-  const scaledYieldAmount = preparation.yield ? preparation.yield * effectiveScaleMultiplier : null;
-  const yieldUnitAbbr = preparation.yield_unit?.abbreviation || preparation.yield_unit?.unit_name || '';
-  const formattedYield = formatQuantityAuto(scaledYieldAmount, yieldUnitAbbr);
-
   // Ensure preparation.ingredients exists and is an array before using it
   const ingredients = preparation.ingredients || [];
 
-  // Simplified display amount logic - always use the component's unit and amount
+  // For preparations, amount is unitless multiplier
   let displayAmount = component.amount ? component.amount * effectiveScaleMultiplier : null;
   let displayUnitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
   let displayText = 'N/A';
@@ -72,15 +67,7 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
             <Text style={styles.infoText}>{formatTime(preparation.total_time)}</Text>
           </View>
         )}
-        {/* Only show Yield/Amount if available */}
-        {displayText !== 'N/A' && (
-           <View style={styles.infoItem}> 
-            <MaterialCommunityIcons name="scale-balance" size={16} color={COLORS.textLight} />
-            <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="tail">
-              {displayLabel}: {displayText}
-            </Text>
-           </View>
-        )}
+        {/* Amount display removed for unitless preparations */}
       </View>
 
       <Text style={styles.subTitle}>{t('components.preparationCard.subTitle')}</Text>
@@ -88,16 +75,17 @@ const PreparationCard: React.FC<PreparationCardProps> = ({ component, onPress, s
         ingredients.slice(0, 3).map((ing: PreparationIngredient) => {
           let finalScaledAmount = null;
           const baseIngAmount = ing.amount;
-          const prepBaseYield = preparation.yield;
+          const prepBaseYield = 1; // unitless base
           const componentUnitAbbr = component.unit?.abbreviation || component.unit?.unit_name || '';
 
           // Convert scaled amount of preparation used in dish to the unit of preparation yield
           let scaledPrepAmountInDish: number | null = null;
           if (displayAmount !== null) {
-            scaledPrepAmountInDish = convertAmount(displayAmount, componentUnitAbbr, yieldUnitAbbr);
+            // Preparations are unitless; no conversion needed
+            scaledPrepAmountInDish = displayAmount;
           }
 
-          if (baseIngAmount !== null && scaledPrepAmountInDish !== null && prepBaseYield !== null && prepBaseYield > 0) {
+          if (baseIngAmount !== null && scaledPrepAmountInDish !== null && prepBaseYield != null && prepBaseYield > 0) {
             const scaleFactor = scaledPrepAmountInDish / prepBaseYield;
             finalScaledAmount = baseIngAmount * scaleFactor;
           } else if (baseIngAmount !== null) {

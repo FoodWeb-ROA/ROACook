@@ -9,7 +9,7 @@ type KitchenUserRow = Database['public']['Tables']['kitchen_users']['Row'];
 type DishRow = Database['public']['Tables']['dishes']['Row'];
 type IngredientRow = Database['public']['Tables']['ingredients']['Row'];
 type PreparationRow = Database['public']['Tables']['preparations']['Row'];
-type PreparationIngredientRow = Database['public']['Tables']['preparation_ingredients']['Row'];
+type PreparationIngredientRow = Database['public']['Tables']['preparation_components']['Row'];
 type MenuSectionRow = Database['public']['Tables']['menu_section']['Row'];
 type DishComponentRow = Database['public']['Tables']['dish_components']['Row'];
 type UnitRow = Database['public']['Tables']['units']['Row'];
@@ -282,7 +282,7 @@ export function applyRealtimeEvent(
             break;
         }
 
-        case 'preparation_ingredients': {
+        case 'preparation_components': {
             // Invalidation Only (affects preparation detail)
             const prepIngNew = newRecord as Partial<PreparationIngredientRow>;
             const prepIngOld = oldRecord as Partial<PreparationIngredientRow>;
@@ -290,10 +290,10 @@ export function applyRealtimeEvent(
             const kitchenIdForPrepIng = currentKitchenId; // Simplified assumption
 
             if (parentPrepId) {
-                appLogger.log(`[CacheInvalidation][preparation_ingredients] Invalidating parent prep detail:`, ['preparations', { preparation_id: parentPrepId }]);
+                appLogger.log(`[CacheInvalidation][preparation_components] Invalidating parent prep detail:`, ['preparations', { preparation_id: parentPrepId }]);
                 invalidate(['preparations', { preparation_id: parentPrepId }]);
             } else {
-                 appLogger.warn('[CacheInvalidation][preparation_ingredients] Missing parent preparation_id, cannot invalidate specific detail.');
+                 appLogger.warn('[CacheInvalidation][preparation_components] Missing parent preparation_id, cannot invalidate specific detail.');
             }
             // Invalidate potentially affected lists and details
             if (kitchenIdForPrepIng) {
@@ -302,7 +302,7 @@ export function applyRealtimeEvent(
                  invalidate(['preparations', { kitchen_id: kitchenIdForPrepIng }]);
             }
             // ALSO invalidate active dish detail queries, as their embedded prep might have changed
-            appLogger.log('[CacheInvalidation][preparation_ingredients] Invalidating dish list and detail queries.');
+            appLogger.log('[CacheInvalidation][preparation_components] Invalidating dish list and detail queries.');
             invalidate(['dishes']); // More specific: Invalidate all queries starting with 'dishes' (list and details)
             break;
         }

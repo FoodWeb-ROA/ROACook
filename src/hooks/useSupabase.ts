@@ -111,7 +111,6 @@ export function useDishes(menuSectionId?: string) {
               unit:fk_components_unit(*),
               ingredient:fk_components_ing (
                 *,
-                base_unit:ingredients_unit_id_fkey ( * ),
             preparation:preparations!preparation_id (*)
               )
             `)
@@ -282,11 +281,9 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
           unit:fk_components_unit(*),
           ingredient:fk_components_ing (
             *,
-            base_unit:ingredients_unit_id_fkey ( * ),
             preparation:preparations!preparation_id (
               *,
-              yield_unit:units!preparations_amount_unit_id_fkey (*),
-              ingredients:preparation_ingredients!fk_prep_ingredients_prep (
+              ingredients:preparation_components!fk_prep_ingredients_prep (
                 *,
                 unit:units!fk_prep_ingredients_unit (*),
                 ingredient:ingredients!fk_prep_ingredients_ing (name, ingredient_id)
@@ -300,7 +297,6 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
             // Update the type for the ingredient/preparation data to include nested details
             ingredient: (FetchedIngredientDetail & { 
               preparation: (FetchedPreparationDetail & { 
-                yield_unit: DbUnit | null, 
                 ingredients: (FetchedPreparationIngredient & {
                   unit: DbUnit | null,
                   ingredient: { name: string, ingredient_id: string } | null
@@ -323,7 +319,6 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
          // Cast ingredientData to include the new nested structure
          const ingredientData = comp.ingredient as (FetchedIngredientDetail & { 
            preparation: (FetchedPreparationDetail & { 
-             yield_unit: DbUnit | null, 
              ingredients: (FetchedPreparationIngredient & {
                unit: DbUnit | null,
                ingredient: { name: string, ingredient_id: string } | null
@@ -488,7 +483,7 @@ export function useDishDetail(dishId: string | undefined, kitchenId: string | nu
       // 2. Listen to the preparation's ingredients
       const prepIngChannel = supabase
         .channel(`dish-${dishId}-prep-${prepId}-ingredients`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'preparation_ingredients', filter: `preparation_id=eq.${prepId}`}, (payload) => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'preparation_components', filter: `preparation_id=eq.${prepId}`}, (payload) => {
           appLogger.log(`[useDishDetail] Nested prep ingredients change for ${prepId} received! Invalidating dish ${dishId}.`, payload);
           queryClient.invalidateQueries({ queryKey: ['dish', { dish_id: dishId }] });
            // Also invalidate the specific prep detail cache
@@ -678,12 +673,9 @@ export function usePreparationDetail(preparationId: string | undefined) {
              name: preparation?.name || '',
              directions: preparation?.directions ?? null,
              total_time: preparation?.total_time ?? null,
-             yield: preparation?.yield ?? null,
-             yield_unit_id: preparation?.yield_unit?.unit_id ?? null,
-             yield_unit: preparation?.yield_unit ?? null,
              cooking_notes: preparation?.cooking_notes ?? null,
+             yield: (preparation as any)?.yield ?? null, // Add yield field
              ingredients: ingredients || [],
-             fingerprint: (preparation as any)?.fingerprint ?? null,
         };
         await saveOfflineRecipe(preparationId, 'prep', payloadToCache);
        } catch (cacheError) {
@@ -724,7 +716,7 @@ export function usePreparationDetail(preparationId: string | undefined) {
     }
     appLogger.log(`[usePreparationDetail] Setting up subscriptions for preparation ${preparationId}.`);
 
-    // --- Base listeners for preparation and preparation_ingredients ---
+    // --- Base listeners for preparation and preparation_components ---
     const prepChannel = supabase
         .channel(`public:preparations:preparation_id=eq.${preparationId}`)
         .on('postgres_changes', {
@@ -748,11 +740,11 @@ export function usePreparationDetail(preparationId: string | undefined) {
         });
 
     const prepIngChannel = supabase
-        .channel(`public:preparation_ingredients:preparation_id=eq.${preparationId}`)
+        .channel(`public:preparation_components:preparation_id=eq.${preparationId}`)
         .on('postgres_changes', {
             event: '*', 
             schema: 'public',
-            table: 'preparation_ingredients',
+            table: 'preparation_components',
             filter: `preparation_id=eq.${preparationId}`
         }, payload => {
             appLogger.log(`[usePreparationDetail] Prep ingredients update for ${preparationId} received:`, payload);
@@ -859,10 +851,7 @@ export function usePreparations() {
         .from('preparations')
         .select(`
           *,
-          yield_unit:units!preparations_amount_unit_id_fkey ( * ),
           ingredient:ingredients!preparations_preparation_id_fkey (
-            *,
-            base_unit:ingredients_unit_id_fkey(*)
           )
         `)
         .eq('ingredient.kitchen_id', kitchenId)
@@ -892,20 +881,14 @@ export function usePreparations() {
         const combinedData: FetchedPreparationDataCombined = {
           ingredient_id: ingredientData.ingredient_id,
           name: ingredientData.name,
-          cooking_notes: ingredientData.cooking_notes,
-          storage_location: ingredientData.storage_location,
           unit_id: ingredientData.unit_id,
-          base_unit: ingredientData.base_unit,
           deleted: ingredientData.deleted,
           kitchen_id: ingredientData.kitchen_id || '',
-          synonyms: ingredientData.synonyms,
           preparation_id: prepBaseData.preparation_id,
           directions: prepBaseData.directions,
           total_time: prepBaseData.total_time,
-          yield_unit: prepBaseData.yield_unit,
-          yield: prepBaseData.yield,
-          amount_unit_id: prepBaseData.amount_unit_id,
           fingerprint: prepBaseData.fingerprint,
+          cooking_notes: prepBaseData.cooking_notes,
           amount: ingredientData.amount ?? 0,
           created_at: ingredientData.created_at ?? null,
           updated_at: ingredientData.updated_at ?? null,
@@ -981,11 +964,11 @@ export function usePreparations() {
        .subscribe(statusCallback('Preparations-LinkedIngredients'));
      // End restore listener
 
-     // Listener for preparation_ingredients table changes
+     // Listener for preparation_components table changes
       // Restore listener
       const prepIngChannel = supabase
-       .channel('public:preparation_ingredients')
-       .on('postgres_changes', { event: '*', schema: 'public', table: 'preparation_ingredients'}, (payload) => {
+       .channel('public:preparation_components')
+       .on('postgres_changes', { event: '*', schema: 'public', table: 'preparation_components'}, (payload) => {
            // Any change here *could* affect a preparation's details, potentially requiring a list update
            // if derived list data changes (e.g., complexity, cost - though not implemented yet).
            // Primarily, we need to invalidate the specific preparation detail.
@@ -1159,7 +1142,7 @@ export function useIngredients(identifyPreparations: boolean = false) {
         // Base query for ingredients filtered by kitchen ID
         let query = supabase
           .from('ingredients')
-          .select('*, base_unit:ingredients_unit_id_fkey(*)')
+          .select('*')
           .eq('kitchen_id', kitchenId); // Filter by kitchen ID
 
 
@@ -1191,8 +1174,7 @@ export function useIngredients(identifyPreparations: boolean = false) {
 
             const combinedIngredients = ingredientsData.map(ing => ({
                 ...transformIngredient(ing),
-                isPreparation: preparationIds.has(ing.ingredient_id),
-                base_unit: transformUnit(ing.base_unit)
+                isPreparation: preparationIds.has(ing.ingredient_id)
             }));
 
             setIngredients(combinedIngredients as Ingredient[]);
@@ -1286,13 +1268,10 @@ export type PreparationComponentDetail = {
   // Details specific to nested preparations
   preparationDetails?: {
     total_time: number | null;
-    yield_unit: Unit | null;
-    yield: number | null;
     ingredients: PreparationIngredient[]; // Add ingredients for nested preps
   } | null;
   // Details specific to raw ingredients
   rawIngredientDetails?: {
-     cooking_notes: string | null;
      // Add other raw ingredient specific details if needed
   } | null;
 }; 

@@ -30,12 +30,10 @@ export interface OfflinePreparationPayload {
   name: string; // from ingredients table
   directions: string | null; // from preparations table
   total_time: number | null; // from preparations table (total minutes?)
-  yield: number | null; // from ingredients table? (Needs verification based on usePrepDetail)
-  yield_unit_id: string | null; // from ingredients table?
-  yield_unit?: Unit | null; // Include unit details if available
+  yield: number | null;
   cooking_notes: string | null; // from ingredients table?
   fingerprint?: string | null; // Add fingerprint if available
-  // --- Components (from preparation_ingredients) ---
+  // --- Components (from preparation_components) ---
   ingredients: PreparationIngredient[]; // Use the transformed PreparationIngredient type
 }
 
